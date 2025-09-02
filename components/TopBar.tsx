@@ -86,14 +86,13 @@ export default function TopBar() {
               )}
               <BuyMeCoffee />
 
-              {!isLoadingSubscription && (
-                subscription || isInTrial
-              ) && pathname !== '/dashboard' && (
+              {/* Content-Planer Button - Immer sichtbar für eingeloggte User */}
+              {user && pathname !== '/dashboard' && (
                 <button
                   onClick={() => router.push('/dashboard')}
-                  className="hidden sm:block px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-full text-sm font-medium transition-colors shadow-subtle hover:shadow-hover"
+                  className="hidden sm:block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-medium transition-colors shadow-subtle hover:shadow-hover"
                 >
-                  {isInTrial ? "Start Free Trial" : "Start Building"}
+                  🎬 Content-Planer
                 </button>
               )}
               

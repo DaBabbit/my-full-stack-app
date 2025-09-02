@@ -1,107 +1,91 @@
 "use client";
 
-// import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-
-
 import { useRouter } from 'next/navigation';
 import { useSubscription } from '@/hooks/useSubscription';
-// import { OnboardingTour } from '@/components/OnboardingTour';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { motion } from 'framer-motion';
 import { 
-  BarChart3, 
-  Users, 
-  CreditCard, 
-  Settings,
-  PlusCircle,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Calendar,
+  User,
+  Lightbulb,
   Clock,
-  TrendingUp,
-  Activity
+  CheckCircle,
+  AlertCircle,
+  PlayCircle,
+  Upload
 } from 'lucide-react';
 
 const AUTH_TIMEOUT = 15000; // 15 seconds
 
-// Dashboard metrics data
-const dashboardMetrics = [
-  {
-    title: "Total Users",
-    value: "1,234",
-    change: "+12.3%",
-    icon: <Users className="h-6 w-6 text-primary" />,
-    trend: "up"
-  },
-  {
-    title: "Revenue",
-    value: "$12.4k",
-    change: "+8.2%",
-    icon: <CreditCard className="h-6 w-6 text-primary" />,
-    trend: "up"
-  },
-  {
-    title: "Active Sessions",
-    value: "432",
-    change: "-3.1%",
-    icon: <Activity className="h-6 w-6 text-primary" />,
-    trend: "down"
-  },
-  {
-    title: "Growth Rate",
-    value: "18.2%",
-    change: "+2.4%",
-    icon: <TrendingUp className="h-6 w-6 text-primary" />,
-    trend: "up"
+// Status-Icons für bessere Visualisierung
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'Warten auf Aufnahme':
+      return <Clock className="h-4 w-4 text-yellow-500" />;
+    case 'Idee':
+      return <Lightbulb className="h-4 w-4 text-blue-500" />;
+    case 'In Bearbeitung (Schnitt)':
+      return <Edit className="h-4 w-4 text-orange-500" />;
+    case 'Schnitt abgeschlossen':
+      return <CheckCircle className="h-4 w-4 text-green-500" />;
+    case 'Hochgeladen':
+      return <Upload className="h-4 w-4 text-purple-500" />;
+    default:
+      return <AlertCircle className="h-4 w-4 text-gray-500" />;
   }
-];
+};
 
-// Recent activity data
-const recentActivity = [
-  {
-    id: 1,
-    action: "New user signup",
-    timestamp: "2 minutes ago",
-    icon: <PlusCircle className="h-4 w-4" />
-  },
-  {
-    id: 2,
-    action: "Payment processed",
-    timestamp: "15 minutes ago",
-    icon: <CreditCard className="h-4 w-4" />
-  },
-  {
-    id: 3,
-    action: "Settings updated",
-    timestamp: "1 hour ago",
-    icon: <Settings className="h-4 w-4" />
-  },
-  {
-    id: 4,
-    action: "Session completed",
-    timestamp: "2 hours ago",
-    icon: <Clock className="h-4 w-4" />
+// Status-Farben für Badges
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'Warten auf Aufnahme':
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    case 'Idee':
+      return 'bg-blue-100 text-blue-800 border-blue-200';
+    case 'In Bearbeitung (Schnitt)':
+      return 'bg-orange-100 text-orange-800 border-orange-200';
+    case 'Schnitt abgeschlossen':
+      return 'bg-green-100 text-green-800 border-green-200';
+    case 'Hochgeladen':
+      return 'bg-purple-100 text-purple-800 border-purple-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200';
   }
-];
+};
+
+interface Video {
+  id: string;
+  title: string;
+  status: string;
+  publication_date: string | null;
+  responsible_person: string | null;
+  storage_location: string | null;
+  inspiration_source: string | null;
+  description: string | null;
+  last_updated: string;
+  created_at: string;
+}
 
 export default function Dashboard() {
-
-  
-  // const { isConnected } = useWebSocket();
-  // const [fullResponse, setFullResponse] = useState('');
   const { user, isSubscriber, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const { subscription, isLoading: isSubLoading, fetchSubscription } = useSubscription();
   const [hasCheckedSubscription, setHasCheckedSubscription] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const { isInTrial, isLoading: isTrialLoading } = useTrialStatus();
   const [authTimeout, setAuthTimeout] = useState(false);
-
-  // Add new states for dashboard functionality
-  // const [repositories, setRepositories] = useState([]);
-  // const [feedbackSources, setFeedbackSources] = useState([]);
-  // const [recentFeedback, setRecentFeedback] = useState([]);
-  // const [pendingPRs, setPendingPRs] = useState([]);
+  
+  // Video-Management States
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // First check - Subscription and trial check
   useEffect(() => {
@@ -157,23 +141,33 @@ export default function Dashboard() {
     }
   }, [user?.id, fetchSubscription]);
 
+  // Load videos for the current user
   useEffect(() => {
-    if (user?.id) {
-      // Check if user has completed onboarding
-      const checkOnboarding = async () => {
-        const { data } = await supabase
-          .from('user_preferences')
-          .select('has_completed_onboarding')
-          .eq('user_id', user.id)
-          .single();
-        
-        setHasCompletedOnboarding(!!data?.has_completed_onboarding);
-        console.log('hasCompletedOnboarding: ', hasCompletedOnboarding)
-      };
+    const fetchVideos = async () => {
+      if (!user?.id) return;
       
-      checkOnboarding();
-    }
-  }, [user?.id, hasCompletedOnboarding]);
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('last_updated', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching videos:', error);
+        } else {
+          setVideos(data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching videos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchVideos();
+  }, [user?.id]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -185,17 +179,59 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [user, isAuthLoading, isTrialLoading]);
 
-  // useEffect(() => {
-  //   if (!hasCompletedOnboarding) {
-  //     router.push('/onboarding');
-  //   }
-  // }, [hasCompletedOnboarding, router]);
+  // Update video status
+  const updateVideoStatus = async (videoId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('videos')
+        .update({ 
+          status: newStatus, 
+          last_updated: new Date().toISOString() 
+        })
+        .eq('id', videoId);
+      
+      if (error) {
+        console.error('Error updating video status:', error);
+        return;
+      }
+      
+      // Update local state
+      setVideos(prevVideos => 
+        prevVideos.map(video => 
+          video.id === videoId 
+            ? { ...video, status: newStatus, last_updated: new Date().toISOString() }
+            : video
+        )
+      );
+    } catch (error) {
+      console.error('Error updating video status:', error);
+    }
+  };
+
+  // Delete video
+  const deleteVideo = async (videoId: string) => {
+    if (!confirm('Sind Sie sicher, dass Sie dieses Video löschen möchten?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('videos')
+        .delete()
+        .eq('id', videoId);
+      
+      if (error) {
+        console.error('Error deleting video:', error);
+        return;
+      }
+      
+      // Update local state
+      setVideos(prevVideos => prevVideos.filter(video => video.id !== videoId));
+    } catch (error) {
+      console.error('Error deleting video:', error);
+    }
+  };
 
   // Update the loading check
   if (!user && (isAuthLoading || isTrialLoading) && !hasCheckedSubscription) {
-    console.log('user: ', user)
-    console.log('isAuthLoading: ', isAuthLoading)
-    console.log('hasCheckedSubscription: ', hasCheckedSubscription)
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -210,17 +246,28 @@ export default function Dashboard() {
     );
   }
 
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120]">
       {/* Dashboard Header */}
       <div className="bg-white dark:bg-neutral-dark border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Dashboard Overview
-            </h1>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                Mein Content-Planer
+              </h1>
+              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                Verwalten Sie Ihre Videos und Content-Planung
+              </p>
+            </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Neues Video</span>
+              </button>
               <span className="text-sm text-slate-600 dark:text-slate-300">
                 {isInTrial ? "Trial Period" : "Premium Plan"}
               </span>
@@ -231,83 +278,294 @@ export default function Dashboard() {
 
       {/* Dashboard Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {dashboardMetrics.map((metric, index) => (
-            <motion.div
-              key={metric.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700"
-            >
-              <div className="flex items-center justify-between">
-                <div className="p-2 bg-primary/10 dark:bg-primary-light/10 rounded-lg">
-                  {metric.icon}
-                </div>
-                <span className={`text-sm font-medium ${
-                  metric.trend === 'up' ? 'text-green-500' : 'text-red-500'
-                }`}>
-                  {metric.change}
-                </span>
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700"
+          >
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                <PlayCircle className="h-6 w-6 text-blue-600" />
               </div>
-              <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
-                {metric.value}
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                {metric.title}
-              </p>
-            </motion.div>
-          ))}
+            </div>
+            <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+              {videos.length}
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Gesamt Videos
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700"
+          >
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+                <Clock className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
+            <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+              {videos.filter(v => v.status === 'Warten auf Aufnahme').length}
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Warten auf Aufnahme
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700"
+          >
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                <Edit className="h-6 w-6 text-orange-600" />
+              </div>
+            </div>
+            <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+              {videos.filter(v => v.status === 'In Bearbeitung (Schnitt)').length}
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              In Bearbeitung
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700"
+          >
+            <div className="flex items-center justify-between">
+              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                <Upload className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+            <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+              {videos.filter(v => v.status === 'Hochgeladen').length}
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Hochgeladen
+            </p>
+          </motion.div>
         </div>
 
-        {/* Activity Feed */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Chart Section */}
-          <div className="lg:col-span-2 bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Analytics Overview
-              </h3>
-              <BarChart3 className="h-5 w-5 text-slate-400" />
-            </div>
-            <div className="h-64 flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
-              <p className="text-slate-400 dark:text-slate-500">
-                Chart Placeholder
-              </p>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">
-              Recent Activity
+        {/* Videos Table */}
+        <div className="bg-white dark:bg-neutral-dark rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Meine Videos
             </h3>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <motion.div
-                  key={activity.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center space-x-3 text-sm"
-                >
-                  <div className="p-2 bg-primary/10 dark:bg-primary-light/10 rounded-lg">
-                    {activity.icon}
-                  </div>
-                  <div>
-                    <p className="text-slate-900 dark:text-white">
-                      {activity.action}
-                    </p>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs">
-                      {activity.timestamp}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
           </div>
+          
+          {loading ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-slate-600 dark:text-slate-400">Lade Videos...</p>
+            </div>
+          ) : videos.length === 0 ? (
+            <div className="p-8 text-center">
+              <PlayCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+                Noch keine Videos
+              </h3>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                Erstellen Sie Ihr erstes Video, um zu beginnen.
+              </p>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Erstes Video erstellen</span>
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 dark:bg-slate-800">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Video
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Veröffentlichung
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Verantwortlich
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Zuletzt aktualisiert
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Aktionen
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-neutral-dark divide-y divide-slate-200 dark:divide-slate-700">
+                  {videos.map((video, index) => (
+                    <motion.tr
+                      key={video.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-slate-900 dark:text-white">
+                            {video.title}
+                          </div>
+                          {video.description && (
+                            <div className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-xs">
+                              {video.description}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          {getStatusIcon(video.status)}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(video.status)}`}>
+                            {video.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
+                        {video.publication_date ? (
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-4 w-4 text-slate-400" />
+                            <span>{new Date(video.publication_date).toLocaleDateString('de-DE')}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">Nicht geplant</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
+                        {video.responsible_person ? (
+                          <div className="flex items-center space-x-1">
+                            <User className="h-4 w-4 text-slate-400" />
+                            <span>{video.responsible_person}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">Nicht zugewiesen</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
+                        {new Date(video.last_updated).toLocaleDateString('de-DE')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <select
+                            value={video.status}
+                            onChange={(e) => updateVideoStatus(video.id, e.target.value)}
+                            className="text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                          >
+                            <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
+                            <option value="Idee">Idee</option>
+                            <option value="In Bearbeitung (Schnitt)">In Bearbeitung (Schnitt)</option>
+                            <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
+                            <option value="Hochgeladen">Hochgeladen</option>
+                          </select>
+                          
+                          <button
+                            onClick={() => setEditingVideo(video)}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          
+                          {video.storage_location && (
+                            <a
+                              href={video.storage_location}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </a>
+                          )}
+                          
+                          {video.inspiration_source && (
+                            <a
+                              href={video.inspiration_source}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                            >
+                              <Lightbulb className="h-4 w-4" />
+                            </a>
+                          )}
+                          
+                          <button
+                            onClick={() => deleteVideo(video.id)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Add Video Modal - Placeholder */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-neutral-dark rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Neues Video erstellen
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Diese Funktion wird bald verfügbar sein!
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Video Modal - Placeholder */}
+      {editingVideo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-neutral-dark rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Video bearbeiten: {editingVideo.title}
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Diese Funktion wird bald verfügbar sein!
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setEditingVideo(null)}
+                className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

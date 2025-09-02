@@ -165,6 +165,29 @@ function ProfileContent() {
         
         <h1 className="text-3xl font-bold mb-8">Profile</h1>
         
+        {/* Content-Planer Button - Immer sichtbar */}
+        <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                🎬 Content-Planer
+              </h3>
+              <p className="text-blue-700 dark:text-blue-300">
+                Verwalten Sie Ihre Videos und Content-Planung - unabhängig von Ihrem Abonnement-Status
+              </p>
+            </div>
+            <Link
+              href="/dashboard"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center space-x-2"
+            >
+              <span>Zum Content-Planer</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+        
         <AccountManagement />
 
         {/* Subscription Section */}

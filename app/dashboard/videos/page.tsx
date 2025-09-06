@@ -35,6 +35,11 @@ interface Video {
   inspiration_source?: string;
   description?: string;
   last_updated?: string;
+  updated_at?: string;
+  duration?: number;
+  file_size?: number;
+  format?: string;
+  thumbnail_url?: string;
 }
 
 const sidebarItems = [
@@ -121,7 +126,12 @@ export default function VideosPage() {
           inspiration_source,
           description,
           created_at,
-          last_updated
+          last_updated,
+          updated_at,
+          duration,
+          file_size,
+          format,
+          thumbnail_url
         `)
         .order('created_at', { ascending: false });
 
@@ -141,7 +151,12 @@ export default function VideosPage() {
         responsible_person: video.responsible_person,
         inspiration_source: video.inspiration_source,
         description: video.description,
-        last_updated: video.last_updated
+        last_updated: video.last_updated,
+        updated_at: video.updated_at,
+        duration: video.duration,
+        file_size: video.file_size,
+        format: video.format,
+        thumbnail_url: video.thumbnail_url
       })) || [];
 
       setVideos(transformedVideos);
@@ -160,11 +175,20 @@ export default function VideosPage() {
       // Import supabase client
       const { supabase } = await import('@/utils/supabase');
       
+      // Get current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        alert('Sie müssen angemeldet sein, um Videos zu erstellen.');
+        return;
+      }
+      
       // Insert new video directly to Supabase
       const { error } = await supabase
         .from('videos')
         .insert([
           {
+            user_id: currentUser.id,
             title: newVideo.name,
             status: newVideo.status,
             publication_date: newVideo.publication_date || null,
@@ -177,9 +201,11 @@ export default function VideosPage() {
 
       if (error) {
         console.error('Error creating video:', error);
-        alert('Fehler beim Erstellen des Videos. Bitte versuche es erneut.');
+        alert(`Fehler beim Erstellen des Videos: ${error.message}`);
         return;
       }
+
+      console.log('Video erfolgreich erstellt!');
 
       // Success - refresh videos and close modal
       fetchVideos();

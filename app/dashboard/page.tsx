@@ -37,6 +37,11 @@ interface Video {
   inspiration_source?: string;
   description?: string;
   last_updated?: string;
+  updated_at?: string;
+  duration?: number;
+  file_size?: number;
+  format?: string;
+  thumbnail_url?: string;
 }
 
 const sidebarItems = [
@@ -112,7 +117,12 @@ export default function Dashboard() {
           inspiration_source,
           description,
           created_at,
-          last_updated
+          last_updated,
+          updated_at,
+          duration,
+          file_size,
+          format,
+          thumbnail_url
         `)
         .order('created_at', { ascending: false });
 
@@ -132,7 +142,12 @@ export default function Dashboard() {
         responsible_person: video.responsible_person,
         inspiration_source: video.inspiration_source,
         description: video.description,
-        last_updated: video.last_updated
+        last_updated: video.last_updated,
+        updated_at: video.updated_at,
+        duration: video.duration,
+        file_size: video.file_size,
+        format: video.format,
+        thumbnail_url: video.thumbnail_url
       })) || [];
 
       setVideos(transformedVideos);

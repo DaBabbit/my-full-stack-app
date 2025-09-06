@@ -105,11 +105,46 @@ export default function VideosPage() {
 
   const fetchVideos = async () => {
     try {
-      const response = await fetch('/api/videos');
-      if (response.ok) {
-        const data = await response.json();
-        setVideos(data);
+      // Import supabase client
+      const { supabase } = await import('@/utils/supabase');
+      
+      // Fetch videos directly from Supabase
+      const { data: videos, error } = await supabase
+        .from('videos')
+        .select(`
+          id,
+          title,
+          status,
+          publication_date,
+          responsible_person,
+          storage_location,
+          inspiration_source,
+          description,
+          created_at,
+          last_updated
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching videos:', error);
+        return;
       }
+
+      // Transform data to match interface
+      const transformedVideos = videos?.map(video => ({
+        id: video.id,
+        name: video.title,
+        status: video.status,
+        storage_location: video.storage_location,
+        created_at: video.created_at,
+        publication_date: video.publication_date,
+        responsible_person: video.responsible_person,
+        inspiration_source: video.inspiration_source,
+        description: video.description,
+        last_updated: video.last_updated
+      })) || [];
+
+      setVideos(transformedVideos);
     } catch (error) {
       console.error('Error fetching videos:', error);
     } finally {
@@ -122,35 +157,45 @@ export default function VideosPage() {
     if (!newVideo.name.trim()) return;
 
     try {
-      const response = await fetch('/api/videos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newVideo.name,
-          status: newVideo.status,
-          publication_date: newVideo.publication_date || null,
-          responsible_person: newVideo.responsible_person || null,
-          storage_location: newVideo.storage_location || null,
-          inspiration_source: newVideo.inspiration_source || null,
-          description: newVideo.description || null,
-        }),
-      });
+      // Import supabase client
+      const { supabase } = await import('@/utils/supabase');
+      
+      // Insert new video directly to Supabase
+      const { error } = await supabase
+        .from('videos')
+        .insert([
+          {
+            title: newVideo.name,
+            status: newVideo.status,
+            publication_date: newVideo.publication_date || null,
+            responsible_person: newVideo.responsible_person || null,
+            storage_location: newVideo.storage_location || null,
+            inspiration_source: newVideo.inspiration_source || null,
+            description: newVideo.description || null,
+          }
+        ]);
 
-      if (response.ok) {
-        fetchVideos();
-        setShowAddModal(false);
-        setNewVideo({
-          name: '',
-          status: 'Idee',
-          publication_date: '',
-          responsible_person: '',
-          storage_location: '',
-          inspiration_source: '',
-          description: ''
-        });
+      if (error) {
+        console.error('Error creating video:', error);
+        alert('Fehler beim Erstellen des Videos. Bitte versuche es erneut.');
+        return;
       }
+
+      // Success - refresh videos and close modal
+      fetchVideos();
+      setShowAddModal(false);
+      setNewVideo({
+        name: '',
+        status: 'Idee',
+        publication_date: '',
+        responsible_person: '',
+        storage_location: '',
+        inspiration_source: '',
+        description: ''
+      });
     } catch (error) {
       console.error('Error adding video:', error);
+      alert('Fehler beim Erstellen des Videos. Bitte versuche es erneut.');
     }
   };
 

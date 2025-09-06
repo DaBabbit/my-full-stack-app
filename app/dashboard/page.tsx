@@ -96,11 +96,46 @@ export default function Dashboard() {
 
   const fetchVideos = async () => {
     try {
-      const response = await fetch('/api/videos');
-      if (response.ok) {
-        const data = await response.json();
-        setVideos(data);
+      // Import supabase client
+      const { supabase } = await import('@/utils/supabase');
+      
+      // Fetch videos directly from Supabase
+      const { data: videos, error } = await supabase
+        .from('videos')
+        .select(`
+          id,
+          title,
+          status,
+          publication_date,
+          responsible_person,
+          storage_location,
+          inspiration_source,
+          description,
+          created_at,
+          last_updated
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching videos:', error);
+        return;
       }
+
+      // Transform data to match interface
+      const transformedVideos = videos?.map(video => ({
+        id: video.id,
+        name: video.title,
+        status: video.status,
+        storage_location: video.storage_location,
+        created_at: video.created_at,
+        publication_date: video.publication_date,
+        responsible_person: video.responsible_person,
+        inspiration_source: video.inspiration_source,
+        description: video.description,
+        last_updated: video.last_updated
+      })) || [];
+
+      setVideos(transformedVideos);
     } catch (error) {
       console.error('Error fetching videos:', error);
     } finally {

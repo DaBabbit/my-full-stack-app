@@ -154,7 +154,7 @@ function ProfileContent() {
         </div>
       }
     >
-      <div className="min-h-screen bg-surface-light dark:bg-surface-dark p-8 max-w-4xl mx-auto">
+      <div className="min-h-screen bg-black pt-20 p-8 max-w-4xl mx-auto">
         {paymentStatus === 'success' && (
           <div className="mb-8 p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
             <p className="text-green-600 dark:text-green-400">
@@ -163,22 +163,22 @@ function ProfileContent() {
           </div>
         )}
         
-        <h1 className="text-3xl font-bold mb-8">Profile</h1>
+        <h1 className="text-3xl font-bold mb-8 text-white">Profile</h1>
         
         {/* Content-Planer Button - Immer sichtbar */}
-        <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+        <div className="mb-8 p-6 bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-2">
+              <h3 className="text-xl font-semibold text-white mb-2">
                 🎬 Content-Planer
               </h3>
-              <p className="text-blue-700 dark:text-blue-300">
+              <p className="text-neutral-400">
                 Verwalten Sie Ihre Videos und Content-Planung - unabhängig von Ihrem Abonnement-Status
               </p>
             </div>
             <Link
               href="/dashboard"
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center space-x-2"
+              className="px-6 py-3 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-3xl transition-all duration-300 flex items-center space-x-2 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
             >
               <span>Zum Content-Planer</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,14 +191,14 @@ function ProfileContent() {
         <AccountManagement />
 
         {/* Subscription Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Subscription Status</h2>
+        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4 text-white">Subscription Status</h2>
           {error ? (
-            <div className="text-red-500 dark:text-red-400">{error}</div>
+            <div className="text-white">{error}</div>
           ) : isLoadingSubscription ? (
             <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span>Loading subscription details...</span>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span className="text-neutral-400">Loading subscription details...</span>
             </div>
           ) : subscription ? (
             <div className="space-y-2">
@@ -252,11 +252,11 @@ function ProfileContent() {
                 </>
               ) : trialEndTime ? (
                 <>
-                  <div className="p-4 bg-red-50 dark:bg-red-900/30 rounded-lg mb-4">
-                    <p className="text-red-600 dark:text-red-400">
+                  <div className="p-4 bg-neutral-800 rounded-lg mb-4">
+                    <p className="text-white">
                       Your trial period ended on {new Date(trialEndTime).toLocaleDateString()}.
                     </p>
-                    <p className="mt-2">Subscribe now to regain access to the cooking experience.</p>
+                    <p className="mt-2 text-neutral-400">Subscribe now to regain access to the cooking experience.</p>
                   </div>
                 </>
               ) : (
@@ -279,15 +279,15 @@ function ProfileContent() {
         {/* Cancel Confirmation Modal */}
         {isCancelModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-              <h3 className="text-xl font-semibold mb-4">Cancel Subscription?</h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
+            <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 max-w-md w-full border border-neutral-700">
+              <h3 className="text-xl font-semibold mb-4 text-white">Cancel Subscription?</h3>
+              <p className="text-neutral-400 mb-6">
                 You&apos;ll continue to have access until the end of your billing period on {new Date(subscription?.current_period_end || '').toLocaleDateString()}. No refunds are provided for cancellations.
               </p>
               <div className="flex gap-4 justify-end">
                 <button
                   onClick={() => setIsCancelModalOpen(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
                   disabled={isCancelling}
                 >
                   Keep Subscription

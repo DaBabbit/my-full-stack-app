@@ -28,17 +28,17 @@ const AUTH_TIMEOUT = 15000; // 15 seconds
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'Warten auf Aufnahme':
-      return <Clock className="h-4 w-4 text-yellow-500" />;
+      return <Clock className="h-4 w-4 text-white" />;
     case 'Idee':
-      return <Lightbulb className="h-4 w-4 text-blue-500" />;
+      return <Lightbulb className="h-4 w-4 text-white" />;
     case 'In Bearbeitung (Schnitt)':
-      return <Edit className="h-4 w-4 text-orange-500" />;
+      return <Edit className="h-4 w-4 text-white" />;
     case 'Schnitt abgeschlossen':
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
+      return <CheckCircle className="h-4 w-4 text-white" />;
     case 'Hochgeladen':
-      return <Upload className="h-4 w-4 text-purple-500" />;
+      return <Upload className="h-4 w-4 text-white" />;
     default:
-      return <AlertCircle className="h-4 w-4 text-gray-500" />;
+      return <AlertCircle className="h-4 w-4 text-white" />;
   }
 };
 
@@ -46,17 +46,17 @@ const getStatusIcon = (status: string) => {
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'Warten auf Aufnahme':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      return 'bg-neutral-800 text-white border-neutral-700';
     case 'Idee':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
+      return 'bg-neutral-800 text-white border-neutral-700';
     case 'In Bearbeitung (Schnitt)':
-      return 'bg-orange-100 text-orange-800 border-orange-200';
+      return 'bg-neutral-800 text-white border-neutral-700';
     case 'Schnitt abgeschlossen':
-      return 'bg-green-100 text-green-800 border-green-200';
+      return 'bg-neutral-800 text-white border-neutral-700';
     case 'Hochgeladen':
-      return 'bg-purple-100 text-purple-800 border-purple-200';
+      return 'bg-neutral-800 text-white border-neutral-700';
     default:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
+      return 'bg-neutral-800 text-white border-neutral-700';
   }
 };
 
@@ -286,8 +286,8 @@ export default function Dashboard() {
             className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                <PlayCircle className="h-6 w-6 text-blue-600" />
+              <div className="p-2 bg-neutral-800 rounded-lg">
+                <PlayCircle className="h-6 w-6 text-white" />
               </div>
             </div>
             <h3 className="mt-4 text-2xl font-bold text-white">
@@ -380,7 +380,7 @@ export default function Dashboard() {
               </p>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mx-auto transition-colors"
+                className="bg-neutral-800 hover:bg-white hover:text-black text-white px-6 py-3 rounded-3xl flex items-center space-x-2 mx-auto transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
               >
                 <Plus className="h-4 w-4" />
                 <span>Erstes Video erstellen</span>
@@ -479,7 +479,7 @@ export default function Dashboard() {
                           
                           <button
                             onClick={() => setEditingVideo(video)}
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                            className="text-white hover:text-neutral-300"
                           >
                             <Edit className="h-4 w-4" />
                           </button>

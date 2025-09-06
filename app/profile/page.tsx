@@ -4,15 +4,25 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
-import Link from 'next/link';
 import { AccountManagement } from '@/components/AccountManagement';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Suspense } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { StripeBuyButton } from '@/components/StripeBuyButton';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
-// import { PricingSection } from '@/components/PricingSection';
-// import { StripeBuyButton } from '@/components/StripeBuyButton';
+import { motion } from 'framer-motion';
+import { 
+  CheckCircle, 
+  AlertTriangle, 
+  CreditCard, 
+  Calendar,
+  User,
+  Settings,
+  Crown,
+  ExternalLink,
+  ArrowRight,
+  Lock
+} from 'lucide-react';
 
 function ProfileContent() {
   const { user } = useAuth();
@@ -25,10 +35,12 @@ function ProfileContent() {
   const [error, setError] = useState<string | null>(null);
   const { isInTrial, trialEndTime } = useTrialStatus();
 
+  // Check if user has active subscription
+  const hasActiveSubscription = subscription && subscription.status === 'active';
+
   // Show payment success message if redirected from successful payment
   useEffect(() => {
     if (paymentStatus === 'success') {
-      // Could add a toast notification here
       console.log('Payment successful!');
     }
   }, [paymentStatus]);
@@ -48,68 +60,37 @@ function ProfileContent() {
 
   // Add loading timeout with auto-refresh
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    let refreshAttempts = 0;
-    const MAX_REFRESH_ATTEMPTS = 3;
-    const REFRESH_INTERVAL = 3000; // 3 seconds
-    
-    const attemptRefresh = async () => {
-      if (refreshAttempts < MAX_REFRESH_ATTEMPTS) {
-        refreshAttempts++;
-        console.log(`Attempting auto-refresh (${refreshAttempts}/${MAX_REFRESH_ATTEMPTS})`);
-        await fetchSubscription();
-        
-        // If still loading, schedule next attempt
-        if (isLoadingSubscription) {
-          timeoutId = setTimeout(attemptRefresh, REFRESH_INTERVAL);
-        }
-      } else {
-        setError('Loading subscription is taking longer than expected. Please refresh the page.');
+    const timeout = setTimeout(() => {
+      if (isLoadingSubscription) {
+        console.log('Subscription loading timeout, refreshing...');
+        fetchSubscription();
       }
-    };
+    }, 10000);
 
-    if (isLoadingSubscription) {
-      timeoutId = setTimeout(attemptRefresh, REFRESH_INTERVAL);
-    }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    return () => clearTimeout(timeout);
   }, [isLoadingSubscription, fetchSubscription]);
-
-  // Add useEffect for auth check
-  useEffect(() => {
-    if (!user) {
-      router.push('/login');
-    }
-  }, [user, router]);
-
-  // Add refresh effect
-  useEffect(() => {
-    if (user?.id) {
-      fetchSubscription();
-    }
-  }, [user?.id, fetchSubscription]);
 
   const handleCancelSubscription = async () => {
     if (!subscription?.stripe_subscription_id) return;
-    
+
     setIsCancelling(true);
     try {
       const response = await fetch('/api/stripe/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          subscriptionId: subscription.stripe_subscription_id 
-        }),
+        body: JSON.stringify({ subscriptionId: subscription.stripe_subscription_id }),
       });
-      
-      if (!response.ok) throw new Error('Failed to cancel subscription');
-      
-      setIsCancelModalOpen(false);
-      router.refresh();
-    } catch (error) {
-      console.error('Error canceling subscription:', error);
+
+      if (response.ok) {
+        await fetchSubscription();
+        setIsCancelModalOpen(false);
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to cancel subscription');
+      }
+    } catch (err) {
+      console.error('Cancel subscription error:', err);
+      setError('Failed to cancel subscription');
     } finally {
       setIsCancelling(false);
     }
@@ -117,209 +98,337 @@ function ProfileContent() {
 
   const handleReactivateSubscription = async () => {
     if (!subscription?.stripe_subscription_id) return;
-    
+
     try {
       const response = await fetch('/api/stripe/reactivate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          subscriptionId: subscription.stripe_subscription_id 
-        }),
+        body: JSON.stringify({ subscriptionId: subscription.stripe_subscription_id }),
       });
-      
-      if (!response.ok) throw new Error('Failed to reactivate subscription');
-      
-      router.refresh();
-    } catch (error) {
-      console.error('Error reactivating subscription:', error);
+
+      if (response.ok) {
+        await fetchSubscription();
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to reactivate subscription');
+      }
+    } catch (err) {
+      console.error('Reactivate subscription error:', err);
+      setError('Failed to reactivate subscription');
     }
   };
 
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mb-4 mx-auto"></div>
-          <p className="text-foreground">Redirecting to login...</p>
-        </div>
-      </div>
-    );
+    router.push('/login');
+    return <LoadingSpinner />;
   }
 
   return (
-    <ErrorBoundary
-      fallback={
-        <div className="p-4 text-red-500">
-          Failed to load subscription details. Please try refreshing.
+    <div className="min-h-screen bg-black pt-24">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Profile & Settings</h1>
+          <p className="text-neutral-400">Verwalte dein Konto und deine Abonnement-Einstellungen</p>
         </div>
-      }
-    >
-      <div className="min-h-screen bg-black pt-20 p-8 max-w-4xl mx-auto">
-        {paymentStatus === 'success' && (
-          <div className="mb-8 p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
-            <p className="text-green-600 dark:text-green-400">
-              🎉 Thank you for your subscription! Your payment was successful.
-            </p>
-          </div>
-        )}
-        
-        <h1 className="text-3xl font-bold mb-8 text-white">Profile</h1>
-        
-        {/* Content-Planer Button - Immer sichtbar */}
-        <div className="mb-8 p-6 bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                🎬 Content-Planer
-              </h3>
-              <p className="text-neutral-400">
-                Verwalten Sie Ihre Videos und Content-Planung - unabhängig von Ihrem Abonnement-Status
-              </p>
-            </div>
-            <Link
-              href="/dashboard"
-              className="px-6 py-3 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-3xl transition-all duration-300 flex items-center space-x-2 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-            >
-              <span>Zum Content-Planer</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        </div>
-        
-        <AccountManagement />
 
-        {/* Subscription Section */}
-        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-white">Subscription Status</h2>
-          {error ? (
-            <div className="text-white">{error}</div>
-          ) : isLoadingSubscription ? (
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span className="text-neutral-400">Loading subscription details...</span>
-            </div>
-          ) : subscription ? (
-            <div className="space-y-2">
-              <p>
-                <span className="font-medium">Status:</span>{' '}
-                <span className={`${subscription.status === 'active' ? 'text-green-500' : 'text-yellow-500'}`}>
-                  {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
-                </span>
+        {/* Payment Success Banner */}
+        {paymentStatus === 'success' && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 p-4 bg-green-500/10 backdrop-blur-md rounded-3xl border border-green-500/20"
+          >
+            <div className="flex items-center">
+              <CheckCircle className="w-6 h-6 text-green-400 mr-3" />
+              <p className="text-green-400 font-medium">
+                🎉 Vielen Dank für dein Abonnement! Die Zahlung war erfolgreich.
               </p>
-              <p><span className="font-medium">Started:</span> {new Date(subscription.created_at).toLocaleDateString()}</p>
-              
-              {subscription.status === 'canceled' ? (
-                <div className="mt-4">
-                  <Link
-                    href="/pay"
-                    className="inline-block px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-full shadow-subtle hover:shadow-hover transition-all"
-                  >
-                    Resubscribe
-                  </Link>
-                </div>
-              ) : subscription.cancel_at_period_end ? (
-                <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
-                  <p className="text-yellow-600 dark:text-yellow-400 mb-2">
-                    Your subscription will end on {new Date(subscription.current_period_end).toLocaleDateString()}
-                  </p>
+            </div>
+          </motion.div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Content Planer & Account */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Content-Planer Section */}
+            {hasActiveSubscription ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="p-3 bg-white rounded-2xl mr-4">
+                      <Settings className="w-8 h-8 text-black" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-white mb-1">
+                        🎬 Content-Planer
+                      </h3>
+                      <p className="text-neutral-400">
+                        Verwalte deine Videos und Content-Planung
+                      </p>
+                    </div>
+                  </div>
                   <button
-                    onClick={handleReactivateSubscription}
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg"
+                    onClick={() => router.push('/dashboard')}
+                    className="px-6 py-3 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-3xl transition-all duration-300 flex items-center space-x-2 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                   >
-                    Resume Subscription
+                    <span>Zum Dashboard</span>
+                    <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
-              ) : (subscription.status === 'active' || subscription.status === 'trialing') ? (
-                <button
-                  onClick={() => setIsCancelModalOpen(true)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg mt-4"
-                >
-                  Cancel Subscription
-                </button>
-              ) : null}
-            </div>
-          ) : (
-            <div className="mt-4 space-y-4">
-              {isInTrial ? (
-                <>
-                  <p className="text-yellow-600 dark:text-yellow-400">
-                    You are currently in your 48-hour trial period. Your trial will end on {' '}
-                    {trialEndTime ? new Date(trialEndTime).toLocaleDateString() : 'soon'}.
-                  </p>
-                  <p>Subscribe now to continue using the app after the trial ends.</p>
-                </>
-              ) : trialEndTime ? (
-                <>
-                  <div className="p-4 bg-neutral-800 rounded-lg mb-4">
-                    <p className="text-white">
-                      Your trial period ended on {new Date(trialEndTime).toLocaleDateString()}.
-                    </p>
-                    <p className="mt-2 text-neutral-400">Subscribe now to regain access to the cooking experience.</p>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700"
+              >
+                <div className="text-center py-8">
+                  <div className="p-4 bg-neutral-800 rounded-2xl w-fit mx-auto mb-4">
+                    <Lock className="w-12 h-12 text-neutral-400" />
                   </div>
-                </>
-              ) : (
-                <p>Subscribe to unlock the amazing cooking experience.</p>
-              )}
-              
-              <StripeBuyButton
-                buyButtonId={process.env.NEXT_PUBLIC_STRIPE_BUTTON_ID || ''}
-                publishableKey={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''}
-              />
-            </div>
-          )}
-        </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    Content-Planer gesperrt
+                  </h3>
+                  <p className="text-neutral-400 mb-6">
+                    Du benötigst ein aktives Abonnement, um auf den Content-Planer zuzugreifen.
+                  </p>
+                  <button
+                    onClick={() => document.getElementById('subscription-section')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="px-6 py-3 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-3xl transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                  >
+                    Abonnement abschließen
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-        {/* Show pricing section if user doesn't have an active subscription */}
-        {/* {(!subscription || subscription.status === 'canceled') && (
-          <PricingSection showFullDetails={true} />
-        )} */}
+            {/* Account Management */}
+            <AccountManagement />
+          </div>
 
-        {/* Cancel Confirmation Modal */}
-        {isCancelModalOpen && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 max-w-md w-full border border-neutral-700">
-              <h3 className="text-xl font-semibold mb-4 text-white">Cancel Subscription?</h3>
-              <p className="text-neutral-400 mb-6">
-                You&apos;ll continue to have access until the end of your billing period on {new Date(subscription?.current_period_end || '').toLocaleDateString()}. No refunds are provided for cancellations.
-              </p>
-              <div className="flex gap-4 justify-end">
-                <button
-                  onClick={() => setIsCancelModalOpen(false)}
-                  className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
-                  disabled={isCancelling}
-                >
-                  Keep Subscription
-                </button>
-                <button
-                  onClick={handleCancelSubscription}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-                  disabled={isCancelling}
-                >
-                  {isCancelling ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Canceling...
-                    </>
-                  ) : (
-                    'Yes, Cancel'
+          {/* Right Column - Subscription Status */}
+          <div className="space-y-8">
+            {/* Subscription Status Card */}
+            <motion.div
+              id="subscription-section"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700"
+            >
+              <div className="flex items-center mb-4">
+                <Crown className="w-6 h-6 text-white mr-3" />
+                <h2 className="text-xl font-semibold text-white">Abonnement Status</h2>
+              </div>
+
+              {error ? (
+                <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20">
+                  <p className="text-red-400">{error}</p>
+                </div>
+              ) : isLoadingSubscription ? (
+                <div className="flex items-center justify-center py-8">
+                  <span className="loading loading-ring loading-md text-white"></span>
+                  <span className="ml-3 text-neutral-400">Loading...</span>
+                </div>
+              ) : subscription ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-2xl">
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-3 ${
+                        subscription.status === 'active' ? 'bg-green-400' : 
+                        subscription.status === 'canceled' ? 'bg-red-400' : 'bg-yellow-400'
+                      }`} />
+                      <div>
+                        <p className="text-white font-medium">
+                          Status: <span className="capitalize">{subscription.status}</span>
+                        </p>
+                        <p className="text-sm text-neutral-400">
+                          Plan: {subscription.plan_name || 'Premium'}
+                        </p>
+                      </div>
+                    </div>
+                    {subscription.status === 'active' && (
+                      <CheckCircle className="w-6 h-6 text-green-400" />
+                    )}
+                  </div>
+
+                  {subscription.current_period_end && (
+                    <div className="flex items-center p-4 bg-neutral-800/50 rounded-2xl">
+                      <Calendar className="w-5 h-5 text-neutral-400 mr-3" />
+                      <div>
+                        <p className="text-white font-medium">Nächste Abrechnung</p>
+                        <p className="text-sm text-neutral-400">
+                          {new Date(subscription.current_period_end).toLocaleDateString('de-DE')}
+                        </p>
+                      </div>
+                    </div>
                   )}
+
+                  {/* Subscription Actions */}
+                  <div className="space-y-3">
+                    {subscription.status === 'active' && (
+                      <button
+                        onClick={() => setIsCancelModalOpen(true)}
+                        className="w-full p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all duration-300 border border-red-500/20 hover:border-red-500/40"
+                      >
+                        Abonnement kündigen
+                      </button>
+                    )}
+
+                    {subscription.status === 'canceled' && (
+                      <button
+                        onClick={handleReactivateSubscription}
+                        className="w-full p-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-2xl transition-all duration-300 border border-green-500/20 hover:border-green-500/40"
+                      >
+                        Abonnement reaktivieren
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Trial Status */}
+                  {isInTrial && trialEndTime ? (
+                    <div className="p-4 bg-yellow-500/10 rounded-2xl border border-yellow-500/20">
+                      <div className="flex items-center mb-2">
+                        <AlertTriangle className="w-5 h-5 text-yellow-400 mr-2" />
+                        <p className="text-yellow-400 font-medium">Testversion läuft</p>
+                      </div>
+                      <p className="text-sm text-neutral-400">
+                        Endet am {new Date(trialEndTime).toLocaleDateString('de-DE')}
+                      </p>
+                      <p className="text-sm text-neutral-300 mt-2">
+                        Abonniere jetzt, um nach dem Ende der Testversion weiterhin Zugriff zu haben.
+                      </p>
+                    </div>
+                  ) : trialEndTime ? (
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 transition-all duration-300 cursor-pointer"
+                    >
+                      <div className="flex items-center mb-2">
+                        <AlertTriangle className="w-5 h-5 text-red-400 mr-2" />
+                        <p className="text-red-400 font-medium">Testversion beendet</p>
+                      </div>
+                      <p className="text-sm text-neutral-400">
+                        Testversion endete am {new Date(trialEndTime).toLocaleDateString('de-DE')}
+                      </p>
+                      <p className="text-sm text-red-300 mt-2">
+                        Abonniere jetzt, um wieder Zugriff auf alle Features zu erhalten.
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <div className="p-4 bg-neutral-800/50 rounded-2xl">
+                      <p className="text-neutral-400">
+                        Abonniere, um Zugriff auf alle Premium-Features zu erhalten.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Stripe Buy Button */}
+                  <div className="text-center">
+                    <StripeBuyButton />
+                  </div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Quick Links */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700"
+            >
+              <h3 className="text-lg font-semibold text-white mb-4">Quick Links</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="w-full flex items-center justify-between p-3 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-2xl transition-colors"
+                >
+                  <div className="flex items-center">
+                    <User className="w-5 h-5 text-neutral-400 mr-3" />
+                    <span className="text-white">Dashboard</span>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-neutral-400" />
+                </button>
+
+                <button
+                  onClick={() => router.push('/dashboard/videos')}
+                  className="w-full flex items-center justify-between p-3 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-2xl transition-colors"
+                >
+                  <div className="flex items-center">
+                    <CreditCard className="w-5 h-5 text-neutral-400 mr-3" />
+                    <span className="text-white">Videos</span>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-neutral-400" />
                 </button>
               </div>
-            </div>
+            </motion.div>
           </div>
-        )}
+        </div>
       </div>
-    </ErrorBoundary>
-  );
-};
 
+      {/* Cancel Confirmation Modal */}
+      {isCancelModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 max-w-md w-full border border-neutral-700"
+          >
+            <h3 className="text-xl font-semibold mb-4 text-white">Abonnement kündigen?</h3>
+            <p className="text-neutral-400 mb-6">
+              Du behältst Zugriff bis zum Ende deiner Abrechnungsperiode am {new Date(subscription?.current_period_end || '').toLocaleDateString('de-DE')}. Es werden keine Rückerstattungen gewährt.
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => setIsCancelModalOpen(false)}
+                className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                disabled={isCancelling}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleCancelSubscription}
+                disabled={isCancelling}
+                className="px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all duration-300 border border-red-500/20 hover:border-red-500/40 disabled:opacity-50"
+              >
+                {isCancelling ? 'Wird gekündigt...' : 'Kündigen'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <ProfileContent />
-    </Suspense>
+    <ErrorBoundary
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-400 mb-4">Fehler beim Laden der Profile-Seite.</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-neutral-800 text-white rounded-lg hover:bg-neutral-700 transition-colors"
+            >
+              Seite neu laden
+            </button>
+          </div>
+        </div>
+      }
+    >
+      <Suspense fallback={<LoadingSpinner />}>
+        <ProfileContent />
+      </Suspense>
+    </ErrorBoundary>
   );
 }

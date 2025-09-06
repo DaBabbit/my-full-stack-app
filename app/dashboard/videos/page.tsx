@@ -340,7 +340,7 @@ export default function VideosPage() {
       <motion.main 
         animate={{ marginLeft: sidebarCollapsed ? '80px' : '256px' }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="p-4 ml-0 md:ml-64 pt-20"
+        className="p-4 ml-0 md:ml-64 pt-24"
       >
         <div className="mb-8 flex justify-between items-center">
           <div>

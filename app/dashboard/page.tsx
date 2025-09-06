@@ -325,7 +325,7 @@ export default function Dashboard() {
       <motion.main 
         animate={{ marginLeft: sidebarCollapsed ? '80px' : '256px' }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="p-4 ml-0 md:ml-64 pt-20"
+        className="p-4 ml-0 md:ml-64 pt-24"
       >
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>

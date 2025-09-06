@@ -76,7 +76,7 @@ export default function TopBar() {
             height={32} 
             className="h-8 w-auto filter invert"
           />
-          <span className="font-sans hidden sm:block">KosmaMedia</span>
+          <span className="font-sans hidden sm:block">kosmamedia</span>
         </Link>
 
         <div className="flex items-center gap-4">

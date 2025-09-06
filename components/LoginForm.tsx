@@ -37,7 +37,7 @@ export function LoginForm({
             className="h-8 w-auto"
           />
           <h2 className="text-2xl font-semibold text-black">
-            KosmaMedia
+            kosmamedia
           </h2>
         </div>
       </div>

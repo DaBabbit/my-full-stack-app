@@ -40,55 +40,72 @@ function LandingPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0B1120]">
-      {/* Hero Section */}
-      <section className="relative py-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-light/10 to-accent-light/10" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white">
+      {/* Hero Section - Resend inspired */}
+      <section className="relative py-32 overflow-hidden">
+        {/* Subtle gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-50 to-white" />
+        
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6"
+              transition={{ duration: 0.6 }}
+              className="text-5xl md:text-7xl font-bold text-black mb-8 tracking-tight"
             >
-              Content-Planer
+              Video Management
+              <br />
+              <span className="bg-gradient-to-r from-black to-neutral-600 bg-clip-text text-transparent">
+                für Profis
+              </span>
             </motion.h1>
+            
             <motion.p 
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto"
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-xl text-neutral-600 mb-12 max-w-2xl mx-auto leading-relaxed"
             >
-              Verwalten Sie Ihre Videos und Content-Planung professionell
+              Die beste Lösung für Content Creator und Agenturen. 
+              Verwalten Sie Videos, planen Sie Content und automatisieren Sie Workflows.
             </motion.p>
             
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex gap-4 justify-center"
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
+              {/* Primary CTA with Resend-style glow */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push('/login')}
-                className="px-8 py-3 bg-primary hover:bg-primary-dark text-white rounded-lg shadow-lg hover:shadow-xl transition-all"
+                className="group px-8 py-4 bg-black text-white rounded-lg font-medium text-lg
+                         shadow-soft hover:shadow-glow-hover
+                         transition-all duration-300 ease-out
+                         hover:bg-neutral-900
+                         focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
               >
-                Jetzt starten
+                <span className="flex items-center gap-2">
+                  Get Started
+                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => router.push('/login')}
-                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all"
-              >
-                🎬 Content-Planer öffnen
-              </motion.button>
+              
+              {/* Secondary CTA */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setIsVideoModalOpen(true)}
-                className="px-8 py-3 bg-white dark:bg-neutral-dark hover:bg-slate-50 dark:hover:bg-neutral-darker text-primary dark:text-primary-light border-2 border-primary dark:border-primary-light rounded-lg shadow-lg hover:shadow-xl transition-all"
+                className="px-8 py-4 bg-white text-black rounded-lg font-medium text-lg
+                         border border-neutral-200 hover:border-neutral-300
+                         shadow-soft hover:shadow-medium
+                         transition-all duration-300 ease-out
+                         hover:bg-neutral-50"
               >
                 Demo ansehen
               </motion.button>

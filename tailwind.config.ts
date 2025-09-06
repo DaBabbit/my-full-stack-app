@@ -10,39 +10,70 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Resend-inspired color palette
         primary: {
-          DEFAULT: '#A78BFA', // Violet-400: Soft lavender
-          light: '#C4B5FD',   // Violet-300: Light lavender
-          dark: '#8B5CF6',    // Violet-500: Medium lavender
-        },
-        danger: {
-          DEFAULT: '#DC2626', // Red-600: Clear red
-          light: '#F87171',   // Red-400: Soft red
-          dark: '#B91C1C',    // Red-700: Deep red
-        },
-        neutral: {
-          DEFAULT: '#F8FAFC', // Slate-50: Crisp light
-          dark: '#1E293B',    // Slate-800: Rich dark
-          darker: '#0F172A',  // Slate-900: Deep dark
-        },
-        text: {
-          DEFAULT: '#0F172A', // Slate-900: Sharp text
-          light: '#64748B',   // Slate-500: Soft text
-          dark: '#F8FAFC',    // Slate-50: Light text
-        },
-        surface: {
-          light: '#FFFFFF',   // Pure white
-          dark: '#1E293B',    // Slate-800: Rich surface
+          DEFAULT: '#000000', // Pure black - main brand color
+          light: '#1f2937',   // Gray-800: Soft black
+          dark: '#000000',    // Pure black
         },
         accent: {
-          DEFAULT: '#38BDF8', // Sky-400: Fresh blue
-          light: '#7DD3FC',   // Sky-300: Soft blue
-          dark: '#0EA5E9',    // Sky-500: Deep blue
+          DEFAULT: '#3b82f6', // Blue-500: Resend's blue accent
+          light: '#60a5fa',   // Blue-400: Light blue
+          dark: '#2563eb',    // Blue-600: Dark blue
+        },
+        neutral: {
+          DEFAULT: '#ffffff', // Pure white
+          50: '#f9fafb',      // Gray-50: Lightest gray
+          100: '#f3f4f6',     // Gray-100: Very light gray
+          200: '#e5e7eb',     // Gray-200: Light gray
+          300: '#d1d5db',     // Gray-300: Medium light gray
+          400: '#9ca3af',     // Gray-400: Medium gray
+          500: '#6b7280',     // Gray-500: Medium dark gray
+          600: '#4b5563',     // Gray-600: Dark gray
+          700: '#374151',     // Gray-700: Very dark gray
+          800: '#1f2937',     // Gray-800: Almost black
+          900: '#111827',     // Gray-900: Near black
+        },
+        surface: {
+          light: '#ffffff',   // Pure white
+          dark: '#111827',    // Gray-900: Dark surface
+        },
+        text: {
+          DEFAULT: '#111827', // Gray-900: Main text
+          light: '#6b7280',   // Gray-500: Light text
+          dark: '#ffffff',    // White text for dark backgrounds
+        },
+        border: {
+          light: '#e5e7eb',   // Gray-200: Light borders
+          dark: '#374151',    // Gray-700: Dark borders
         }
       },
       boxShadow: {
-        'subtle': '0 1px 3px rgba(0,0,0,0.05)',
-        'hover': '0 4px 6px -1px rgba(139, 92, 246, 0.1), 0 2px 4px -1px rgba(139, 92, 246, 0.06)', // Softer violet shadow
+        'subtle': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'soft': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+        'medium': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'large': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        'glow': '0 0 0 1px rgba(59, 130, 246, 0.15), 0 0 0 4px rgba(59, 130, 246, 0.1)',
+        'glow-hover': '0 0 0 1px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.2), 0 0 40px rgba(59, 130, 246, 0.1)',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in-out',
+        'slide-up': 'slideUp 0.3s ease-out',
+        'glow': 'glow 2s ease-in-out infinite alternate',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        glow: {
+          '0%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.1)' },
+          '100%': { boxShadow: '0 0 30px rgba(59, 130, 246, 0.2), 0 0 40px rgba(59, 130, 246, 0.1)' },
+        },
       }
     },
   },

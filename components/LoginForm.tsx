@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { ForgotPasswordModal } from './ForgotPasswordModal';
 import Image from 'next/image';
 
 interface LoginFormProps {
@@ -20,7 +19,6 @@ export function LoginForm({
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,12 +26,18 @@ export function LoginForm({
   };
 
   return (
-    <div className="w-full space-y-8 p-8 bg-surface-light dark:bg-surface-dark rounded-2xl shadow-subtle border border-gray-200 dark:border-gray-700">
+    <div className="w-full space-y-8 p-8 bg-white rounded-2xl shadow-large border border-neutral-200">
       <div className="text-center">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <span className="text-3xl">🎬</span>
-          <h2 className="text-2xl font-medium text-text dark:text-text-dark">
-            NextTemp
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <Image 
+            src="/kosmamedia-logo.svg" 
+            alt="KosmaMedia Logo" 
+            width={40} 
+            height={32} 
+            className="h-8 w-auto"
+          />
+          <h2 className="text-2xl font-semibold text-black">
+            KosmaMedia
           </h2>
         </div>
       </div>
@@ -47,77 +51,86 @@ export function LoginForm({
       <div className="mt-6 space-y-4">
         <button
           onClick={onGoogleSignIn}
-          className="w-full py-2.5 px-4 border border-gray-200 dark:border-gray-700 rounded-full shadow-subtle text-text dark:text-text-dark bg-surface-light dark:bg-surface-dark hover:bg-neutral dark:hover:bg-neutral-dark transition-all flex items-center justify-center"
+          className="w-full py-3 px-4 border border-neutral-200 rounded-lg shadow-soft text-black bg-white hover:bg-neutral-50 hover:shadow-medium transition-all duration-200 flex items-center justify-center font-medium"
         >
           <Image
             src="/Google-Logo.png"
             alt="Google Logo"
             width={20}
             height={20}
-            className="mr-2"
+            className="mr-3"
           />
           Sign in with Google
         </button>
 
         <div className="flex items-center my-6">
-          <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-          <span className="mx-4 text-sm text-gray-500 dark:text-gray-400">OR</span>
-          <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
+          <div className="flex-grow border-t border-neutral-200"></div>
+          <span className="mx-4 text-sm text-neutral-500 font-medium">OR</span>
+          <div className="flex-grow border-t border-neutral-200"></div>
         </div>
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {isSignUp ? 'Create an account' : 'Are you an Email User?'}
+        <h2 className="text-2xl font-bold text-black">
+          {isSignUp ? 'Create an account' : 'Welcome'}
         </h2>
+        <p className="mt-2 text-sm text-neutral-600">
+          {isSignUp ? 'Fill in your details to get started' : 'Enter your email to get started.'}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="rounded-md shadow-sm space-y-4">
+        <div className="space-y-4">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email address"
-            className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-lg placeholder-neutral-500 text-black bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200"
           />
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-lg placeholder-neutral-500 text-black bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200"
+            style={{ color: '#000000' }}
           />
         </div>
 
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setIsForgotPasswordOpen(true)}
-            className="text-sm text-primary hover:text-primary-dark transition-colors"
+          <a
+            href="/reset-password"
+            className="text-sm text-accent hover:text-accent-dark transition-colors font-medium"
           >
             Forgot your password?
-          </button>
+          </a>
         </div>
-
-        <ForgotPasswordModal 
-          isOpen={isForgotPasswordOpen}
-          onClose={() => setIsForgotPasswordOpen(false)}
-        />
 
         <button 
           type="submit" 
           disabled={isLoading}
-          className="w-full py-2.5 px-4 border border-transparent rounded-full shadow-sm text-white bg-primary hover:bg-primary-dark disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all"
+          className="group w-full py-3 px-4 bg-black text-white rounded-lg font-medium
+                   shadow-soft hover:shadow-glow-hover hover:bg-neutral-900
+                   disabled:opacity-50 disabled:cursor-not-allowed
+                   focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
+                   transition-all duration-300 ease-out"
         >
-          {isSignUp ? 'Sign up' : 'Sign in'} with Email
+          <span className="flex items-center justify-center gap-2">
+            {isSignUp ? 'Sign up' : 'Let´s go'}
+            {!isSignUp && (
+              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            )}
+          </span>
         </button>
 
         <div className="text-center">
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-primary hover:text-primary-dark transition-colors"
+            className="text-accent hover:text-accent-dark transition-colors font-medium"
           >
             {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
           </button>

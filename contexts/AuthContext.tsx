@@ -44,6 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubscriber, setIsSubscriber] = useState(false);
+  
+
 
   const checkSubscription = useCallback(async (userId: string) => {
     try {
@@ -220,8 +222,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
     },
     resetPassword: async (email: string) => {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`
+      // OTP-basierte Password Reset - keine redirectTo
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/update-password`
+        }
       });
       if (error) throw error;
     },

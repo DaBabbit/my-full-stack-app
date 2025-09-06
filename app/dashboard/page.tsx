@@ -22,7 +22,11 @@ import {
   CreditCard,
   ChevronDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Lightbulb,
+  Scissors,
+  Check,
+  Rocket
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -76,6 +80,24 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+  // Status-Icons und Farben
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Idee':
+        return { icon: Lightbulb, color: 'text-gray-400' };
+      case 'Warten auf Aufnahme':
+        return { icon: Clock, color: 'text-red-400' };
+      case 'In Bearbeitung (Schnitt)':
+        return { icon: Scissors, color: 'text-purple-400' };
+      case 'Schnitt abgeschlossen':
+        return { icon: Check, color: 'text-blue-400' };
+      case 'Hochgeladen':
+        return { icon: Rocket, color: 'text-green-400' };
+      default:
+        return { icon: Video, color: 'text-neutral-400' };
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -500,22 +522,27 @@ export default function Dashboard() {
             </div>
           ) : videos.length > 0 ? (
             <div className="space-y-4">
-              {videos.slice(0, 5).map((video) => (
-                <div key={video.id} className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-neutral-700 rounded-lg mr-4">
-                      <Video className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                      <h3 className="text-white font-medium">{video.name}</h3>
-                      <p className="text-sm text-neutral-400">Status: {video.status}</p>
+              {videos.slice(0, 5).map((video) => {
+                const statusInfo = getStatusIcon(video.status);
+                const StatusIcon = statusInfo.icon;
+                
+                return (
+                  <div key={video.id} className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-neutral-700 rounded-lg mr-4">
+                        <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-medium">{video.name}</h3>
+                        <p className="text-sm text-neutral-400">Status: {video.status}</p>
+                      </div>
                     </div>
+                    <span className="text-xs text-neutral-500">
+                      {new Date(video.created_at).toLocaleDateString('de-DE')}
+                    </span>
                   </div>
-                  <span className="text-xs text-neutral-500">
-                    {new Date(video.created_at).toLocaleDateString('de-DE')}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8">

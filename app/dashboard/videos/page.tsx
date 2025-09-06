@@ -632,7 +632,7 @@ export default function VideosPage() {
                             <select
                               value={video.status}
                               onChange={(e) => handleUpdateStatus(video.id, e.target.value)}
-                              className="bg-black/80 backdrop-blur-md border border-neutral-700 text-white text-sm rounded-2xl px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/50 hover:bg-black/90 hover:border-neutral-600 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300 appearance-none cursor-pointer"
+                              className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-800 hover:border-neutral-600 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300 cursor-pointer"
                               style={{
                                 backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                                 backgroundPosition: 'right 8px center',
@@ -640,11 +640,11 @@ export default function VideosPage() {
                                 backgroundSize: '16px'
                               }}
                             >
-                              <option value="Idee" className="bg-black text-white hover:bg-neutral-800 py-2">Idee</option>
-                              <option value="Warten auf Aufnahme" className="bg-black text-white hover:bg-neutral-800 py-2">Warten auf Aufnahme</option>
-                              <option value="In Bearbeitung (Schnitt)" className="bg-black text-white hover:bg-neutral-800 py-2">In Bearbeitung (Schnitt)</option>
-                              <option value="Schnitt abgeschlossen" className="bg-black text-white hover:bg-neutral-800 py-2">Schnitt abgeschlossen</option>
-                              <option value="Hochgeladen" className="bg-black text-white hover:bg-neutral-800 py-2">Hochgeladen</option>
+                              <option value="Idee">Idee</option>
+                              <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
+                              <option value="In Bearbeitung (Schnitt)">In Bearbeitung (Schnitt)</option>
+                              <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
+                              <option value="Hochgeladen">Hochgeladen</option>
                             </select>
                             {/* Custom Glow Effect on Hover */}
                             <div className="absolute inset-0 rounded-2xl bg-white/5 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
@@ -770,19 +770,13 @@ export default function VideosPage() {
                     <select
                       value={newVideo.status}
                       onChange={(e) => setNewVideo({ ...newVideo, status: e.target.value })}
-                      className="w-full px-4 py-3 bg-black/80 backdrop-blur-md border border-neutral-700 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/50 hover:bg-black/90 hover:border-neutral-600 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all duration-300 appearance-none cursor-pointer pr-10"
-                      style={{
-                        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                        backgroundPosition: 'right 12px center',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundSize: '16px'
-                      }}
+                      className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-800 hover:border-neutral-600 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all duration-300 cursor-pointer"
                     >
-                      <option value="Idee" className="bg-black text-white hover:bg-neutral-800 py-3">Idee</option>
-                      <option value="Warten auf Aufnahme" className="bg-black text-white hover:bg-neutral-800 py-3">Warten auf Aufnahme</option>
-                      <option value="In Bearbeitung (Schnitt)" className="bg-black text-white hover:bg-neutral-800 py-3">In Bearbeitung (Schnitt)</option>
-                      <option value="Schnitt abgeschlossen" className="bg-black text-white hover:bg-neutral-800 py-3">Schnitt abgeschlossen</option>
-                      <option value="Hochgeladen" className="bg-black text-white hover:bg-neutral-800 py-3">Hochgeladen</option>
+                      <option value="Idee">Idee</option>
+                      <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
+                      <option value="In Bearbeitung (Schnitt)">In Bearbeitung (Schnitt)</option>
+                      <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
+                      <option value="Hochgeladen">Hochgeladen</option>
                     </select>
                     {/* Custom Glow Effect on Hover */}
                     <div className="absolute inset-0 rounded-2xl bg-white/5 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>

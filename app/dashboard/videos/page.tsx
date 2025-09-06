@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
   Video, 
@@ -15,13 +14,7 @@ import {
   Bell,
   User,
   Edit,
-  Trash2,
-  ExternalLink,
-  Clock,
-  Lightbulb,
-  CheckCircle,
-  Upload,
-  AlertCircle
+  ExternalLink
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -54,28 +47,6 @@ const sidebarItems = [
   }
 ];
 
-// Status-Icons für bessere Visualisierung
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'Warten auf Aufnahme':
-      return <Clock className="h-4 w-4 text-white" />;
-    case 'Idee':
-      return <Lightbulb className="h-4 w-4 text-white" />;
-    case 'In Bearbeitung (Schnitt)':
-      return <Edit className="h-4 w-4 text-white" />;
-    case 'Schnitt abgeschlossen':
-      return <CheckCircle className="h-4 w-4 text-white" />;
-    case 'Hochgeladen':
-      return <Upload className="h-4 w-4 text-white" />;
-    default:
-      return <AlertCircle className="h-4 w-4 text-white" />;
-  }
-};
-
-// Status-Farben für Badges
-const getStatusColor = (status: string) => {
-  return 'bg-neutral-800 text-white border-neutral-700';
-};
 
 export default function VideosPage() {
   const { user } = useAuth();
@@ -84,7 +55,6 @@ export default function VideosPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [newVideoName, setNewVideoName] = useState('');
   const [newVideoStatus, setNewVideoStatus] = useState('Idee');
 
@@ -327,7 +297,7 @@ export default function VideosPage() {
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => setEditingVideo(video)}
+                            onClick={() => console.log('Edit video:', video.id)}
                             className="text-white hover:text-neutral-300"
                           >
                             <Edit className="h-4 w-4" />

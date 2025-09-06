@@ -20,7 +20,12 @@ import {
   CreditCard,
   ChevronDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Lightbulb,
+  Clock,
+  Scissors,
+  Check,
+  Rocket
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -85,6 +90,24 @@ export default function VideosPage() {
     inspiration_source: '',
     description: ''
   });
+
+  // Status-Icons und Farben
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Idee':
+        return { icon: Lightbulb, color: 'text-gray-400' };
+      case 'Warten auf Aufnahme':
+        return { icon: Clock, color: 'text-red-400' };
+      case 'In Bearbeitung (Schnitt)':
+        return { icon: Scissors, color: 'text-purple-400' };
+      case 'Schnitt abgeschlossen':
+        return { icon: Check, color: 'text-blue-400' };
+      case 'Hochgeladen':
+        return { icon: Rocket, color: 'text-green-400' };
+      default:
+        return { icon: Video, color: 'text-neutral-400' };
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -181,6 +204,35 @@ export default function VideosPage() {
       if (!currentUser) {
         alert('Sie müssen angemeldet sein, um Videos zu erstellen.');
         return;
+      }
+
+      // Ensure user exists in users table (fix foreign key constraint)
+      const { error: userCheckError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (userCheckError && userCheckError.code === 'PGRST116') {
+        // User doesn't exist in users table, create them
+        console.log('Creating user in users table...');
+        const { error: createUserError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: currentUser.id,
+              email: currentUser.email,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              is_deleted: false
+            }
+          ]);
+
+        if (createUserError) {
+          console.error('Error creating user:', createUserError);
+          alert('Fehler beim Erstellen des Benutzers. Bitte versuche es erneut.');
+          return;
+        }
       }
       
       // Insert new video directly to Supabase
@@ -481,62 +533,127 @@ export default function VideosPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-neutral-700">
-                    <th className="text-left py-3 px-6 font-medium text-neutral-300">Name</th>
-                    <th className="text-left py-3 px-6 font-medium text-neutral-300">Status</th>
-                    <th className="text-left py-3 px-6 font-medium text-neutral-300">Erstellt</th>
-                    <th className="text-left py-3 px-6 font-medium text-neutral-300">Aktionen</th>
+                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Videotitel</th>
+                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Veröffentlichung</th>
+                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Verantwortlich</th>
+                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Speicherort</th>
+                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktualisiert</th>
+                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Inspiration</th>
+                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Beschreibung</th>
+                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktionen</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {videos.map((video) => (
-                    <tr key={video.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
-                      <td className="py-4 px-6">
-                        <div className="flex items-center">
-                          <Video className="h-5 w-5 text-neutral-400 mr-3" />
-                          <span className="text-white font-medium">{video.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center">
+                  {videos.map((video) => {
+                    const statusInfo = getStatusIcon(video.status);
+                    const StatusIcon = statusInfo.icon;
+                    
+                    return (
+                      <tr key={video.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
+                        {/* Videotitel mit Status-Icon */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center">
+                            <div className={`p-2 bg-neutral-800 rounded-lg mr-3`}>
+                              <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+                            </div>
+                            <div>
+                              <p className="text-white font-medium">{video.name}</p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-4 px-4">
                           <select
                             value={video.status}
                             onChange={(e) => handleUpdateStatus(video.id, e.target.value)}
-                            className="bg-neutral-800 border border-neutral-700 text-white text-sm rounded-lg px-3 py-1 mr-2"
+                            className="bg-neutral-900/80 backdrop-blur-md border border-neutral-600 text-white text-sm rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-800/80 transition-all duration-200"
                           >
-                            <option value="Idee">Idee</option>
-                            <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
-                            <option value="In Bearbeitung (Schnitt)">In Bearbeitung (Schnitt)</option>
-                            <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
-                            <option value="Hochgeladen">Hochgeladen</option>
+                            <option value="Idee" className="bg-neutral-900 text-white">Idee</option>
+                            <option value="Warten auf Aufnahme" className="bg-neutral-900 text-white">Warten auf Aufnahme</option>
+                            <option value="In Bearbeitung (Schnitt)" className="bg-neutral-900 text-white">In Bearbeitung (Schnitt)</option>
+                            <option value="Schnitt abgeschlossen" className="bg-neutral-900 text-white">Schnitt abgeschlossen</option>
+                            <option value="Hochgeladen" className="bg-neutral-900 text-white">Hochgeladen</option>
                           </select>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6 text-neutral-400">
-                        {new Date(video.created_at).toLocaleDateString('de-DE')}
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => console.log('Edit video:', video.id)}
-                            className="text-white hover:text-neutral-300"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          
-                          {video.storage_location && (
-                            <a
-                              href={video.storage_location}
-                              target="_blank"
+                        </td>
+
+                        {/* Veröffentlichungsdatum */}
+                        <td className="py-4 px-4 text-neutral-300 text-sm">
+                          {video.publication_date ? new Date(video.publication_date).toLocaleDateString('de-DE') : '-'}
+                        </td>
+
+                        {/* Verantwortlichkeit */}
+                        <td className="py-4 px-4 text-neutral-300 text-sm">
+                          {video.responsible_person || '-'}
+                        </td>
+
+                        {/* Speicherort */}
+                        <td className="py-4 px-4 text-neutral-300 text-sm">
+                          {video.storage_location ? (
+                            <a 
+                              href={video.storage_location} 
+                              target="_blank" 
                               rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 underline"
+                            >
+                              Link
+                            </a>
+                          ) : '-'}
+                        </td>
+
+                        {/* Zuletzt aktualisiert */}
+                        <td className="py-4 px-4 text-neutral-300 text-sm">
+                          {video.last_updated ? new Date(video.last_updated).toLocaleDateString('de-DE') : 
+                           video.updated_at ? new Date(video.updated_at).toLocaleDateString('de-DE') : '-'}
+                        </td>
+
+                        {/* Inspiration Quelle */}
+                        <td className="py-4 px-4 text-neutral-300 text-sm">
+                          {video.inspiration_source ? (
+                            <a 
+                              href={video.inspiration_source} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 underline"
+                            >
+                              Link
+                            </a>
+                          ) : '-'}
+                        </td>
+
+                        {/* Beschreibung */}
+                        <td className="py-4 px-4 text-neutral-300 text-sm max-w-xs">
+                          <div className="truncate" title={video.description || ''}>
+                            {video.description || '-'}
+                          </div>
+                        </td>
+
+                        {/* Aktionen */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => console.log('Edit video:', video.id)}
                               className="text-white hover:text-neutral-300"
                             >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            
+                            {video.storage_location && (
+                              <a
+                                href={video.storage_location}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-white hover:text-neutral-300"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -579,13 +696,13 @@ export default function VideosPage() {
                   <select
                     value={newVideo.status}
                     onChange={(e) => setNewVideo({ ...newVideo, status: e.target.value })}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    className="w-full px-3 py-2 bg-neutral-900/80 backdrop-blur-md border border-neutral-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-800/80 transition-all duration-200"
                   >
-                    <option value="Idee">💡 Idee</option>
-                    <option value="Warten auf Aufnahme">⏳ Warten auf Aufnahme</option>
-                    <option value="In Bearbeitung (Schnitt)">✂️ In Bearbeitung (Schnitt)</option>
-                    <option value="Schnitt abgeschlossen">✅ Schnitt abgeschlossen</option>
-                    <option value="Hochgeladen">🚀 Hochgeladen</option>
+                    <option value="Idee" className="bg-neutral-900 text-white">Idee</option>
+                    <option value="Warten auf Aufnahme" className="bg-neutral-900 text-white">Warten auf Aufnahme</option>
+                    <option value="In Bearbeitung (Schnitt)" className="bg-neutral-900 text-white">In Bearbeitung (Schnitt)</option>
+                    <option value="Schnitt abgeschlossen" className="bg-neutral-900 text-white">Schnitt abgeschlossen</option>
+                    <option value="Hochgeladen" className="bg-neutral-900 text-white">Hochgeladen</option>
                   </select>
                 </div>
 

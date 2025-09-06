@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
   Video, 
@@ -14,7 +15,10 @@ import {
   Bell,
   User,
   Edit,
-  ExternalLink
+  ExternalLink,
+  LogOut,
+  CreditCard,
+  ChevronDown
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -49,12 +53,13 @@ const sidebarItems = [
 
 
 export default function VideosPage() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [newVideoName, setNewVideoName] = useState('');
   const [newVideoStatus, setNewVideoStatus] = useState('Idee');
 
@@ -66,6 +71,19 @@ export default function VideosPage() {
 
     fetchVideos();
   }, [user, router]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (userDropdownOpen && !target.closest('.user-dropdown')) {
+        setUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userDropdownOpen]);
 
   const fetchVideos = async () => {
     try {
@@ -125,6 +143,11 @@ export default function VideosPage() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/login');
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -179,13 +202,70 @@ export default function VideosPage() {
             </button>
 
             {/* User Menu */}
-            <div className="flex items-center">
-              <button className="flex items-center space-x-2 text-white hover:bg-neutral-800 rounded-lg p-2 transition-colors">
+            <div className="relative user-dropdown">
+              <button 
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="flex items-center space-x-2 text-white hover:bg-neutral-800 rounded-lg p-2 transition-colors"
+              >
                 <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
                   <User className="w-5 h-5 text-black" />
                 </div>
                 <span className="hidden md:block text-sm">{user.email}</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
+
+              {/* Dropdown Menu */}
+              {userDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 mt-2 w-56 bg-black/80 backdrop-blur-md rounded-xl border border-neutral-700 shadow-lg z-50"
+                >
+                  <div className="py-2">
+                    <div className="px-4 py-3 border-b border-neutral-700">
+                      <p className="text-sm text-white font-medium">{user.email}</p>
+                      <p className="text-xs text-neutral-400">Angemeldet</p>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        router.push('/profile');
+                      }}
+                      className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
+                    >
+                      <Settings className="w-4 h-4 mr-3 text-neutral-400" />
+                      Einstellungen
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        router.push('/profile');
+                      }}
+                      className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
+                    >
+                      <CreditCard className="w-4 h-4 mr-3 text-neutral-400" />
+                      Abonnement verwalten
+                    </button>
+                    
+                    <div className="border-t border-neutral-700 mt-2">
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          handleSignOut();
+                        }}
+                        className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4 mr-3 text-neutral-400" />
+                        Ausloggen
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </div>
         </div>

@@ -248,7 +248,7 @@ function ProfileContent() {
                           Status: <span className="capitalize">{subscription.status}</span>
                         </p>
                         <p className="text-sm text-neutral-400">
-                          Plan: {subscription.plan_name || 'Premium'}
+                          Plan: Premium
                         </p>
                       </div>
                     </div>

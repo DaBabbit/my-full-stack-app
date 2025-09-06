@@ -20,7 +20,9 @@ import {
   TrendingUp,
   LogOut,
   CreditCard,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -44,7 +46,10 @@ const sidebarItems = [
     icon: Video,
     href: '/dashboard/videos',
     active: false
-  },
+  }
+];
+
+const sidebarBottomItems = [
   {
     name: 'Settings',
     icon: Settings,
@@ -59,6 +64,7 @@ export default function Dashboard() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -237,24 +243,40 @@ export default function Dashboard() {
       </nav>
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 z-40 w-64 h-screen pt-16 transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} bg-neutral-900 border-r border-neutral-800 md:translate-x-0`}>
-        <div className="h-full px-3 py-4 overflow-y-auto">
-          {/* Search on mobile */}
-          <div className="md:hidden mb-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-neutral-400" />
-              </div>
-              <input
-                type="text"
-                className="bg-neutral-800 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-full pl-10 p-2.5 placeholder-neutral-400"
-                placeholder="Search..."
-              />
-            </div>
+      <motion.aside 
+        animate={{ width: sidebarCollapsed ? '80px' : '256px' }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className={`fixed top-0 left-0 z-40 h-screen pt-16 transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} bg-neutral-900/50 backdrop-blur-md border-r border-neutral-700 md:translate-x-0`}
+      >
+        <div className="h-full px-3 py-4 overflow-y-auto flex flex-col">
+          {/* Collapse Toggle Button - Desktop Only */}
+          <div className="hidden md:flex justify-end mb-4">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800/50 rounded-lg transition-all duration-300 hover:shadow-[0_0_10px_rgba(255,255,255,0.1)]"
+            >
+              {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </button>
           </div>
 
+          {/* Search on mobile */}
+          {!sidebarCollapsed && (
+            <div className="md:hidden mb-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-neutral-400" />
+                </div>
+                <input
+                  type="text"
+                  className="bg-neutral-800/50 backdrop-blur-md border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-full pl-10 p-2.5 placeholder-neutral-400"
+                  placeholder="Search..."
+                />
+              </div>
+            </div>
+          )}
+
           {/* Navigation Items */}
-          <ul className="space-y-2 font-medium">
+          <ul className="space-y-2 font-medium flex-1">
             {sidebarItems.map((item) => (
               <li key={item.name}>
                 <button
@@ -263,23 +285,48 @@ export default function Dashboard() {
                       router.push(item.href);
                     }
                   }}
-                  className={`flex items-center p-2 rounded-lg w-full text-left transition-colors ${
+                  className={`flex items-center p-3 rounded-2xl w-full text-left transition-all duration-300 ${
                     item.active 
-                      ? 'bg-white text-black' 
-                      : 'text-white hover:bg-neutral-800'
+                      ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                      : 'text-white hover:bg-neutral-800/50 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]'
                   }`}
+                  title={sidebarCollapsed ? item.name : ''}
                 >
-                  <item.icon className={`w-6 h-6 ${item.active ? 'text-black' : 'text-neutral-400'} transition-colors group-hover:text-white`} />
-                  <span className="ml-3">{item.name}</span>
+                  <item.icon className={`w-6 h-6 ${item.active ? 'text-black' : 'text-neutral-400'} transition-colors ${sidebarCollapsed ? 'mx-auto' : ''}`} />
+                  {!sidebarCollapsed && <span className="ml-3">{item.name}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* Bottom Navigation Items */}
+          <ul className="space-y-2 font-medium border-t border-neutral-700 pt-4">
+            {sidebarBottomItems.map((item) => (
+              <li key={item.name}>
+                <button
+                  onClick={() => router.push(item.href)}
+                  className={`flex items-center p-3 rounded-2xl w-full text-left transition-all duration-300 ${
+                    item.active 
+                      ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                      : 'text-white hover:bg-neutral-800/50 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  }`}
+                  title={sidebarCollapsed ? item.name : ''}
+                >
+                  <item.icon className={`w-6 h-6 ${item.active ? 'text-black' : 'text-neutral-400'} transition-colors ${sidebarCollapsed ? 'mx-auto' : ''}`} />
+                  {!sidebarCollapsed && <span className="ml-3">{item.name}</span>}
                 </button>
               </li>
             ))}
           </ul>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Content */}
-      <main className="p-4 md:ml-64 pt-20">
+      <motion.main 
+        animate={{ marginLeft: sidebarCollapsed ? '80px' : '256px' }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="p-4 ml-0 md:ml-64 pt-20"
+      >
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
           <p className="text-neutral-400">Willkommen zurück! Hier ist deine Content-Übersicht.</p>
@@ -428,7 +475,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </main>
+      </motion.main>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (

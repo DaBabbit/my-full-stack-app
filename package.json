@@ -40,6 +40,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-scroll": "^1.8.10",
+    "daisyui": "^5.1.7",
     "eslint": "^9",
     "eslint-config-next": "15.1.3",
     "postcss": "^8",

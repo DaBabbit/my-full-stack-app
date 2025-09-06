@@ -77,5 +77,14 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [require('daisyui')],
+  
+  // DaisyUI config
+  daisyui: {
+    themes: false, // Disable DaisyUI themes to keep our custom black/white design
+    darkTheme: false,
+    base: false, // Disable base component styles
+    styled: true, // Keep component styles
+    utils: true, // Keep utility classes
+  },
 } satisfies Config;

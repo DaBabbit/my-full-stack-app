@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
   Video, 
-  Settings, 
+  Settings,
   Plus,
   Menu,
   X,
@@ -32,6 +32,11 @@ interface Video {
   status: string;
   storage_location?: string;
   created_at: string;
+  publication_date?: string;
+  responsible_person?: string;
+  inspiration_source?: string;
+  description?: string;
+  last_updated?: string;
 }
 
 const sidebarItems = [
@@ -162,9 +167,9 @@ export default function Dashboard() {
                   className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-64 pl-10 p-2.5 placeholder-neutral-400"
                   placeholder="Search videos..."
                 />
-              </div>
-            </div>
           </div>
+        </div>
+      </div>
 
           <div className="flex items-center space-x-3">
             {/* Notifications */}
@@ -187,9 +192,9 @@ export default function Dashboard() {
 
               {/* Dropdown Menu */}
               {userDropdownOpen && (
-                <motion.div
+            <motion.div
                   initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                   className="absolute right-0 mt-2 w-56 bg-black/80 backdrop-blur-md rounded-xl border border-neutral-700 shadow-lg z-50"
@@ -433,10 +438,10 @@ export default function Dashboard() {
               <Settings className="w-6 h-6 mr-3" />
               <span>Einstellungen</span>
             </button>
+            </div>
           </div>
-        </div>
 
-        {/* Recent Activity */}
+          {/* Recent Activity */}
         <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700">
           <h2 className="text-xl font-semibold text-white mb-4">Letzte Aktivitäten</h2>
           {isLoading ? (
@@ -450,8 +455,8 @@ export default function Dashboard() {
                   <div className="flex items-center">
                     <div className="p-2 bg-neutral-700 rounded-lg mr-4">
                       <Video className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
+                  </div>
+                  <div>
                       <h3 className="text-white font-medium">{video.name}</h3>
                       <p className="text-sm text-neutral-400">Status: {video.status}</p>
                     </div>
@@ -472,7 +477,7 @@ export default function Dashboard() {
               >
                 Erstes Video erstellen
               </button>
-            </div>
+          </div>
           )}
         </div>
       </motion.main>

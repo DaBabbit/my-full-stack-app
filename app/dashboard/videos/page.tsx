@@ -30,6 +30,11 @@ interface Video {
   status: string;
   storage_location?: string;
   created_at: string;
+  publication_date?: string;
+  responsible_person?: string;
+  inspiration_source?: string;
+  description?: string;
+  last_updated?: string;
 }
 
 const sidebarItems = [
@@ -66,8 +71,15 @@ export default function VideosPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [newVideoName, setNewVideoName] = useState('');
-  const [newVideoStatus, setNewVideoStatus] = useState('Idee');
+  const [newVideo, setNewVideo] = useState({
+    name: '',
+    status: 'Idee',
+    publication_date: '',
+    responsible_person: '',
+    storage_location: '',
+    inspiration_source: '',
+    description: ''
+  });
 
   useEffect(() => {
     if (!user) {
@@ -107,23 +119,35 @@ export default function VideosPage() {
 
   const handleAddVideo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newVideoName.trim()) return;
+    if (!newVideo.name.trim()) return;
 
     try {
       const response = await fetch('/api/videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newVideoName,
-          status: newVideoStatus,
+          name: newVideo.name,
+          status: newVideo.status,
+          publication_date: newVideo.publication_date || null,
+          responsible_person: newVideo.responsible_person || null,
+          storage_location: newVideo.storage_location || null,
+          inspiration_source: newVideo.inspiration_source || null,
+          description: newVideo.description || null,
         }),
       });
 
       if (response.ok) {
         fetchVideos();
         setShowAddModal(false);
-        setNewVideoName('');
-        setNewVideoStatus('Idee');
+        setNewVideo({
+          name: '',
+          status: 'Idee',
+          publication_date: '',
+          responsible_person: '',
+          storage_location: '',
+          inspiration_source: '',
+          description: ''
+        });
       }
     } catch (error) {
       console.error('Error adding video:', error);
@@ -452,39 +476,119 @@ export default function VideosPage() {
       {/* Add Video Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 max-w-md w-full border border-neutral-700">
-            <h3 className="text-xl font-semibold mb-4 text-white">Neues Video erstellen</h3>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto"
+          >
+            <h3 className="text-xl font-semibold mb-6 text-white">🎬 Neues Video erstellen</h3>
             <form onSubmit={handleAddVideo}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-neutral-300 mb-2">
-                  Video Name
-                </label>
-                <input
-                  type="text"
-                  value={newVideoName}
-                  onChange={(e) => setNewVideoName(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                  placeholder="z.B. Mein neues Video"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Video Titel */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Video Titel *
+                  </label>
+                  <input
+                    type="text"
+                    value={newVideo.name}
+                    onChange={(e) => setNewVideo({ ...newVideo, name: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="z.B. Mein YouTube Tutorial"
+                    required
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={newVideo.status}
+                    onChange={(e) => setNewVideo({ ...newVideo, status: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                  >
+                    <option value="Idee">💡 Idee</option>
+                    <option value="Warten auf Aufnahme">⏳ Warten auf Aufnahme</option>
+                    <option value="In Bearbeitung (Schnitt)">✂️ In Bearbeitung (Schnitt)</option>
+                    <option value="Schnitt abgeschlossen">✅ Schnitt abgeschlossen</option>
+                    <option value="Hochgeladen">🚀 Hochgeladen</option>
+                  </select>
+                </div>
+
+                {/* Veröffentlichungsdatum */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Geplantes Veröffentlichungsdatum
+                  </label>
+                  <input
+                    type="date"
+                    value={newVideo.publication_date}
+                    onChange={(e) => setNewVideo({ ...newVideo, publication_date: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                  />
+                </div>
+
+                {/* Verantwortliche Person */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Verantwortliche Person
+                  </label>
+                  <input
+                    type="text"
+                    value={newVideo.responsible_person}
+                    onChange={(e) => setNewVideo({ ...newVideo, responsible_person: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="z.B. Max Mustermann"
+                  />
+                </div>
+
+                {/* Speicherort */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Speicherort
+                  </label>
+                  <input
+                    type="url"
+                    value={newVideo.storage_location}
+                    onChange={(e) => setNewVideo({ ...newVideo, storage_location: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="https://drive.google.com/..."
+                  />
+                </div>
+
+                {/* Inspiration Quelle */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Inspiration Quelle
+                  </label>
+                  <input
+                    type="url"
+                    value={newVideo.inspiration_source}
+                    onChange={(e) => setNewVideo({ ...newVideo, inspiration_source: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
+
+                {/* Beschreibung */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Beschreibung
+                  </label>
+                  <textarea
+                    value={newVideo.description}
+                    onChange={(e) => setNewVideo({ ...newVideo, description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white resize-none"
+                    placeholder="Kurze Beschreibung des Videos..."
+                  />
+                </div>
               </div>
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-neutral-300 mb-2">
-                  Status
-                </label>
-                <select
-                  value={newVideoStatus}
-                  onChange={(e) => setNewVideoStatus(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                >
-                  <option value="Idee">Idee</option>
-                  <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
-                  <option value="In Bearbeitung (Schnitt)">In Bearbeitung (Schnitt)</option>
-                  <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
-                  <option value="Hochgeladen">Hochgeladen</option>
-                </select>
-              </div>
-              <div className="flex gap-4 justify-end">
+
+              <div className="flex gap-4 justify-end mt-6">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -496,11 +600,11 @@ export default function VideosPage() {
                   type="submit"
                   className="px-6 py-2 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-lg transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                 >
-                  Erstellen
+                  Video erstellen
                 </button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
 

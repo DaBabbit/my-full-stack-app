@@ -247,28 +247,28 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120]">
+    <div className="min-h-screen bg-black pt-20">
       {/* Dashboard Header */}
-      <div className="bg-white dark:bg-neutral-dark border-b border-slate-200 dark:border-slate-700">
+      <div className="bg-neutral-900/50 backdrop-blur-md border-b border-neutral-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Mein Content-Planer
+              <h1 className="text-2xl font-bold text-white">
+                🎬 Mein Content-Planer
               </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+              <p className="text-sm text-neutral-400 mt-1">
                 Verwalten Sie Ihre Videos und Content-Planung
               </p>
             </div>
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setShowAddModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                className="bg-neutral-800 hover:bg-white hover:text-black text-white px-6 py-3 rounded-3xl flex items-center space-x-2 transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
               >
                 <Plus className="h-4 w-4" />
                 <span>Neues Video</span>
               </button>
-              <span className="text-sm text-slate-600 dark:text-slate-300">
+              <span className="text-sm text-neutral-400">
                 {isInTrial ? "Trial Period" : "Premium Plan"}
               </span>
             </div>
@@ -283,17 +283,17 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700"
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
                 <PlayCircle className="h-6 w-6 text-blue-600" />
               </div>
             </div>
-            <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+            <h3 className="mt-4 text-2xl font-bold text-white">
               {videos.length}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-sm text-neutral-400">
               Gesamt Videos
             </p>
           </motion.div>
@@ -302,17 +302,17 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700"
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
-                <Clock className="h-6 w-6 text-yellow-600" />
+              <div className="p-2 bg-neutral-800 rounded-lg">
+                <Clock className="h-6 w-6 text-white" />
               </div>
             </div>
-            <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+            <h3 className="mt-4 text-2xl font-bold text-white">
               {videos.filter(v => v.status === 'Warten auf Aufnahme').length}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-sm text-neutral-400">
               Warten auf Aufnahme
             </p>
           </motion.div>
@@ -321,17 +321,17 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700"
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-                <Edit className="h-6 w-6 text-orange-600" />
+              <div className="p-2 bg-neutral-800 rounded-lg">
+                <Edit className="h-6 w-6 text-white" />
               </div>
             </div>
-            <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+            <h3 className="mt-4 text-2xl font-bold text-white">
               {videos.filter(v => v.status === 'In Bearbeitung (Schnitt)').length}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-sm text-neutral-400">
               In Bearbeitung
             </p>
           </motion.div>
@@ -340,34 +340,34 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white dark:bg-neutral-dark rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700"
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                <Upload className="h-6 w-6 text-green-600" />
+              <div className="p-2 bg-neutral-800 rounded-lg">
+                <Upload className="h-6 w-6 text-white" />
               </div>
             </div>
-            <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+            <h3 className="mt-4 text-2xl font-bold text-white">
               {videos.filter(v => v.status === 'Hochgeladen').length}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-sm text-neutral-400">
               Hochgeladen
             </p>
           </motion.div>
         </div>
 
         {/* Videos Table */}
-        <div className="bg-white dark:bg-neutral-dark rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-neutral-700">
+            <h3 className="text-lg font-semibold text-white">
               Meine Videos
             </h3>
           </div>
           
           {loading ? (
             <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-slate-600 dark:text-slate-400">Lade Videos...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+              <p className="text-neutral-400">Lade Videos...</p>
             </div>
           ) : videos.length === 0 ? (
             <div className="p-8 text-center">

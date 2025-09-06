@@ -156,7 +156,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Prepare update data (only include fields that are provided)
-    const updateData: any = {};
+    const updateData: Record<string, string | null> = {};
     
     if (title || name) {
       updateData.title = title || name;

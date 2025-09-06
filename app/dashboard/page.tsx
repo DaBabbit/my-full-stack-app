@@ -1,303 +1,231 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/utils/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useSubscription } from '@/hooks/useSubscription';
-import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { motion } from 'framer-motion';
 import { 
+  LayoutDashboard, 
+  Video, 
+  Settings, 
   Plus,
-  Edit,
-  Trash2,
-  Eye,
-  Calendar,
+  Menu,
+  X,
+  Search,
+  Bell,
   User,
-  Lightbulb,
+  PlayCircle,
   Clock,
   CheckCircle,
-  AlertCircle,
-  PlayCircle,
-  Upload
+  TrendingUp
 } from 'lucide-react';
-
-const AUTH_TIMEOUT = 15000; // 15 seconds
-
-// Status-Icons für bessere Visualisierung
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'Warten auf Aufnahme':
-      return <Clock className="h-4 w-4 text-white" />;
-    case 'Idee':
-      return <Lightbulb className="h-4 w-4 text-white" />;
-    case 'In Bearbeitung (Schnitt)':
-      return <Edit className="h-4 w-4 text-white" />;
-    case 'Schnitt abgeschlossen':
-      return <CheckCircle className="h-4 w-4 text-white" />;
-    case 'Hochgeladen':
-      return <Upload className="h-4 w-4 text-white" />;
-    default:
-      return <AlertCircle className="h-4 w-4 text-white" />;
-  }
-};
-
-// Status-Farben für Badges
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Warten auf Aufnahme':
-      return 'bg-neutral-800 text-white border-neutral-700';
-    case 'Idee':
-      return 'bg-neutral-800 text-white border-neutral-700';
-    case 'In Bearbeitung (Schnitt)':
-      return 'bg-neutral-800 text-white border-neutral-700';
-    case 'Schnitt abgeschlossen':
-      return 'bg-neutral-800 text-white border-neutral-700';
-    case 'Hochgeladen':
-      return 'bg-neutral-800 text-white border-neutral-700';
-    default:
-      return 'bg-neutral-800 text-white border-neutral-700';
-  }
-};
+import Image from 'next/image';
 
 interface Video {
   id: string;
-  title: string;
+  name: string;
   status: string;
-  publication_date: string | null;
-  responsible_person: string | null;
-  storage_location: string | null;
-  inspiration_source: string | null;
-  description: string | null;
-  last_updated: string;
+  storage_location?: string;
   created_at: string;
 }
 
+const sidebarItems = [
+  {
+    name: 'Dashboard',
+    icon: LayoutDashboard,
+    href: '/dashboard',
+    active: true
+  },
+  {
+    name: 'Videos',
+    icon: Video,
+    href: '/dashboard/videos',
+    active: false
+  },
+  {
+    name: 'Settings',
+    icon: Settings,
+    href: '/profile',
+    active: false
+  }
+];
+
 export default function Dashboard() {
-  const { user, isSubscriber, isLoading: isAuthLoading } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
-  const { subscription, isLoading: isSubLoading, fetchSubscription } = useSubscription();
-  const [hasCheckedSubscription, setHasCheckedSubscription] = useState(false);
-  const { isInTrial, isLoading: isTrialLoading } = useTrialStatus();
-  const [authTimeout, setAuthTimeout] = useState(false);
-  
-  // Video-Management States
   const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // First check - Subscription and trial check
   useEffect(() => {
-    if (isSubLoading || isTrialLoading) return;
-    
-    const hasValidSubscription = ['active', 'trialing'].includes(subscription?.status || '');
-    
-    console.log('Access check isInTrial:', {
-      hasSubscription: !!subscription,
-      status: subscription?.status,
-      isInTrial: isInTrial,
-      validUntil: subscription?.current_period_end
-    });
-
-    // Only redirect if there's no valid subscription AND no valid trial
-    if (!hasValidSubscription && !isInTrial) {
-      console.log('No valid subscription or trial, redirecting');
-      router.replace('/profile');
+    if (!user) {
+      router.push('/login');
+      return;
     }
-  }, [subscription, isSubLoading, isTrialLoading, router, isInTrial]);
 
-  // Second check - Auth check
-  useEffect(() => {
-    if (isAuthLoading || isTrialLoading) return;
-
-    console.log('Access check:', {
-      isSubscriber,
-      hasCheckedSubscription,
-      isInTrial: isInTrial,
-      authLoading: isAuthLoading,
-    });
-
-    if (!hasCheckedSubscription) {
-      setHasCheckedSubscription(true);
-      
-      // Allow access for both subscribers and trial users
-      if (!user || (!isSubscriber && !isInTrial && !isAuthLoading)) {
-        console.log('No valid subscription or trial, redirecting');
-        router.replace('/profile');
-      }
-    }
-  }, [isSubscriber, isAuthLoading, hasCheckedSubscription, router, user, subscription, isTrialLoading, isInTrial]);
-
-  // Add refresh effect
-  useEffect(() => {
-    const refreshSubscription = async () => {
-      await fetchSubscription();
-      setHasCheckedSubscription(true);
-    };
-    
-    if (user?.id) {
-      refreshSubscription();
-    }
-  }, [user?.id, fetchSubscription]);
-
-  // Load videos for the current user
-  useEffect(() => {
-    const fetchVideos = async () => {
-      if (!user?.id) return;
-      
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('last_updated', { ascending: false });
-        
-        if (error) {
-          console.error('Error fetching videos:', error);
-        } else {
-          setVideos(data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching videos:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchVideos();
-  }, [user?.id]);
+  }, [user, router]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!user && (isAuthLoading || isTrialLoading)) {
-        setAuthTimeout(true);
-      }
-    }, AUTH_TIMEOUT);
-    
-    return () => clearTimeout(timer);
-  }, [user, isAuthLoading, isTrialLoading]);
-
-  // Update video status
-  const updateVideoStatus = async (videoId: string, newStatus: string) => {
+  const fetchVideos = async () => {
     try {
-      const { error } = await supabase
-        .from('videos')
-        .update({ 
-          status: newStatus, 
-          last_updated: new Date().toISOString() 
-        })
-        .eq('id', videoId);
-      
-      if (error) {
-        console.error('Error updating video status:', error);
-        return;
+      const response = await fetch('/api/videos');
+      if (response.ok) {
+        const data = await response.json();
+        setVideos(data);
       }
-      
-      // Update local state
-      setVideos(prevVideos => 
-        prevVideos.map(video => 
-          video.id === videoId 
-            ? { ...video, status: newStatus, last_updated: new Date().toISOString() }
-            : video
-        )
-      );
     } catch (error) {
-      console.error('Error updating video status:', error);
+      console.error('Error fetching videos:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Delete video
-  const deleteVideo = async (videoId: string) => {
-    if (!confirm('Sind Sie sicher, dass Sie dieses Video löschen möchten?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('videos')
-        .delete()
-        .eq('id', videoId);
-      
-      if (error) {
-        console.error('Error deleting video:', error);
-        return;
-      }
-      
-      // Update local state
-      setVideos(prevVideos => prevVideos.filter(video => video.id !== videoId));
-    } catch (error) {
-      console.error('Error deleting video:', error);
-    }
+  const getVideoStats = () => {
+    const total = videos.length;
+    const inProduction = videos.filter(v => v.status === 'In Bearbeitung (Schnitt)').length;
+    const completed = videos.filter(v => v.status === 'Hochgeladen').length;
+    const ideas = videos.filter(v => v.status === 'Idee').length;
+
+    return { total, inProduction, completed, ideas };
   };
 
-  // Update the loading check
-  if (!user && (isAuthLoading || isTrialLoading) && !hasCheckedSubscription) {
+  const stats = getVideoStats();
+
+  if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mb-4 mx-auto"></div>
-          <p className="text-foreground">
-            {authTimeout ? 
-              "Taking longer than usual? Try refreshing the page 😊." :
-              "Verifying access..."}
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <span className="loading loading-ring loading-lg text-white"></span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black pt-20">
-      {/* Dashboard Header */}
-      <div className="bg-neutral-900/50 backdrop-blur-md border-b border-neutral-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">
-                🎬 Mein Content-Planer
-              </h1>
-              <p className="text-sm text-neutral-400 mt-1">
-                Verwalten Sie Ihre Videos und Content-Planung
-              </p>
+    <div className="min-h-screen bg-black">
+      {/* Top Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black border-b border-neutral-800 px-4 py-3">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 mr-2 text-white rounded-lg md:hidden hover:bg-neutral-800 transition-colors"
+            >
+              {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+            
+            <div className="flex items-center">
+              <Image
+                src="/kosmamedia-logo.svg"
+                alt="kosmamedia Logo"
+                width={32}
+                height={32}
+                className="mr-3 filter invert"
+              />
+              <span className="text-xl font-semibold text-white">kosmamedia</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="bg-neutral-800 hover:bg-white hover:text-black text-white px-6 py-3 rounded-3xl flex items-center space-x-2 transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Neues Video</span>
+
+            {/* Search Bar - Hidden on mobile */}
+            <div className="hidden md:block md:ml-8">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-neutral-400" />
+                </div>
+                <input
+                  type="text"
+                  className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-64 pl-10 p-2.5 placeholder-neutral-400"
+                  placeholder="Search videos..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            {/* Notifications */}
+            <button className="p-2 text-neutral-400 rounded-lg hover:text-white hover:bg-neutral-800 transition-colors">
+              <Bell className="w-6 h-6" />
+            </button>
+
+            {/* User Menu */}
+            <div className="flex items-center">
+              <button className="flex items-center space-x-2 text-white hover:bg-neutral-800 rounded-lg p-2 transition-colors">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-black" />
+                </div>
+                <span className="hidden md:block text-sm">{user.email}</span>
               </button>
-              <span className="text-sm text-neutral-400">
-                {isInTrial ? "Trial Period" : "Premium Plan"}
-              </span>
             </div>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Dashboard Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      {/* Sidebar */}
+      <aside className={`fixed top-0 left-0 z-40 w-64 h-screen pt-16 transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} bg-neutral-900 border-r border-neutral-800 md:translate-x-0`}>
+        <div className="h-full px-3 py-4 overflow-y-auto">
+          {/* Search on mobile */}
+          <div className="md:hidden mb-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-neutral-400" />
+              </div>
+              <input
+                type="text"
+                className="bg-neutral-800 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-full pl-10 p-2.5 placeholder-neutral-400"
+                placeholder="Search..."
+              />
+            </div>
+          </div>
+
+          {/* Navigation Items */}
+          <ul className="space-y-2 font-medium">
+            {sidebarItems.map((item) => (
+              <li key={item.name}>
+                <button
+                  onClick={() => {
+                    if (item.href !== '/dashboard') {
+                      router.push(item.href);
+                    }
+                  }}
+                  className={`flex items-center p-2 rounded-lg w-full text-left transition-colors ${
+                    item.active 
+                      ? 'bg-white text-black' 
+                      : 'text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  <item.icon className={`w-6 h-6 ${item.active ? 'text-black' : 'text-neutral-400'} transition-colors group-hover:text-white`} />
+                  <span className="ml-3">{item.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="p-4 md:ml-64 pt-20">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+          <p className="text-neutral-400">Willkommen zurück! Hier ist deine Content-Übersicht.</p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Total Videos */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-neutral-800 rounded-lg">
-                <PlayCircle className="h-6 w-6 text-white" />
+              <div>
+                <p className="text-sm text-neutral-400 mb-1">Gesamt Videos</p>
+                <p className="text-3xl font-bold text-white">{stats.total}</p>
+              </div>
+              <div className="p-3 bg-neutral-800 rounded-lg">
+                <PlayCircle className="h-8 w-8 text-white" />
               </div>
             </div>
-            <h3 className="mt-4 text-2xl font-bold text-white">
-              {videos.length}
-            </h3>
-            <p className="text-sm text-neutral-400">
-              Gesamt Videos
-            </p>
           </motion.div>
 
+          {/* In Production */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -305,18 +233,17 @@ export default function Dashboard() {
             className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-neutral-800 rounded-lg">
-                <Clock className="h-6 w-6 text-white" />
+              <div>
+                <p className="text-sm text-neutral-400 mb-1">In Bearbeitung</p>
+                <p className="text-3xl font-bold text-white">{stats.inProduction}</p>
+              </div>
+              <div className="p-3 bg-neutral-800 rounded-lg">
+                <Clock className="h-8 w-8 text-white" />
               </div>
             </div>
-            <h3 className="mt-4 text-2xl font-bold text-white">
-              {videos.filter(v => v.status === 'Warten auf Aufnahme').length}
-            </h3>
-            <p className="text-sm text-neutral-400">
-              Warten auf Aufnahme
-            </p>
           </motion.div>
 
+          {/* Completed */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -324,18 +251,17 @@ export default function Dashboard() {
             className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-neutral-800 rounded-lg">
-                <Edit className="h-6 w-6 text-white" />
+              <div>
+                <p className="text-sm text-neutral-400 mb-1">Hochgeladen</p>
+                <p className="text-3xl font-bold text-white">{stats.completed}</p>
+              </div>
+              <div className="p-3 bg-neutral-800 rounded-lg">
+                <CheckCircle className="h-8 w-8 text-white" />
               </div>
             </div>
-            <h3 className="mt-4 text-2xl font-bold text-white">
-              {videos.filter(v => v.status === 'In Bearbeitung (Schnitt)').length}
-            </h3>
-            <p className="text-sm text-neutral-400">
-              In Bearbeitung
-            </p>
           </motion.div>
 
+          {/* Ideas */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -343,228 +269,94 @@ export default function Dashboard() {
             className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-neutral-800 rounded-lg">
-                <Upload className="h-6 w-6 text-white" />
+              <div>
+                <p className="text-sm text-neutral-400 mb-1">Ideen</p>
+                <p className="text-3xl font-bold text-white">{stats.ideas}</p>
+              </div>
+              <div className="p-3 bg-neutral-800 rounded-lg">
+                <TrendingUp className="h-8 w-8 text-white" />
               </div>
             </div>
-            <h3 className="mt-4 text-2xl font-bold text-white">
-              {videos.filter(v => v.status === 'Hochgeladen').length}
-            </h3>
-            <p className="text-sm text-neutral-400">
-              Hochgeladen
-            </p>
           </motion.div>
         </div>
 
-        {/* Videos Table */}
-        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-neutral-700">
-            <h3 className="text-lg font-semibold text-white">
-              Meine Videos
-            </h3>
+        {/* Quick Actions */}
+        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 mb-8">
+          <h2 className="text-xl font-semibold text-white mb-4">Schnellaktionen</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button
+              onClick={() => router.push('/dashboard/videos')}
+              className="flex items-center p-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+            >
+              <Plus className="w-6 h-6 mr-3" />
+              <span>Neues Video erstellen</span>
+            </button>
+            
+            <button
+              onClick={() => router.push('/dashboard/videos')}
+              className="flex items-center p-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+            >
+              <Video className="w-6 h-6 mr-3" />
+              <span>Alle Videos anzeigen</span>
+            </button>
+
+            <button
+              onClick={() => router.push('/profile')}
+              className="flex items-center p-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+            >
+              <Settings className="w-6 h-6 mr-3" />
+              <span>Einstellungen</span>
+            </button>
           </div>
-          
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-              <p className="text-neutral-400">Lade Videos...</p>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700">
+          <h2 className="text-xl font-semibold text-white mb-4">Letzte Aktivitäten</h2>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <span className="loading loading-ring loading-md text-white"></span>
             </div>
-          ) : videos.length === 0 ? (
-            <div className="p-8 text-center">
-              <PlayCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                Noch keine Videos
-              </h3>
-              <p className="text-slate-600 dark:text-slate-400 mb-4">
-                Erstellen Sie Ihr erstes Video, um zu beginnen.
-              </p>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="bg-neutral-800 hover:bg-white hover:text-black text-white px-6 py-3 rounded-3xl flex items-center space-x-2 mx-auto transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Erstes Video erstellen</span>
-              </button>
+          ) : videos.length > 0 ? (
+            <div className="space-y-4">
+              {videos.slice(0, 5).map((video) => (
+                <div key={video.id} className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-neutral-700 rounded-lg mr-4">
+                      <Video className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium">{video.name}</h3>
+                      <p className="text-sm text-neutral-400">Status: {video.status}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-neutral-500">
+                    {new Date(video.created_at).toLocaleDateString('de-DE')}
+                  </span>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 dark:bg-slate-800">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Video
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Veröffentlichung
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Verantwortlich
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Zuletzt aktualisiert
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Aktionen
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-neutral-dark divide-y divide-slate-200 dark:divide-slate-700">
-                  {videos.map((video, index) => (
-                    <motion.tr
-                      key={video.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-slate-900 dark:text-white">
-                            {video.title}
-                          </div>
-                          {video.description && (
-                            <div className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-xs">
-                              {video.description}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          {getStatusIcon(video.status)}
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(video.status)}`}>
-                            {video.status}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
-                        {video.publication_date ? (
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-4 w-4 text-slate-400" />
-                            <span>{new Date(video.publication_date).toLocaleDateString('de-DE')}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">Nicht geplant</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
-                        {video.responsible_person ? (
-                          <div className="flex items-center space-x-1">
-                            <User className="h-4 w-4 text-slate-400" />
-                            <span>{video.responsible_person}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">Nicht zugewiesen</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-                        {new Date(video.last_updated).toLocaleDateString('de-DE')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <select
-                            value={video.status}
-                            onChange={(e) => updateVideoStatus(video.id, e.target.value)}
-                            className="text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                          >
-                            <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
-                            <option value="Idee">Idee</option>
-                            <option value="In Bearbeitung (Schnitt)">In Bearbeitung (Schnitt)</option>
-                            <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
-                            <option value="Hochgeladen">Hochgeladen</option>
-                          </select>
-                          
-                          <button
-                            onClick={() => setEditingVideo(video)}
-                            className="text-white hover:text-neutral-300"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          
-                          {video.storage_location && (
-                            <a
-                              href={video.storage_location}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </a>
-                          )}
-                          
-                          {video.inspiration_source && (
-                            <a
-                              href={video.inspiration_source}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
-                            >
-                              <Lightbulb className="h-4 w-4" />
-                            </a>
-                          )}
-                          
-                          <button
-                            onClick={() => deleteVideo(video.id)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="text-center py-8">
+              <Video className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
+              <p className="text-neutral-400 mb-4">Noch keine Videos erstellt</p>
+              <button
+                onClick={() => router.push('/dashboard/videos')}
+                className="px-6 py-3 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-3xl transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+              >
+                Erstes Video erstellen
+              </button>
             </div>
           )}
         </div>
-      </div>
+      </main>
 
-      {/* Add Video Modal - Placeholder */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-neutral-dark rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Neues Video erstellen
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">
-              Diese Funktion wird bald verfügbar sein!
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                Schließen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Video Modal - Placeholder */}
-      {editingVideo && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-neutral-dark rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Video bearbeiten: {editingVideo.title}
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">
-              Diese Funktion wird bald verfügbar sein!
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setEditingVideo(null)}
-                className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                Schließen
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
     </div>
   );

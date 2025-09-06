@@ -192,7 +192,63 @@ export default function VideosPage() {
 
   const handleAddVideo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newVideo.name.trim()) return;
+    
+    // Umfassende Validierung
+    const trimmedName = newVideo.name.trim();
+    
+    if (!trimmedName) {
+      alert('Bitte geben Sie einen Videotitel ein.');
+      return;
+    }
+    
+    if (trimmedName.length < 3) {
+      alert('Der Videotitel muss mindestens 3 Zeichen lang sein.');
+      return;
+    }
+    
+    if (trimmedName.length > 100) {
+      alert('Der Videotitel darf maximal 100 Zeichen lang sein.');
+      return;
+    }
+    
+    // Prüfung auf nur Leerzeichen oder ungültige Zeichen
+    if (!/^[\w\s\-\.\,\!\?\(\)\[\]äöüÄÖÜß]+$/.test(trimmedName)) {
+      alert('Der Videotitel enthält ungültige Zeichen. Verwenden Sie nur Buchstaben, Zahlen, Leerzeichen und grundlegende Satzzeichen.');
+      return;
+    }
+
+    // Validierung für URLs (optional)
+    if (newVideo.storage_location && newVideo.storage_location.trim()) {
+      try {
+        new URL(newVideo.storage_location);
+      } catch {
+        alert('Bitte geben Sie eine gültige URL für den Speicherort ein (z.B. https://...).');
+        return;
+      }
+    }
+
+    if (newVideo.inspiration_source && newVideo.inspiration_source.trim()) {
+      try {
+        new URL(newVideo.inspiration_source);
+      } catch {
+        alert('Bitte geben Sie eine gültige URL für die Inspiration Quelle ein (z.B. https://...).');
+        return;
+      }
+    }
+
+    // Validierung für Datum
+    if (newVideo.publication_date && newVideo.publication_date.trim()) {
+      const selectedDate = new Date(newVideo.publication_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (selectedDate < today) {
+        const confirmPastDate = confirm('Das gewählte Veröffentlichungsdatum liegt in der Vergangenheit. Möchten Sie trotzdem fortfahren?');
+        if (!confirmPastDate) {
+          return;
+        }
+      }
+    }
 
     try {
       // Import supabase client
@@ -241,7 +297,7 @@ export default function VideosPage() {
         .insert([
           {
             user_id: currentUser.id,
-            title: newVideo.name,
+            title: trimmedName,
             status: newVideo.status,
             publication_date: newVideo.publication_date || null,
             responsible_person: newVideo.responsible_person || null,
@@ -279,20 +335,27 @@ export default function VideosPage() {
 
   const handleUpdateStatus = async (videoId: string, newStatus: string) => {
     try {
-      const response = await fetch('/api/videos', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: videoId,
-          status: newStatus,
-        }),
-      });
+      // Import supabase client
+      const { supabase } = await import('@/utils/supabase');
+      
+      // Update video status directly in Supabase
+      const { error } = await supabase
+        .from('videos')
+        .update({ status: newStatus })
+        .eq('id', videoId);
 
-      if (response.ok) {
-        fetchVideos();
+      if (error) {
+        console.error('Error updating video status:', error);
+        alert(`Fehler beim Aktualisieren des Status: ${error.message}`);
+        return;
       }
+
+      console.log('Status erfolgreich aktualisiert!');
+      // Refresh videos to show updated status
+      fetchVideos();
     } catch (error) {
-      console.error('Error updating video:', error);
+      console.error('Error updating status:', error);
+      alert('Fehler beim Aktualisieren des Status. Bitte versuche es erneut.');
     }
   };
 
@@ -565,17 +628,27 @@ export default function VideosPage() {
 
                         {/* Status */}
                         <td className="py-4 px-4">
-                          <select
-                            value={video.status}
-                            onChange={(e) => handleUpdateStatus(video.id, e.target.value)}
-                            className="bg-neutral-900/80 backdrop-blur-md border border-neutral-600 text-white text-sm rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-800/80 transition-all duration-200"
-                          >
-                            <option value="Idee" className="bg-neutral-900 text-white">Idee</option>
-                            <option value="Warten auf Aufnahme" className="bg-neutral-900 text-white">Warten auf Aufnahme</option>
-                            <option value="In Bearbeitung (Schnitt)" className="bg-neutral-900 text-white">In Bearbeitung (Schnitt)</option>
-                            <option value="Schnitt abgeschlossen" className="bg-neutral-900 text-white">Schnitt abgeschlossen</option>
-                            <option value="Hochgeladen" className="bg-neutral-900 text-white">Hochgeladen</option>
-                          </select>
+                          <div className="relative">
+                            <select
+                              value={video.status}
+                              onChange={(e) => handleUpdateStatus(video.id, e.target.value)}
+                              className="bg-black/80 backdrop-blur-md border border-neutral-700 text-white text-sm rounded-2xl px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/50 hover:bg-black/90 hover:border-neutral-600 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300 appearance-none cursor-pointer"
+                              style={{
+                                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                                backgroundPosition: 'right 8px center',
+                                backgroundRepeat: 'no-repeat',
+                                backgroundSize: '16px'
+                              }}
+                            >
+                              <option value="Idee" className="bg-black text-white hover:bg-neutral-800 py-2">Idee</option>
+                              <option value="Warten auf Aufnahme" className="bg-black text-white hover:bg-neutral-800 py-2">Warten auf Aufnahme</option>
+                              <option value="In Bearbeitung (Schnitt)" className="bg-black text-white hover:bg-neutral-800 py-2">In Bearbeitung (Schnitt)</option>
+                              <option value="Schnitt abgeschlossen" className="bg-black text-white hover:bg-neutral-800 py-2">Schnitt abgeschlossen</option>
+                              <option value="Hochgeladen" className="bg-black text-white hover:bg-neutral-800 py-2">Hochgeladen</option>
+                            </select>
+                            {/* Custom Glow Effect on Hover */}
+                            <div className="absolute inset-0 rounded-2xl bg-white/5 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                          </div>
                         </td>
 
                         {/* Veröffentlichungsdatum */}
@@ -693,17 +766,27 @@ export default function VideosPage() {
                   <label className="block text-sm font-medium text-neutral-300 mb-2">
                     Status
                   </label>
-                  <select
-                    value={newVideo.status}
-                    onChange={(e) => setNewVideo({ ...newVideo, status: e.target.value })}
-                    className="w-full px-3 py-2 bg-neutral-900/80 backdrop-blur-md border border-neutral-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-800/80 transition-all duration-200"
-                  >
-                    <option value="Idee" className="bg-neutral-900 text-white">Idee</option>
-                    <option value="Warten auf Aufnahme" className="bg-neutral-900 text-white">Warten auf Aufnahme</option>
-                    <option value="In Bearbeitung (Schnitt)" className="bg-neutral-900 text-white">In Bearbeitung (Schnitt)</option>
-                    <option value="Schnitt abgeschlossen" className="bg-neutral-900 text-white">Schnitt abgeschlossen</option>
-                    <option value="Hochgeladen" className="bg-neutral-900 text-white">Hochgeladen</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={newVideo.status}
+                      onChange={(e) => setNewVideo({ ...newVideo, status: e.target.value })}
+                      className="w-full px-4 py-3 bg-black/80 backdrop-blur-md border border-neutral-700 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/50 hover:bg-black/90 hover:border-neutral-600 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all duration-300 appearance-none cursor-pointer pr-10"
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                        backgroundPosition: 'right 12px center',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundSize: '16px'
+                      }}
+                    >
+                      <option value="Idee" className="bg-black text-white hover:bg-neutral-800 py-3">Idee</option>
+                      <option value="Warten auf Aufnahme" className="bg-black text-white hover:bg-neutral-800 py-3">Warten auf Aufnahme</option>
+                      <option value="In Bearbeitung (Schnitt)" className="bg-black text-white hover:bg-neutral-800 py-3">In Bearbeitung (Schnitt)</option>
+                      <option value="Schnitt abgeschlossen" className="bg-black text-white hover:bg-neutral-800 py-3">Schnitt abgeschlossen</option>
+                      <option value="Hochgeladen" className="bg-black text-white hover:bg-neutral-800 py-3">Hochgeladen</option>
+                    </select>
+                    {/* Custom Glow Effect on Hover */}
+                    <div className="absolute inset-0 rounded-2xl bg-white/5 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                  </div>
                 </div>
 
                 {/* Veröffentlichungsdatum */}

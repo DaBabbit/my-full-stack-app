@@ -86,14 +86,14 @@ export function LoginForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email address"
-            className="w-full px-4 py-3 border border-neutral-200 rounded-lg placeholder-neutral-500 text-black bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-lg placeholder-neutral-500 text-black bg-white focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
           />
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="w-full px-4 py-3 border border-neutral-200 rounded-lg placeholder-neutral-500 text-black bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-lg placeholder-neutral-500 text-black bg-white focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
             style={{ color: '#000000' }}
           />
         </div>
@@ -101,7 +101,7 @@ export function LoginForm({
         <div className="flex items-center justify-between">
           <a
             href="/reset-password"
-            className="text-sm text-accent hover:text-accent-dark transition-colors font-medium"
+            className="text-sm text-black hover:text-neutral-600 transition-colors font-medium"
           >
             Forgot your password?
           </a>
@@ -111,9 +111,9 @@ export function LoginForm({
           type="submit" 
           disabled={isLoading}
           className="group w-full py-3 px-4 bg-black text-white rounded-lg font-medium
-                   shadow-soft hover:shadow-glow-hover hover:bg-neutral-900
+                   shadow-soft hover:shadow-large hover:bg-neutral-900
                    disabled:opacity-50 disabled:cursor-not-allowed
-                   focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
+                   focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2
                    transition-all duration-300 ease-out"
         >
           <span className="flex items-center justify-center gap-2">
@@ -130,7 +130,7 @@ export function LoginForm({
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-accent hover:text-accent-dark transition-colors font-medium"
+            className="text-black hover:text-neutral-600 transition-colors font-medium"
           >
             {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
           </button>

@@ -19,6 +19,20 @@ export default function TopBar() {
 
   // State for tracking logout process
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  // State for scroll effect
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Handle scroll effect for transparent background
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      setIsScrolled(scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Handle click outside dropdown to close it
   useEffect(() => {
@@ -48,15 +62,19 @@ export default function TopBar() {
   };
 
   return (
-    <div className="w-full bg-white border-b border-neutral-200">
+    <div className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      isScrolled 
+        ? 'bg-black/80 backdrop-blur-md border-b border-white/10' 
+        : 'bg-black border-b border-neutral-800'
+    }`}>
       <div className="max-w-7xl mx-auto flex justify-between items-center px-4 py-4">
-        <Link href="/" className="text-lg font-semibold text-black flex items-center gap-3 hover:opacity-80 transition-opacity">
+        <Link href="/" className="text-lg font-semibold text-white flex items-center gap-3 hover:opacity-80 transition-opacity">
           <Image 
             src="/kosmamedia-logo.svg" 
             alt="KosmaMedia Logo" 
             width={40} 
             height={32} 
-            className="h-8 w-auto"
+            className="h-8 w-auto filter invert"
           />
           <span className="font-sans hidden sm:block">KosmaMedia</span>
         </Link>
@@ -67,7 +85,7 @@ export default function TopBar() {
               {/* Show login button for unauthenticated users */}
               <Link
                 href="/login"
-                className="px-6 py-2 text-sm font-medium text-white bg-black hover:bg-neutral-900 rounded-lg transition-all duration-200 shadow-soft hover:shadow-glow-hover"
+                className="px-6 py-2 text-sm font-medium text-black bg-white hover:bg-neutral-100 rounded-lg transition-all duration-200 shadow-soft hover:shadow-medium"
               >
                 Sign in
               </Link>
@@ -80,7 +98,7 @@ export default function TopBar() {
               {user && pathname !== '/dashboard' && (
                 <button
                   onClick={() => router.push('/dashboard')}
-                  className="hidden sm:block px-4 py-2 bg-accent hover:bg-accent-dark text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-soft hover:shadow-medium"
+                  className="hidden sm:block px-4 py-2 bg-white hover:bg-neutral-100 text-black rounded-lg text-sm font-medium transition-all duration-200 shadow-soft hover:shadow-medium"
                 >
                   🎬 Content-Planer
                 </button>
@@ -89,11 +107,20 @@ export default function TopBar() {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center gap-2 hover:bg-neutral-50 px-3 py-2 rounded-lg transition-colors"
+                  className="flex items-center gap-2 hover:bg-white/10 px-3 py-2 rounded-lg transition-colors"
                 >
-                  <div className="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center text-black font-medium">
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-black font-medium">
                     {user.email?.[0].toUpperCase()}
                   </div>
+                  {/* Dropdown Arrow */}
+                  <svg 
+                    className={`w-4 h-4 text-white transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
                 
                 {isDropdownOpen && (

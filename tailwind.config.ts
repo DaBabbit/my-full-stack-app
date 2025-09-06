@@ -17,9 +17,9 @@ export default {
           dark: '#000000',    // Pure black
         },
         accent: {
-          DEFAULT: '#3b82f6', // Blue-500: Resend's blue accent
-          light: '#60a5fa',   // Blue-400: Light blue
-          dark: '#2563eb',    // Blue-600: Dark blue
+          DEFAULT: '#000000', // Pure black accent
+          light: '#374151',   // Gray-700: Dark gray
+          dark: '#000000',    // Pure black
         },
         neutral: {
           DEFAULT: '#ffffff', // Pure white

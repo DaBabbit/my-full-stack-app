@@ -80,6 +80,7 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Status-Icons und Farben
   const getStatusIcon = (status: string) => {
@@ -107,6 +108,18 @@ export default function Dashboard() {
 
     fetchVideos();
   }, [user, router]);
+
+  // Handle mobile detection and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -228,20 +241,7 @@ export default function Dashboard() {
               <span className="text-xl font-semibold text-white">kosmamedia</span>
             </div>
 
-            {/* Search Bar - Hidden on mobile */}
-            <div className="hidden md:block md:ml-8">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-neutral-400" />
-                </div>
-                <input
-                  type="text"
-                  className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-64 pl-10 p-2.5 placeholder-neutral-400"
-                  placeholder="Search videos..."
-                />
           </div>
-        </div>
-      </div>
 
           <div className="flex items-center space-x-3">
             {/* Notifications */}
@@ -336,21 +336,6 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Search on mobile */}
-          {!sidebarCollapsed && (
-            <div className="md:hidden mb-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-neutral-400" />
-                </div>
-                <input
-                  type="text"
-                  className="bg-neutral-800/50 backdrop-blur-md border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-full pl-10 p-2.5 placeholder-neutral-400"
-                  placeholder="Search..."
-                />
-              </div>
-            </div>
-          )}
 
           {/* Navigation Items */}
           <ul className="space-y-2 font-medium flex-1">
@@ -400,7 +385,9 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <motion.main 
-        animate={{ marginLeft: sidebarCollapsed ? '80px' : '256px' }}
+        animate={{ 
+          marginLeft: isMobile ? '0px' : (sidebarCollapsed ? '80px' : '256px')
+        }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="p-4 ml-0 md:ml-64 pt-24"
       >

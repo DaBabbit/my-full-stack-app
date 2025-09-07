@@ -417,13 +417,20 @@ export default function VideosPage() {
     if (!searchTerm.trim()) return true; // Show all videos if search is empty
     
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matches = (
       video.name.toLowerCase().includes(searchLower) ||
       video.status.toLowerCase().includes(searchLower) ||
       (video.responsible_person && video.responsible_person.toLowerCase().includes(searchLower)) ||
       (video.description && video.description.toLowerCase().includes(searchLower)) ||
       (video.inspiration_source && video.inspiration_source.toLowerCase().includes(searchLower))
     );
+    
+    // Debug log
+    if (searchTerm.trim()) {
+      console.log(`Search: "${searchTerm}" -> Video: "${video.name}" -> Match: ${matches}`);
+    }
+    
+    return matches;
   });
 
   // Helper function for date formatting with leading zeros

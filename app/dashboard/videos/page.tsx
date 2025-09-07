@@ -651,11 +651,11 @@ export default function VideosPage() {
                         <td className="py-4 px-4">
                           <CustomDropdown
                             options={[
-                              { value: 'Idee', label: 'Idee' },
-                              { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme' },
-                              { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)' },
-                              { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen' },
-                              { value: 'Hochgeladen', label: 'Hochgeladen' }
+                              { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                              { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                              { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                              { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                              { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
                             ]}
                             value={video.status}
                             onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
@@ -785,11 +785,11 @@ export default function VideosPage() {
                         <label className="block text-xs font-medium text-neutral-400 mb-2">Status</label>
                         <CustomDropdown
                           options={[
-                            { value: 'Idee', label: 'Idee' },
-                            { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme' },
-                            { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)' },
-                            { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen' },
-                            { value: 'Hochgeladen', label: 'Hochgeladen' }
+                            { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                            { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                            { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                            { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                            { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
                           ]}
                           value={video.status}
                           onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
@@ -902,11 +902,11 @@ export default function VideosPage() {
                   </label>
                   <CustomDropdown
                     options={[
-                      { value: 'Idee', label: 'Idee' },
-                      { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme' },
-                      { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)' },
-                      { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen' },
-                      { value: 'Hochgeladen', label: 'Hochgeladen' }
+                      { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                      { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                      { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                      { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                      { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
                     ]}
                     value={newVideo.status}
                     onChange={(status) => setNewVideo({ ...newVideo, status })}

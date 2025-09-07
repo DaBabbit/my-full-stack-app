@@ -26,7 +26,7 @@ export function LoginForm({
   };
 
   return (
-    <div className="w-full space-y-8 p-8 bg-white rounded-2xl shadow-large border border-neutral-200">
+    <div className="w-full space-y-8 p-8 bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700">
       <div className="text-center">
         <div className="flex items-center justify-center gap-3 mb-6">
           <Image 
@@ -34,16 +34,16 @@ export function LoginForm({
             alt="KosmaMedia Logo" 
             width={40} 
             height={32} 
-            className="h-8 w-auto"
+            className="h-8 w-auto filter invert"
           />
-          <h2 className="text-2xl font-semibold text-black">
+          <h2 className="text-2xl font-semibold text-white">
             kosmamedia
           </h2>
         </div>
       </div>
 
       {error && (
-        <div className="text-red-500 text-center">
+        <div className="bg-red-900/20 border border-red-500/20 text-red-300 px-4 py-3 rounded-xl backdrop-blur-sm text-center">
           {error}
         </div>
       )}
@@ -51,7 +51,7 @@ export function LoginForm({
       <div className="mt-6 space-y-4">
         <button
           onClick={onGoogleSignIn}
-          className="w-full py-3 px-4 border border-neutral-200 rounded-lg shadow-soft text-black bg-white hover:bg-neutral-50 hover:shadow-medium transition-all duration-200 flex items-center justify-center font-medium"
+          className="w-full py-3 px-4 border border-neutral-600 rounded-xl bg-neutral-800/50 text-white hover:bg-neutral-700/50 hover:border-neutral-500 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300 flex items-center justify-center font-medium backdrop-blur-sm"
         >
           <Image
             src="/Google-Logo.png"
@@ -60,22 +60,22 @@ export function LoginForm({
             height={20}
             className="mr-3"
           />
-          Sign in with Google
+          Mit Google anmelden
         </button>
 
         <div className="flex items-center my-6">
-          <div className="flex-grow border-t border-neutral-200"></div>
-          <span className="mx-4 text-sm text-neutral-500 font-medium">OR</span>
-          <div className="flex-grow border-t border-neutral-200"></div>
+          <div className="flex-grow border-t border-neutral-600"></div>
+          <span className="mx-4 text-sm text-neutral-400 font-medium">ODER</span>
+          <div className="flex-grow border-t border-neutral-600"></div>
         </div>
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-black">
-          {isSignUp ? 'Create an account' : 'Welcome'}
+        <h2 className="text-2xl font-bold text-white">
+          {isSignUp ? 'Konto erstellen' : 'Willkommen zurück'}
         </h2>
-        <p className="mt-2 text-sm text-neutral-600">
-          {isSignUp ? 'Fill in your details to get started' : 'Enter your email to get started.'}
+        <p className="mt-2 text-sm text-neutral-300">
+          {isSignUp ? 'Geben Sie Ihre Daten ein, um zu beginnen' : 'Geben Sie Ihre E-Mail ein, um zu beginnen.'}
         </p>
       </div>
 
@@ -85,39 +85,34 @@ export function LoginForm({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email address"
-            className="w-full px-4 py-3 border border-neutral-200 rounded-lg placeholder-neutral-500 text-black bg-white focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
+            placeholder="E-Mail-Adresse"
+            className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-700 hover:border-neutral-600 transition-all duration-300"
           />
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="w-full px-4 py-3 border border-neutral-200 rounded-lg placeholder-neutral-500 text-black bg-white focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
-            style={{ color: '#000000' }}
+            placeholder="Passwort"
+            className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-700 hover:border-neutral-600 transition-all duration-300"
           />
         </div>
 
         <div className="flex items-center justify-between">
           <a
             href="/reset-password"
-            className="text-sm text-black hover:text-neutral-600 transition-colors font-medium"
+            className="text-sm text-neutral-400 hover:text-white transition-colors font-medium"
           >
-            Forgot your password?
+            Passwort vergessen?
           </a>
         </div>
 
         <button 
           type="submit" 
           disabled={isLoading}
-          className="group w-full py-3 px-4 bg-black text-white rounded-lg font-medium
-                   shadow-soft hover:shadow-large hover:bg-neutral-900
-                   disabled:opacity-50 disabled:cursor-not-allowed
-                   focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2
-                   transition-all duration-300 ease-out"
+          className="group w-full py-3 px-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-xl font-medium transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-neutral-800 disabled:hover:text-white disabled:hover:border-neutral-700"
         >
           <span className="flex items-center justify-center gap-2">
-            {isSignUp ? 'Sign up' : 'Let´s go'}
+            {isSignUp ? 'Registrieren' : 'Los geht\'s'}
             {!isSignUp && (
               <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -130,9 +125,9 @@ export function LoginForm({
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-black hover:text-neutral-600 transition-colors font-medium"
+            className="text-neutral-400 hover:text-white transition-colors font-medium"
           >
-            {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+            {isSignUp ? 'Bereits ein Konto? Anmelden' : 'Noch kein Konto? Registrieren'}
           </button>
         </div>
       </form>

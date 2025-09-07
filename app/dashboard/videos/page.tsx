@@ -81,6 +81,8 @@ export default function VideosPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -89,7 +91,6 @@ export default function VideosPage() {
     status: 'Idee',
     publication_date: '',
     responsible_person: '',
-    storage_location: '',
     inspiration_source: '',
     description: ''
   });
@@ -234,15 +235,6 @@ export default function VideosPage() {
     }
 
     // Validierung für URLs (optional)
-    if (newVideo.storage_location && newVideo.storage_location.trim()) {
-      try {
-        new URL(newVideo.storage_location);
-      } catch {
-        alert('Bitte geben Sie eine gültige URL für den Speicherort ein (z.B. https://...).');
-        return;
-      }
-    }
-
     if (newVideo.inspiration_source && newVideo.inspiration_source.trim()) {
       try {
         new URL(newVideo.inspiration_source);
@@ -317,7 +309,7 @@ export default function VideosPage() {
             status: newVideo.status,
             publication_date: newVideo.publication_date || null,
             responsible_person: newVideo.responsible_person || null,
-            storage_location: newVideo.storage_location || null,
+            storage_location: null, // Will be set automatically via Nextcloud integration
             inspiration_source: newVideo.inspiration_source || null,
             description: newVideo.description || null,
           }
@@ -339,7 +331,6 @@ export default function VideosPage() {
         status: 'Idee',
         publication_date: '',
         responsible_person: '',
-        storage_location: '',
         inspiration_source: '',
         description: ''
       });
@@ -380,8 +371,51 @@ export default function VideosPage() {
     router.push('/login');
   };
 
+  const handleEditVideo = (video: Video) => {
+    setEditingVideo(video);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVideo) return;
+
+    try {
+      const { supabase } = await import('@/utils/supabase');
+      
+      const { error } = await supabase
+        .from('videos')
+        .update({
+          title: editingVideo.name,
+          status: editingVideo.status,
+          publication_date: editingVideo.publication_date || null,
+          responsible_person: editingVideo.responsible_person || null,
+          inspiration_source: editingVideo.inspiration_source || null,
+          description: editingVideo.description || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingVideo.id);
+
+      if (error) {
+        console.error('Error updating video:', error);
+        alert(`Fehler beim Aktualisieren des Videos: ${error.message}`);
+        return;
+      }
+
+      // Success - refresh videos and close modal
+      fetchVideos();
+      setShowEditModal(false);
+      setEditingVideo(null);
+    } catch (error) {
+      console.error('Error updating video:', error);
+      alert('Fehler beim Aktualisieren des Videos. Bitte versuche es erneut.');
+    }
+  };
+
   // Filter videos based on search term
   const filteredVideos = videos.filter(video => {
+    if (!searchTerm.trim()) return true; // Show all videos if search is empty
+    
     const searchLower = searchTerm.toLowerCase();
     return (
       video.name.toLowerCase().includes(searchLower) ||
@@ -391,6 +425,20 @@ export default function VideosPage() {
       (video.inspiration_source && video.inspiration_source.toLowerCase().includes(searchLower))
     );
   });
+
+  // Helper function for date formatting with leading zeros
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
+    } catch {
+      return '-';
+    }
+  };
 
   if (!user) {
     return (
@@ -701,7 +749,7 @@ export default function VideosPage() {
 
                         {/* Veröffentlichungsdatum */}
                         <td className="py-4 px-4 text-neutral-300 text-sm">
-                          {video.publication_date ? new Date(video.publication_date).toLocaleDateString('de-DE') : '-'}
+                          {formatDate(video.publication_date)}
                         </td>
 
                         {/* Verantwortlichkeit */}
@@ -725,8 +773,7 @@ export default function VideosPage() {
 
                         {/* Zuletzt aktualisiert */}
                         <td className="py-4 px-4 text-neutral-300 text-sm">
-                          {video.last_updated ? new Date(video.last_updated).toLocaleDateString('de-DE') : 
-                           video.updated_at ? new Date(video.updated_at).toLocaleDateString('de-DE') : '-'}
+                          {formatDate(video.last_updated || video.updated_at)}
                         </td>
 
                         {/* Inspiration Quelle */}
@@ -754,8 +801,9 @@ export default function VideosPage() {
                         <td className="py-4 px-4">
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => console.log('Edit video:', video.id)}
+                              onClick={() => handleEditVideo(video)}
                               className="text-white hover:text-neutral-300"
+                              title="Video bearbeiten"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
@@ -799,8 +847,9 @@ export default function VideosPage() {
                         </div>
                         <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
                           <button
-                            onClick={() => console.log('Edit video:', video.id)}
+                            onClick={() => handleEditVideo(video)}
                             className="text-white hover:text-neutral-300 p-1"
+                            title="Video bearbeiten"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
@@ -839,7 +888,7 @@ export default function VideosPage() {
                         <div>
                           <label className="block text-xs font-medium text-neutral-400 mb-1">Veröffentlichung</label>
                           <p className="text-neutral-300">
-                            {video.publication_date ? new Date(video.publication_date).toLocaleDateString('de-DE') : '-'}
+                            {formatDate(video.publication_date)}
                           </p>
                         </div>
                         <div>
@@ -866,8 +915,7 @@ export default function VideosPage() {
                         <div>
                           <label className="block text-xs font-medium text-neutral-400 mb-1">Aktualisiert</label>
                           <p className="text-neutral-300">
-                            {video.last_updated ? new Date(video.last_updated).toLocaleDateString('de-DE') : 
-                             video.updated_at ? new Date(video.updated_at).toLocaleDateString('de-DE') : '-'}
+                            {formatDate(video.last_updated || video.updated_at)}
                           </p>
                         </div>
                       </div>
@@ -972,7 +1020,7 @@ export default function VideosPage() {
                 </div>
 
                 {/* Verantwortliche Person */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-neutral-300 mb-2">
                     Verantwortliche Person
                   </label>
@@ -982,20 +1030,6 @@ export default function VideosPage() {
                     onChange={(e) => setNewVideo({ ...newVideo, responsible_person: e.target.value })}
                     className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
                     placeholder="z.B. Max Mustermann"
-                  />
-                </div>
-
-                {/* Speicherort */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-300 mb-2">
-                    Speicherort
-                  </label>
-                  <input
-                    type="url"
-                    value={newVideo.storage_location}
-                    onChange={(e) => setNewVideo({ ...newVideo, storage_location: e.target.value })}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                    placeholder="https://drive.google.com/..."
                   />
                 </div>
 
@@ -1041,6 +1075,139 @@ export default function VideosPage() {
                   className="px-6 py-2 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-lg transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                 >
                   Video erstellen
+                </button>
+              </div>
+            </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Video Modal */}
+      <AnimatePresence>
+        {showEditModal && editingVideo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 touch-action-none"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
+            >
+            <h3 className="text-xl font-semibold mb-6 text-white">✏️ Video bearbeiten</h3>
+            <form onSubmit={handleUpdateVideo}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Video Titel */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Video Titel *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingVideo.name}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, name: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="z.B. Mein YouTube Tutorial"
+                    required
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Status
+                  </label>
+                  <CustomDropdown
+                    options={[
+                      { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                      { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                      { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                      { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                      { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
+                    ]}
+                    value={editingVideo.status}
+                    onChange={(status) => setEditingVideo({ ...editingVideo, status })}
+                  />
+                </div>
+
+                {/* Veröffentlichungsdatum */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Geplantes Veröffentlichungsdatum
+                  </label>
+                  <input
+                    type="date"
+                    value={editingVideo.publication_date || ''}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, publication_date: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                  />
+                </div>
+
+                {/* Verantwortliche Person */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Verantwortliche Person
+                  </label>
+                  <input
+                    type="text"
+                    value={editingVideo.responsible_person || ''}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, responsible_person: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="z.B. Max Mustermann"
+                  />
+                </div>
+
+                {/* Inspiration Quelle */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Inspiration Quelle
+                  </label>
+                  <input
+                    type="url"
+                    value={editingVideo.inspiration_source || ''}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, inspiration_source: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
+
+                {/* Beschreibung */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Beschreibung
+                  </label>
+                  <textarea
+                    value={editingVideo.description || ''}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white resize-none"
+                    placeholder="Kurze Beschreibung des Videos..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingVideo(null);
+                  }}
+                  className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-lg transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                >
+                  Änderungen speichern
                 </button>
               </div>
             </form>

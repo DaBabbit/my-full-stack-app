@@ -35,43 +35,50 @@ function VerifyEmailContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md w-full space-y-8 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
-            Check Your Email
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            We sent a verification link to{' '}
-            <span className="font-medium">{email}</span>
-          </p>
-        </div>
-
-        <div className="mt-8 space-y-6">
-          <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-            <p>Please check your email and click the verification link to continue.</p>
-            <p className="mt-4">
-              Didn&apos;t receive the email? You can request a new one{' '}
-              {countdown > 0 ? (
-                <span>in {countdown} seconds</span>
-              ) : (
-                <button
-                  onClick={handleResendEmail}
-                  className="text-primary-darker hover:text-primary"
-                >
-                  now
-                </button>
-              )}
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="max-w-md w-full space-y-8 p-6">
+        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-8 border border-neutral-700">
+          <div className="text-center">
+            <div className="mb-6">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-500/10 border border-blue-500/20">
+                <span className="text-3xl">📧</span>
+              </div>
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-4">
+              E-Mail überprüfen
+            </h2>
+            <p className="text-neutral-300 mb-8">
+              Wir haben einen Bestätigungslink an{' '}
+              <span className="font-medium text-white">{email}</span> gesendet
             </p>
           </div>
 
-          <div className="text-center">
-            <button
-              onClick={() => router.push('/login')}
-              className="text-sm text-primary-darker hover:text-primary"
-            >
-              ← Back to login
-            </button>
+          <div className="space-y-6">
+            <div className="text-center text-sm text-neutral-300">
+              <p className="mb-4">Bitte überprüfen Sie Ihre E-Mail und klicken Sie auf den Bestätigungslink, um fortzufahren.</p>
+              <p>
+                E-Mail nicht erhalten? Sie können eine neue anfordern{' '}
+                {countdown > 0 ? (
+                  <span className="text-neutral-400">in {countdown} Sekunden</span>
+                ) : (
+                  <button
+                    onClick={handleResendEmail}
+                    className="text-white hover:text-neutral-300 underline"
+                  >
+                    jetzt
+                  </button>
+                )}
+              </p>
+            </div>
+
+            <div className="text-center">
+              <button
+                onClick={() => router.push('/login')}
+                className="text-sm text-neutral-400 hover:text-white transition-colors"
+              >
+                ← Zurück zur Anmeldung
+              </button>
+            </div>
           </div>
         </div>
       </div>

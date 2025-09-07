@@ -45,20 +45,25 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full space-y-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900">E-Mail gesendet!</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Bitte überprüfen Sie Ihre E-Mail und klicken Sie auf den Link.
-            </p>
-            <div className="mt-6">
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="max-w-md w-full space-y-8 p-6">
+          <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-8 border border-neutral-700">
+            <div className="text-center">
+              <div className="mb-6">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-500/10 border border-green-500/20">
+                  <span className="text-3xl">✉️</span>
+                </div>
+              </div>
+              <h2 className="text-3xl font-bold text-white mb-4">E-Mail gesendet!</h2>
+              <p className="text-neutral-300 mb-6">
+                Bitte überprüfen Sie Ihre E-Mail und klicken Sie auf den Link.
+              </p>
               <button
                 onClick={() => {
                   setSuccess(false)
                   setEmail('')
                 }}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="w-full py-3 px-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-xl font-medium transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
               >
                 Neuen Link anfordern
               </button>
@@ -70,45 +75,52 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">Passwort zurücksetzen</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Geben Sie Ihre E-Mail-Adresse ein, um einen Reset-Link zu erhalten
-          </p>
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="max-w-md w-full space-y-8 p-6">
+        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-8 border border-neutral-700">
+          <div className="text-center mb-8">
+            <div className="mb-6">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-neutral-800 border border-neutral-600">
+                <span className="text-3xl">🔐</span>
+              </div>
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-4">Passwort zurücksetzen</h2>
+            <p className="text-neutral-300">
+              Geben Sie Ihre E-Mail-Adresse ein, um einen Reset-Link zu erhalten
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-neutral-300 mb-2">
+                E-Mail-Adresse
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-700 hover:border-neutral-600 transition-all duration-300"
+                placeholder="ihre.email@beispiel.de"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading || !email}
+              className="w-full py-3 px-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-xl font-medium transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:opacity-50 disabled:hover:bg-neutral-800 disabled:hover:text-white disabled:hover:border-neutral-700"
+            >
+              {isLoading ? 'Wird gesendet...' : 'Reset-Link senden'}
+            </button>
+          </form>
+
+          {error && (
+            <div className="mt-6 bg-red-900/20 border border-red-500/20 text-red-300 px-4 py-3 rounded-xl backdrop-blur-sm">
+              <span>{error}</span>
+            </div>
+          )}
         </div>
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              E-Mail-Adresse
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="ihre.email@beispiel.de"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading || !email}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            {isLoading ? 'Wird gesendet...' : 'Reset-Link senden'}
-          </button>
-        </form>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            <span>{error}</span>
-          </div>
-        )}
       </div>
     </div>
   )

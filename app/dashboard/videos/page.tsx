@@ -27,6 +27,7 @@ import {
   Check,
   Rocket
 } from 'lucide-react';
+import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
 
 interface Video {
@@ -194,7 +195,8 @@ export default function VideosPage() {
     e.preventDefault();
     
     // Umfassende Validierung
-    const trimmedName = newVideo.name.trim();
+    const trimmedName = newVideo.name.trim()
+    ;
     
     if (!trimmedName) {
       alert('Bitte geben Sie einen Videotitel ein.');
@@ -396,7 +398,7 @@ export default function VideosPage() {
               <span className="text-xl font-semibold text-white">kosmamedia</span>
             </div>
 
-            {/* Search Bar - Hidden on mobile */}
+            {/* Search Bar */}
             <div className="hidden md:block md:ml-8">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -405,7 +407,7 @@ export default function VideosPage() {
                 <input
                   type="text"
                   className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-64 pl-10 p-2.5 placeholder-neutral-400"
-                  placeholder="Search videos..."
+                  placeholder="Videos suchen..."
                 />
               </div>
             </div>
@@ -552,18 +554,35 @@ export default function VideosPage() {
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="p-4 ml-0 md:ml-64 pt-24"
       >
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Videos</h1>
-            <p className="text-neutral-400">Verwalte deine Video-Projekte und deren Status</p>
+        <div className="mb-6 md:mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Videos</h1>
+              <p className="text-neutral-400">Verwalte deine Video-Projekte und deren Status</p>
+            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-4 md:px-6 py-3 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] sm:flex-shrink-0"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="hidden sm:inline">Neues Video</span>
+              <span className="sm:hidden">Video hinzufügen</span>
+            </button>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-6 py-3 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-3xl flex items-center space-x-2 transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Neues Video</span>
-          </button>
+          
+          {/* Mobile Search Bar */}
+          <div className="md:hidden mt-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-neutral-400" />
+              </div>
+              <input
+                type="text"
+                className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl focus:ring-white focus:border-white block w-full pl-10 p-3 placeholder-neutral-400"
+                placeholder="Videos suchen..."
+              />
+            </div>
+          </div>
         </div>
 
         {/* Videos Table */}
@@ -592,22 +611,24 @@ export default function VideosPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-neutral-700">
-                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Videotitel</th>
-                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Veröffentlichung</th>
-                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Verantwortlich</th>
-                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Speicherort</th>
-                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktualisiert</th>
-                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Inspiration</th>
-                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Beschreibung</th>
-                    <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktionen</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-neutral-700">
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Videotitel</th>
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Veröffentlichung</th>
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Verantwortlich</th>
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Speicherort</th>
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktualisiert</th>
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Inspiration</th>
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Beschreibung</th>
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktionen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                   {videos.map((video) => {
                     const statusInfo = getStatusIcon(video.status);
                     const StatusIcon = statusInfo.icon;
@@ -628,27 +649,17 @@ export default function VideosPage() {
 
                         {/* Status */}
                         <td className="py-4 px-4">
-                          <div className="relative">
-                            <select
-                              value={video.status}
-                              onChange={(e) => handleUpdateStatus(video.id, e.target.value)}
-                              className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-800 hover:border-neutral-600 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300 cursor-pointer"
-                              style={{
-                                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                                backgroundPosition: 'right 8px center',
-                                backgroundRepeat: 'no-repeat',
-                                backgroundSize: '16px'
-                              }}
-                            >
-                              <option value="Idee">Idee</option>
-                              <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
-                              <option value="In Bearbeitung (Schnitt)">In Bearbeitung (Schnitt)</option>
-                              <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
-                              <option value="Hochgeladen">Hochgeladen</option>
-                            </select>
-                            {/* Custom Glow Effect on Hover */}
-                            <div className="absolute inset-0 rounded-2xl bg-white/5 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                          </div>
+                          <CustomDropdown
+                            options={[
+                              { value: 'Idee', label: 'Idee' },
+                              { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme' },
+                              { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)' },
+                              { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen' },
+                              { value: 'Hochgeladen', label: 'Hochgeladen' }
+                            ]}
+                            value={video.status}
+                            onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
+                          />
                         </td>
 
                         {/* Veröffentlichungsdatum */}
@@ -727,9 +738,132 @@ export default function VideosPage() {
                       </tr>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="lg:hidden space-y-4 p-4">
+                {videos.map((video) => {
+                  const statusInfo = getStatusIcon(video.status);
+                  const StatusIcon = statusInfo.icon;
+                  
+                  return (
+                    <div key={video.id} className="bg-neutral-800/50 border border-neutral-700 rounded-2xl p-4 space-y-4">
+                      {/* Header mit Titel und Status Icon */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center flex-1 min-w-0">
+                          <div className={`p-2 bg-neutral-800 rounded-lg mr-3 flex-shrink-0`}>
+                            <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-white font-medium truncate">{video.name}</h3>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+                          <button
+                            onClick={() => console.log('Edit video:', video.id)}
+                            className="text-white hover:text-neutral-300 p-1"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          {video.storage_location && (
+                            <a
+                              href={video.storage_location}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-white hover:text-neutral-300 p-1"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status Dropdown */}
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-400 mb-2">Status</label>
+                        <CustomDropdown
+                          options={[
+                            { value: 'Idee', label: 'Idee' },
+                            { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme' },
+                            { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)' },
+                            { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen' },
+                            { value: 'Hochgeladen', label: 'Hochgeladen' }
+                          ]}
+                          value={video.status}
+                          onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
+                          className="text-sm"
+                        />
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-400 mb-1">Veröffentlichung</label>
+                          <p className="text-neutral-300">
+                            {video.publication_date ? new Date(video.publication_date).toLocaleDateString('de-DE') : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-400 mb-1">Verantwortlich</label>
+                          <p className="text-neutral-300 truncate" title={video.responsible_person || ''}>
+                            {video.responsible_person || '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-400 mb-1">Speicherort</label>
+                          {video.storage_location ? (
+                            <a 
+                              href={video.storage_location} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 underline truncate block"
+                            >
+                              Link
+                            </a>
+                          ) : (
+                            <p className="text-neutral-300">-</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-400 mb-1">Aktualisiert</label>
+                          <p className="text-neutral-300">
+                            {video.last_updated ? new Date(video.last_updated).toLocaleDateString('de-DE') : 
+                             video.updated_at ? new Date(video.updated_at).toLocaleDateString('de-DE') : '-'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Inspiration und Beschreibung */}
+                      {(video.inspiration_source || video.description) && (
+                        <div className="space-y-3 pt-2 border-t border-neutral-700">
+                          {video.inspiration_source && (
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-400 mb-1">Inspiration</label>
+                              <a 
+                                href={video.inspiration_source} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 underline text-sm truncate block"
+                              >
+                                Link
+                              </a>
+                            </div>
+                          )}
+                          {video.description && (
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-400 mb-1">Beschreibung</label>
+                              <p className="text-neutral-300 text-sm leading-relaxed">{video.description}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       </motion.main>
@@ -741,7 +875,7 @@ export default function VideosPage() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto"
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto"
           >
             <h3 className="text-xl font-semibold mb-6 text-white">🎬 Neues Video erstellen</h3>
             <form onSubmit={handleAddVideo}>
@@ -766,21 +900,17 @@ export default function VideosPage() {
                   <label className="block text-sm font-medium text-neutral-300 mb-2">
                     Status
                   </label>
-                  <div className="relative">
-                    <select
-                      value={newVideo.status}
-                      onChange={(e) => setNewVideo({ ...newVideo, status: e.target.value })}
-                      className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-800 hover:border-neutral-600 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all duration-300 cursor-pointer"
-                    >
-                      <option value="Idee">Idee</option>
-                      <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
-                      <option value="In Bearbeitung (Schnitt)">In Bearbeitung (Schnitt)</option>
-                      <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
-                      <option value="Hochgeladen">Hochgeladen</option>
-                    </select>
-                    {/* Custom Glow Effect on Hover */}
-                    <div className="absolute inset-0 rounded-2xl bg-white/5 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                  </div>
+                  <CustomDropdown
+                    options={[
+                      { value: 'Idee', label: 'Idee' },
+                      { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme' },
+                      { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)' },
+                      { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen' },
+                      { value: 'Hochgeladen', label: 'Hochgeladen' }
+                    ]}
+                    value={newVideo.status}
+                    onChange={(status) => setNewVideo({ ...newVideo, status })}
+                  />
                 </div>
 
                 {/* Veröffentlichungsdatum */}

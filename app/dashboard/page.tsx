@@ -11,7 +11,6 @@ import {
   Plus,
   Menu,
   X,
-  Search,
   Bell,
   User,
   PlayCircle,

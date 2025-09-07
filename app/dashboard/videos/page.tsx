@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
   Video, 
@@ -82,6 +82,8 @@ export default function VideosPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
   const [newVideo, setNewVideo] = useState({
     name: '',
     status: 'Idee',
@@ -118,6 +120,18 @@ export default function VideosPage() {
 
     fetchVideos();
   }, [user, router]);
+
+  // Handle mobile detection and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -366,6 +380,18 @@ export default function VideosPage() {
     router.push('/login');
   };
 
+  // Filter videos based on search term
+  const filteredVideos = videos.filter(video => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      video.name.toLowerCase().includes(searchLower) ||
+      video.status.toLowerCase().includes(searchLower) ||
+      (video.responsible_person && video.responsible_person.toLowerCase().includes(searchLower)) ||
+      (video.description && video.description.toLowerCase().includes(searchLower)) ||
+      (video.inspiration_source && video.inspiration_source.toLowerCase().includes(searchLower))
+    );
+  });
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -406,6 +432,8 @@ export default function VideosPage() {
                 </div>
                 <input
                   type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-64 pl-10 p-2.5 placeholder-neutral-400"
                   placeholder="Videos suchen..."
                 />
@@ -550,7 +578,9 @@ export default function VideosPage() {
 
       {/* Main Content */}
       <motion.main 
-        animate={{ marginLeft: sidebarCollapsed ? '80px' : '256px' }}
+        animate={{ 
+          marginLeft: isMobile ? '0px' : (sidebarCollapsed ? '80px' : '256px')
+        }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="p-4 ml-0 md:ml-64 pt-24"
       >
@@ -578,6 +608,8 @@ export default function VideosPage() {
               </div>
               <input
                 type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl focus:ring-white focus:border-white block w-full pl-10 p-3 placeholder-neutral-400"
                 placeholder="Videos suchen..."
               />
@@ -595,12 +627,17 @@ export default function VideosPage() {
             <div className="flex items-center justify-center py-8">
               <span className="loading loading-ring loading-lg text-white"></span>
             </div>
-          ) : videos.length === 0 ? (
+          ) : filteredVideos.length === 0 ? (
             <div className="text-center py-12">
               <Video className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">Noch keine Videos</h3>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                {searchTerm ? 'Keine Videos gefunden' : 'Noch keine Videos'}
+              </h3>
               <p className="text-neutral-400 mb-4">
-                Erstellen Sie Ihr erstes Video, um zu beginnen.
+                {searchTerm 
+                  ? `Keine Videos gefunden für "${searchTerm}". Versuchen Sie einen anderen Suchbegriff.`
+                  : 'Erstellen Sie Ihr erstes Video, um zu beginnen.'
+                }
               </p>
               <button
                 onClick={() => setShowAddModal(true)}
@@ -629,7 +666,7 @@ export default function VideosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                  {videos.map((video) => {
+                  {filteredVideos.map((video) => {
                     const statusInfo = getStatusIcon(video.status);
                     const StatusIcon = statusInfo.icon;
                     
@@ -744,7 +781,7 @@ export default function VideosPage() {
 
               {/* Mobile Card View */}
               <div className="lg:hidden space-y-4 p-4">
-                {videos.map((video) => {
+                {filteredVideos.map((video) => {
                   const statusInfo = getStatusIcon(video.status);
                   const StatusIcon = statusInfo.icon;
                   
@@ -869,14 +906,22 @@ export default function VideosPage() {
       </motion.main>
 
       {/* Add Video Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <AnimatePresence>
+        {showAddModal && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 touch-action-none"
           >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
+            >
             <h3 className="text-xl font-semibold mb-6 text-white">🎬 Neues Video erstellen</h3>
             <form onSubmit={handleAddVideo}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -999,9 +1044,10 @@ export default function VideosPage() {
                 </button>
               </div>
             </form>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (

@@ -35,8 +35,10 @@ function ProfileContent() {
   const [error, setError] = useState<string | null>(null);
   const { isInTrial, trialEndTime } = useTrialStatus();
 
-  // Check if user has active subscription
-  const hasActiveSubscription = subscription && subscription.status === 'active';
+  // Check if user has active subscription (including trial)
+  const hasActiveSubscription = subscription && 
+    ['active', 'trialing'].includes(subscription.status) && 
+    new Date(subscription.current_period_end) > new Date();
 
   // Show payment success message if redirected from successful payment
   useEffect(() => {

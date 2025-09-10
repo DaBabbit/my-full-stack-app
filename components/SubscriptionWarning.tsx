@@ -10,10 +10,10 @@ interface SubscriptionWarningProps {
 
 export default function SubscriptionWarning({ className = '' }: SubscriptionWarningProps) {
   const router = useRouter();
-  const { hasActiveSubscription, subscriptionStatus } = usePermissions();
+  const { hasActiveSubscription, subscriptionStatus, isLoading } = usePermissions();
 
-  // Don't show warning if user has active subscription
-  if (hasActiveSubscription) {
+  // Don't show warning while loading or if user has active subscription
+  if (isLoading || hasActiveSubscription) {
     return null;
   }
 

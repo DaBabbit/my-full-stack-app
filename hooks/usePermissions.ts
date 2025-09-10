@@ -12,6 +12,7 @@ export interface Permissions {
   hasActiveSubscription: boolean;
   subscriptionStatus: 'active' | 'trialing' | 'expired' | 'none';
   userRole: 'owner' | 'collaborator' | 'viewer' | 'none';
+  isLoading: boolean;
 }
 
 export function usePermissions(): Permissions {
@@ -28,7 +29,8 @@ export function usePermissions(): Permissions {
         canManageCollaborators: false,
         hasActiveSubscription: false,
         subscriptionStatus: 'none',
-        userRole: 'none'
+        userRole: 'none',
+        isLoading: true
       };
     }
 
@@ -56,7 +58,8 @@ export function usePermissions(): Permissions {
       canManageCollaborators: !!hasActiveSubscription && userRole === 'owner',
       hasActiveSubscription: !!hasActiveSubscription,
       subscriptionStatus,
-      userRole
+      userRole,
+      isLoading: false
     };
   }, [subscription, isLoading]);
 

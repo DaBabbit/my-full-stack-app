@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
 import PermissionErrorModal from '@/components/PermissionErrorModal';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -29,7 +30,8 @@ import {
   Scissors,
   Check,
   Rocket,
-  Trash2
+  Trash2,
+  Crown
 } from 'lucide-react';
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
@@ -90,6 +92,8 @@ export default function VideosPage() {
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [showPermissionError, setShowPermissionError] = useState(false);
   const [permissionErrorAction, setPermissionErrorAction] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -348,6 +352,13 @@ export default function VideosPage() {
   };
 
   const handleUpdateStatus = async (videoId: string, newStatus: string) => {
+    // Check permissions first
+    if (!permissions.canEditVideos) {
+      setPermissionErrorAction('Status ändern');
+      setShowPermissionError(true);
+      return;
+    }
+
     try {
       // Import supabase client
       const { supabase } = await import('@/utils/supabase');
@@ -355,7 +366,10 @@ export default function VideosPage() {
       // Update video status directly in Supabase
       const { error } = await supabase
         .from('videos')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', videoId);
 
       if (error) {
@@ -419,10 +433,13 @@ export default function VideosPage() {
     }
   };
 
-  const handleDeleteVideo = async (video: Video) => {
-    const confirmDelete = confirm(`Möchten Sie das Video "${video.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`);
-    
-    if (!confirmDelete) return;
+  const handleDeleteVideo = (video: Video) => {
+    setVideoToDelete(video);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteVideo = async () => {
+    if (!videoToDelete) return;
 
     try {
       const { supabase } = await import('@/utils/supabase');
@@ -430,7 +447,7 @@ export default function VideosPage() {
       const { error } = await supabase
         .from('videos')
         .delete()
-        .eq('id', video.id);
+        .eq('id', videoToDelete.id);
 
       if (error) {
         console.error('Error deleting video:', error);
@@ -440,6 +457,7 @@ export default function VideosPage() {
 
       // Success - refresh videos
       fetchVideos();
+      setVideoToDelete(null);
     } catch (error) {
       console.error('Error deleting video:', error);
       alert('Fehler beim Löschen des Videos. Bitte versuche es erneut.');
@@ -542,8 +560,16 @@ export default function VideosPage() {
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 className="flex items-center space-x-2 text-white hover:bg-neutral-800 rounded-lg p-2 transition-colors"
               >
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-black" />
+                <div className="relative">
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-black" />
+                  </div>
+                  {/* Premium Crown */}
+                  {permissions.hasActiveSubscription && permissions.subscriptionStatus === 'active' && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg">
+                      <Crown className="w-2.5 h-2.5 text-yellow-900" />
+                    </div>
+                  )}
                 </div>
                 <span className="hidden md:block text-sm">{user.email}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
@@ -561,7 +587,26 @@ export default function VideosPage() {
                   <div className="py-2">
                     <div className="px-4 py-3 border-b border-neutral-700">
                       <p className="text-sm text-white font-medium">{user.email}</p>
-                      <p className="text-xs text-neutral-400">Angemeldet</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-neutral-400">Angemeldet</p>
+                        <div className="flex items-center space-x-1">
+                          {permissions.subscriptionStatus === 'active' && (
+                            <>
+                              <Crown className="w-3 h-3 text-yellow-400" />
+                              <span className="text-xs text-yellow-400 font-medium">Premium</span>
+                            </>
+                          )}
+                          {permissions.subscriptionStatus === 'trialing' && (
+                            <span className="text-xs text-blue-400 font-medium">Trial</span>
+                          )}
+                          {permissions.subscriptionStatus === 'expired' && (
+                            <span className="text-xs text-orange-400 font-medium">Abgelaufen</span>
+                          )}
+                          {permissions.subscriptionStatus === 'none' && (
+                            <span className="text-xs text-neutral-500 font-medium">Kostenlos</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     
                     <button
@@ -1360,6 +1405,19 @@ export default function VideosPage() {
         isOpen={showPermissionError}
         onClose={() => setShowPermissionError(false)}
         action={permissionErrorAction}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setVideoToDelete(null);
+        }}
+        onConfirm={confirmDeleteVideo}
+        title="Video löschen"
+        message={`Möchten Sie das Video "${videoToDelete?.name}" wirklich löschen?`}
+        itemName={videoToDelete?.name}
       />
     </div>
   );

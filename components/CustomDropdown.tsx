@@ -26,6 +26,7 @@ export default function CustomDropdown({
   placeholder = 'Auswählen...'
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -42,11 +43,30 @@ export default function CustomDropdown({
 
   const selectedOption = options.find(option => option.value === value);
 
+  // Calculate dropdown position when opening
+  const updateDropdownPosition = () => {
+    if (dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  };
+
+  const handleToggle = () => {
+    if (!isOpen) {
+      updateDropdownPosition();
+    }
+    setIsOpen(!isOpen);
+  };
+
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="w-full bg-neutral-900/80 backdrop-blur-md border border-neutral-700 text-white text-sm rounded-xl px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 hover:bg-neutral-800/80 hover:border-neutral-600 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300 cursor-pointer text-left flex items-center"
       >
         <div className="flex items-center flex-1 min-w-0">
@@ -65,7 +85,12 @@ export default function CustomDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900/95 backdrop-blur-md border border-neutral-700 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
+        <div className="fixed bg-neutral-900/95 backdrop-blur-md border border-neutral-700 rounded-xl shadow-xl z-[9999] max-h-60 overflow-y-auto"
+             style={{
+               top: dropdownPosition.top,
+               left: dropdownPosition.left,
+               width: dropdownPosition.width
+             }}>
           {options.map((option) => (
             <button
               key={option.value}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
+import { usePermissions } from '@/hooks/usePermissions';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -26,7 +27,8 @@ import {
   Lightbulb,
   Scissors,
   Check,
-  Rocket
+  Rocket,
+  Crown
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -75,6 +77,7 @@ const sidebarBottomItems = [
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const permissions = usePermissions();
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -255,8 +258,16 @@ export default function Dashboard() {
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 className="flex items-center space-x-2 text-white hover:bg-neutral-800 rounded-lg p-2 transition-colors"
               >
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-black" />
+                <div className="relative">
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-black" />
+                  </div>
+                  {/* Premium Crown */}
+                  {permissions.hasActiveSubscription && permissions.subscriptionStatus === 'active' && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg">
+                      <Crown className="w-2.5 h-2.5 text-yellow-900" />
+                    </div>
+                  )}
                 </div>
                 <span className="hidden md:block text-sm">{user.email}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
@@ -274,7 +285,26 @@ export default function Dashboard() {
                   <div className="py-2">
                     <div className="px-4 py-3 border-b border-neutral-700">
                       <p className="text-sm text-white font-medium">{user.email}</p>
-                      <p className="text-xs text-neutral-400">Angemeldet</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-neutral-400">Angemeldet</p>
+                        <div className="flex items-center space-x-1">
+                          {permissions.subscriptionStatus === 'active' && (
+                            <>
+                              <Crown className="w-3 h-3 text-yellow-400" />
+                              <span className="text-xs text-yellow-400 font-medium">Premium</span>
+                            </>
+                          )}
+                          {permissions.subscriptionStatus === 'trialing' && (
+                            <span className="text-xs text-blue-400 font-medium">Trial</span>
+                          )}
+                          {permissions.subscriptionStatus === 'expired' && (
+                            <span className="text-xs text-orange-400 font-medium">Abgelaufen</span>
+                          )}
+                          {permissions.subscriptionStatus === 'none' && (
+                            <span className="text-xs text-neutral-500 font-medium">Kostenlos</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     
                     <button

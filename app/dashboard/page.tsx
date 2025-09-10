@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import SubscriptionWarning from '@/components/SubscriptionWarning';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -391,8 +392,11 @@ export default function Dashboard() {
         className="p-4 ml-0 md:ml-64 pt-24"
       >
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Content Planner</h1>
           <p className="text-neutral-400">Willkommen zurück! Hier ist deine Content-Übersicht.</p>
+          
+          {/* Subscription Warning */}
+          <SubscriptionWarning className="mt-6" />
         </div>
 
         {/* Stats Grid */}

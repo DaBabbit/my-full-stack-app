@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/usePermissions';
+import SubscriptionWarning from '@/components/SubscriptionWarning';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -25,7 +27,8 @@ import {
   Clock,
   Scissors,
   Check,
-  Rocket
+  Rocket,
+  Trash2
 } from 'lucide-react';
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
@@ -76,6 +79,7 @@ const sidebarBottomItems = [
 export default function VideosPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const permissions = usePermissions();
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -412,6 +416,33 @@ export default function VideosPage() {
     }
   };
 
+  const handleDeleteVideo = async (video: Video) => {
+    const confirmDelete = confirm(`Möchten Sie das Video "${video.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`);
+    
+    if (!confirmDelete) return;
+
+    try {
+      const { supabase } = await import('@/utils/supabase');
+      
+      const { error } = await supabase
+        .from('videos')
+        .delete()
+        .eq('id', video.id);
+
+      if (error) {
+        console.error('Error deleting video:', error);
+        alert(`Fehler beim Löschen des Videos: ${error.message}`);
+        return;
+      }
+
+      // Success - refresh videos
+      fetchVideos();
+    } catch (error) {
+      console.error('Error deleting video:', error);
+      alert('Fehler beim Löschen des Videos. Bitte versuche es erneut.');
+    }
+  };
+
   // Filter videos based on search term
   const filteredVideos = videos.filter(video => {
     if (!searchTerm.trim()) return true; // Show all videos if search is empty
@@ -646,14 +677,23 @@ export default function VideosPage() {
               <p className="text-neutral-400">Verwalte deine Video-Projekte und deren Status</p>
             </div>
             <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 md:px-6 py-3 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] sm:flex-shrink-0"
+              onClick={() => permissions.canCreateVideos ? setShowAddModal(true) : router.push('/pay')}
+              disabled={!permissions.canCreateVideos}
+              className={`px-4 md:px-6 py-3 rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 sm:flex-shrink-0 ${
+                permissions.canCreateVideos 
+                  ? 'bg-neutral-800 hover:bg-white hover:text-black text-white border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+                  : 'bg-neutral-700 text-neutral-400 border border-neutral-600 cursor-not-allowed'
+              }`}
+              title={!permissions.canCreateVideos ? 'Abonnement erforderlich' : ''}
             >
               <Plus className="h-5 w-5" />
               <span className="hidden sm:inline">Neues Video</span>
               <span className="sm:hidden">Video hinzufügen</span>
             </button>
           </div>
+          
+          {/* Subscription Warning */}
+          <SubscriptionWarning className="mt-6" />
           
           {/* Mobile Search Bar */}
           <div className="md:hidden mt-4">
@@ -741,17 +781,32 @@ export default function VideosPage() {
 
                         {/* Status */}
                         <td className="py-4 px-4">
-                          <CustomDropdown
-                            options={[
-                              { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
-                              { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
-                              { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
-                              { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
-                              { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
-                            ]}
-                            value={video.status}
-                            onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
-                          />
+                          {permissions.canEditVideos ? (
+                            <CustomDropdown
+                              options={[
+                                { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                                { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                                { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                                { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                                { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
+                              ]}
+                              value={video.status}
+                              onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
+                            />
+                          ) : (
+                            <div className="flex items-center px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-xl cursor-not-allowed">
+                              {(() => {
+                                const statusInfo = getStatusIcon(video.status);
+                                const StatusIcon = statusInfo.icon;
+                                return (
+                                  <>
+                                    <StatusIcon className={`w-4 h-4 mr-2 ${statusInfo.color}`} />
+                                    <span className="text-neutral-400 text-sm">{video.status}</span>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          )}
                         </td>
 
                         {/* Veröffentlichungsdatum */}
@@ -808,12 +863,27 @@ export default function VideosPage() {
                         <td className="py-4 px-4">
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => handleEditVideo(video)}
-                              className="text-white hover:text-neutral-300"
-                              title="Video bearbeiten"
+                              onClick={() => permissions.canEditVideos ? handleEditVideo(video) : router.push('/pay')}
+                              disabled={!permissions.canEditVideos}
+                              className={`transition-colors ${
+                                permissions.canEditVideos 
+                                  ? 'text-white hover:text-neutral-300' 
+                                  : 'text-neutral-600 cursor-not-allowed'
+                              }`}
+                              title={permissions.canEditVideos ? 'Video bearbeiten' : 'Abonnement erforderlich'}
                             >
                               <Edit className="h-4 w-4" />
                             </button>
+                            
+                            {permissions.canDeleteVideos && (
+                              <button
+                                onClick={() => handleDeleteVideo(video)}
+                                className="text-red-400 hover:text-red-300 transition-colors"
+                                title="Video löschen"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
                             
                             {video.storage_location && (
                               <a
@@ -821,6 +891,7 @@ export default function VideosPage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-white hover:text-neutral-300"
+                                title="Speicherort öffnen"
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </a>
@@ -854,18 +925,35 @@ export default function VideosPage() {
                         </div>
                         <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
                           <button
-                            onClick={() => handleEditVideo(video)}
-                            className="text-white hover:text-neutral-300 p-1"
-                            title="Video bearbeiten"
+                            onClick={() => permissions.canEditVideos ? handleEditVideo(video) : router.push('/pay')}
+                            disabled={!permissions.canEditVideos}
+                            className={`p-1 transition-colors ${
+                              permissions.canEditVideos 
+                                ? 'text-white hover:text-neutral-300' 
+                                : 'text-neutral-600 cursor-not-allowed'
+                            }`}
+                            title={permissions.canEditVideos ? 'Video bearbeiten' : 'Abonnement erforderlich'}
                           >
                             <Edit className="h-4 w-4" />
                           </button>
+                          
+                          {permissions.canDeleteVideos && (
+                            <button
+                              onClick={() => handleDeleteVideo(video)}
+                              className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                              title="Video löschen"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                          
                           {video.storage_location && (
                             <a
                               href={video.storage_location}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-white hover:text-neutral-300 p-1"
+                              title="Speicherort öffnen"
                             >
                               <ExternalLink className="h-4 w-4" />
                             </a>
@@ -876,18 +964,33 @@ export default function VideosPage() {
                       {/* Status Dropdown */}
                       <div>
                         <label className="block text-xs font-medium text-neutral-400 mb-2">Status</label>
-                        <CustomDropdown
-                          options={[
-                            { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
-                            { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
-                            { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
-                            { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
-                            { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
-                          ]}
-                          value={video.status}
-                          onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
-                          className="text-sm"
-                        />
+                        {permissions.canEditVideos ? (
+                          <CustomDropdown
+                            options={[
+                              { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                              { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                              { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                              { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                              { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
+                            ]}
+                            value={video.status}
+                            onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
+                            className="text-sm"
+                          />
+                        ) : (
+                          <div className="flex items-center px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-xl cursor-not-allowed text-sm">
+                            {(() => {
+                              const statusInfo = getStatusIcon(video.status);
+                              const StatusIcon = statusInfo.icon;
+                              return (
+                                <>
+                                  <StatusIcon className={`w-4 h-4 mr-2 ${statusInfo.color}`} />
+                                  <span className="text-neutral-400">{video.status}</span>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
 
                       {/* Details Grid */}

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
+import PermissionErrorModal from '@/components/PermissionErrorModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -87,6 +88,8 @@ export default function VideosPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
+  const [showPermissionError, setShowPermissionError] = useState(false);
+  const [permissionErrorAction, setPermissionErrorAction] = useState('');
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -677,14 +680,20 @@ export default function VideosPage() {
               <p className="text-neutral-400">Verwalte deine Video-Projekte und deren Status</p>
             </div>
             <button
-              onClick={() => permissions.canCreateVideos ? setShowAddModal(true) : router.push('/pay')}
-              disabled={!permissions.canCreateVideos}
+              onClick={() => {
+                if (permissions.canCreateVideos) {
+                  setShowAddModal(true);
+                } else {
+                  setPermissionErrorAction('Video erstellen');
+                  setShowPermissionError(true);
+                }
+              }}
               className={`px-4 md:px-6 py-3 rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 sm:flex-shrink-0 ${
                 permissions.canCreateVideos 
                   ? 'bg-neutral-800 hover:bg-white hover:text-black text-white border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]'
-                  : 'bg-neutral-700 text-neutral-400 border border-neutral-600 cursor-not-allowed'
+                  : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400 hover:text-neutral-300 border border-neutral-600 cursor-pointer'
               }`}
-              title={!permissions.canCreateVideos ? 'Abonnement erforderlich' : ''}
+              title={!permissions.canCreateVideos ? 'Berechtigungen anzeigen' : ''}
             >
               <Plus className="h-5 w-5" />
               <span className="hidden sm:inline">Neues Video</span>
@@ -863,14 +872,20 @@ export default function VideosPage() {
                         <td className="py-4 px-4">
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => permissions.canEditVideos ? handleEditVideo(video) : router.push('/pay')}
-                              disabled={!permissions.canEditVideos}
+                              onClick={() => {
+                                if (permissions.canEditVideos) {
+                                  handleEditVideo(video);
+                                } else {
+                                  setPermissionErrorAction('Video bearbeiten');
+                                  setShowPermissionError(true);
+                                }
+                              }}
                               className={`transition-colors ${
                                 permissions.canEditVideos 
                                   ? 'text-white hover:text-neutral-300' 
-                                  : 'text-neutral-600 cursor-not-allowed'
+                                  : 'text-neutral-600 hover:text-neutral-500 cursor-pointer'
                               }`}
-                              title={permissions.canEditVideos ? 'Video bearbeiten' : 'Abonnement erforderlich'}
+                              title={permissions.canEditVideos ? 'Video bearbeiten' : 'Berechtigungen anzeigen'}
                             >
                               <Edit className="h-4 w-4" />
                             </button>
@@ -925,14 +940,20 @@ export default function VideosPage() {
                         </div>
                         <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
                           <button
-                            onClick={() => permissions.canEditVideos ? handleEditVideo(video) : router.push('/pay')}
-                            disabled={!permissions.canEditVideos}
+                            onClick={() => {
+                              if (permissions.canEditVideos) {
+                                handleEditVideo(video);
+                              } else {
+                                setPermissionErrorAction('Video bearbeiten');
+                                setShowPermissionError(true);
+                              }
+                            }}
                             className={`p-1 transition-colors ${
                               permissions.canEditVideos 
                                 ? 'text-white hover:text-neutral-300' 
-                                : 'text-neutral-600 cursor-not-allowed'
+                                : 'text-neutral-600 hover:text-neutral-500 cursor-pointer'
                             }`}
-                            title={permissions.canEditVideos ? 'Video bearbeiten' : 'Abonnement erforderlich'}
+                            title={permissions.canEditVideos ? 'Video bearbeiten' : 'Berechtigungen anzeigen'}
                           >
                             <Edit className="h-4 w-4" />
                           </button>
@@ -1333,6 +1354,13 @@ export default function VideosPage() {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Permission Error Modal */}
+      <PermissionErrorModal
+        isOpen={showPermissionError}
+        onClose={() => setShowPermissionError(false)}
+        action={permissionErrorAction}
+      />
     </div>
   );
 }

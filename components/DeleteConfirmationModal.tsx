@@ -61,7 +61,7 @@ export default function DeleteConfirmationModal({
                   <div>
                     <h2 className="text-xl font-semibold text-white">{title}</h2>
                     {itemName && (
-                      <p className="text-sm text-neutral-400 mt-1">"{itemName}"</p>
+                      <p className="text-sm text-neutral-400 mt-1">&quot;{itemName}&quot;</p>
                     )}
                   </div>
                 </div>

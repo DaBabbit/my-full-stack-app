@@ -7,6 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
 import PermissionErrorModal from '@/components/PermissionErrorModal';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
+import ErrorModal from '@/components/ErrorModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -94,6 +95,8 @@ export default function VideosPage() {
   const [permissionErrorAction, setPermissionErrorAction] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorDetails, setErrorDetails] = useState({ title: '', message: '', details: '' });
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -374,7 +377,24 @@ export default function VideosPage() {
 
       if (error) {
         console.error('Error updating video status:', error);
-        alert(`Fehler beim Aktualisieren des Status: ${error.message}`);
+        
+        // Better error message for RLS violations
+        let errorMessage = 'Fehler beim Aktualisieren des Status';
+        if (error.message.includes('row-level security policy')) {
+          errorMessage = 'Berechtigung verweigert: Sie haben nicht die erforderlichen Rechte für diese Status-Änderung.';
+        } else if (error.message.includes('cutter_assignments')) {
+          errorMessage = 'Status-Änderung fehlgeschlagen: Cutter-Zuweisung konnte nicht erstellt werden.';
+        } else {
+          errorMessage = `Fehler beim Aktualisieren des Status: ${error.message}`;
+        }
+        
+        // Show nice error modal instead of alert
+        setErrorDetails({
+          title: 'Status-Update fehlgeschlagen',
+          message: errorMessage,
+          details: error.message
+        });
+        setShowErrorModal(true);
         return;
       }
 
@@ -1267,7 +1287,7 @@ export default function VideosPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 touch-action-none"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-40 touch-action-none"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -1418,6 +1438,15 @@ export default function VideosPage() {
         title="Video löschen"
         message={`Möchten Sie das Video "${videoToDelete?.name}" wirklich löschen?`}
         itemName={videoToDelete?.name}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title={errorDetails.title}
+        message={errorDetails.message}
+        details={errorDetails.details}
       />
     </div>
   );

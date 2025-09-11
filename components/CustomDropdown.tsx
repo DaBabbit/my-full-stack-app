@@ -26,7 +26,7 @@ export default function CustomDropdown({
   placeholder = 'Auswählen...'
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0, showAbove: false });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -47,10 +47,20 @@ export default function CustomDropdown({
   const updateDropdownPosition = () => {
     if (dropdownRef.current) {
       const rect = dropdownRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      
+      // Check if there's enough space below, otherwise show above
+      const showAbove = spaceBelow < 200 && spaceAbove > spaceBelow;
+      
       setDropdownPosition({
-        top: rect.bottom + window.scrollY + 4,
+        top: showAbove 
+          ? rect.top + window.scrollY - 4 // Position above the button
+          : rect.bottom + window.scrollY + 4, // Position below the button
         left: rect.left + window.scrollX,
-        width: rect.width
+        width: rect.width,
+        showAbove
       });
     }
   };
@@ -87,9 +97,12 @@ export default function CustomDropdown({
       {isOpen && (
         <div className="fixed bg-neutral-900/95 backdrop-blur-md border border-neutral-700 rounded-xl shadow-xl z-[9999] max-h-60 overflow-y-auto"
              style={{
-               top: dropdownPosition.top,
+               top: dropdownPosition.showAbove 
+                 ? dropdownPosition.top - 240 // Subtract max height when showing above
+                 : dropdownPosition.top,
                left: dropdownPosition.left,
-               width: dropdownPosition.width
+               width: dropdownPosition.width,
+               transformOrigin: dropdownPosition.showAbove ? 'bottom' : 'top'
              }}>
           {options.map((option) => (
             <button

@@ -34,7 +34,7 @@ function ProfileContent() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
-  const [isReactivating, setIsReactivating] = useState(false);
+  const [isReactivating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { isInTrial, trialEndTime } = useTrialStatus();
 

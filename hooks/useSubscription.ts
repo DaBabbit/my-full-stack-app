@@ -19,6 +19,7 @@ export interface Subscription {
 export function useSubscription() {
   const { user, supabase } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,19 +44,25 @@ export function useSubscription() {
     }
 
     try {
+      // Get the most recent subscription for this user (regardless of status)
       const { data, error } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', user.id)
-        .in('status', ['active', 'trialing'])
         .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error) throw error;
 
+      // Store the current subscription (regardless of status) for display purposes
+      setCurrentSubscription(data);
+
+      // Check if subscription is truly active (not canceled and period hasn't ended)
       const isValid = data && 
         ['active', 'trialing'].includes(data.status) && 
-        new Date(data.current_period_end) > new Date();
+        new Date(data.current_period_end) > new Date() &&
+        !data.cancel_at_period_end; // Don't show as active if it's canceled
 
       const result = isValid ? data : null;
       
@@ -168,6 +175,7 @@ export function useSubscription() {
 
   return {
     subscription,
+    currentSubscription,
     isLoading: loading,
     error,
     syncWithStripe: useCallback((subscriptionId: string) => {

@@ -167,7 +167,6 @@ export const POST = withCors(async function POST(request: NextRequest) {
       }
 
       case 'customer.subscription.updated':
-      case 'customer.subscription.deleted':
       case 'customer.subscription.pending_update_applied':
       case 'customer.subscription.pending_update_expired':
       case 'customer.subscription.trial_will_end': {
@@ -192,7 +191,7 @@ export const POST = withCors(async function POST(request: NextRequest) {
         await supabaseAdmin
           .from('subscriptions')
           .update({
-            status: subscription.status,
+            status: 'canceled',
             cancel_at_period_end: false,
             current_period_end: new Date().toISOString(),
             updated_at: new Date().toISOString()

@@ -35,7 +35,7 @@ function ProfileContent() {
   const [error, setError] = useState<string | null>(null);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [isReactivating] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{message: string, type: "success" | "error"} | null>(null);
   const { isInTrial, trialEndTime } = useTrialStatus();
 
   // Check if user has active subscription (including trial)
@@ -87,11 +87,11 @@ function ProfileContent() {
       });
 
       if (response.ok) {
-        setSuccessMessage('Abonnement erfolgreich gekündigt!');
-        setTimeout(async () => {
-          await fetchSubscription();
-          setIsCancelModalOpen(false);
-          setSuccessMessage(null);
+        setToast({message: 'Abonnement erfolgreich gekündigt!', type: 'success'});
+        await fetchSubscription();
+        setIsCancelModalOpen(false);
+        setTimeout(() => {
+          setToast(null);
           window.location.reload();
         }, 2000);        setIsCancelModalOpen(false);
       } else {
@@ -117,11 +117,11 @@ function ProfileContent() {
       });
 
       if (response.ok) {
-        setSuccessMessage('Abonnement erfolgreich gekündigt!');
-        setTimeout(async () => {
-          await fetchSubscription();
-          setIsCancelModalOpen(false);
-          setSuccessMessage(null);
+        setToast({message: 'Abonnement erfolgreich gekündigt!', type: 'success'});
+        await fetchSubscription();
+        setIsCancelModalOpen(false);
+        setTimeout(() => {
+          setToast(null);
           window.location.reload();
         }, 2000);      } else {
         const data = await response.json();
@@ -491,6 +491,31 @@ function ProfileContent() {
               >
                 {isReactivating ? 'Wird wiederhergestellt...' : 'Wiederherstellen'}
               </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, x: 100, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 100, scale: 0.95 }}
+            className={`p-4 rounded-xl shadow-lg backdrop-blur-md border max-w-sm ${
+              toast.type === 'success' 
+                ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {toast.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              )}
+              <p className="font-medium text-sm">{toast.message}</p>
             </div>
           </motion.div>
         </div>

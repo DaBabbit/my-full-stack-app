@@ -33,6 +33,10 @@ function ProfileContent() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { isInTrial, trialEndTime } = useTrialStatus();
 
   // Check if user has active subscription (including trial)
@@ -146,6 +150,20 @@ function ProfileContent() {
               <p className="text-green-400 font-medium">
                 🎉 Vielen Dank für dein Abonnement! Die Zahlung war erfolgreich.
               </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Success Message */}
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-6 p-4 bg-green-500/10 rounded-2xl border border-green-500/20"
+          >
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
+              <p className="text-green-400 font-medium">{successMessage}</p>
             </div>
           </motion.div>
         )}
@@ -284,7 +302,7 @@ function ProfileContent() {
 
                     {currentSubscription.cancel_at_period_end && currentSubscription.status === 'active' && (
                       <button
-                        onClick={handleReactivateSubscription}
+                        onClick={() => setIsReactivateModalOpen(true)}
                         className="w-full p-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-2xl transition-all duration-300 border border-green-500/20 hover:border-green-500/40"
                       >
                         Abo wiederherstellen

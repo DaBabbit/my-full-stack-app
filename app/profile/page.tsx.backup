@@ -26,7 +26,7 @@ import {
 
 function ProfileContent() {
   const { user } = useAuth();
-  const { subscription, currentSubscription, isLoading: isLoadingSubscription, syncWithStripe, fetchSubscription } = useSubscription();
+  const { subscription, isLoading: isLoadingSubscription, syncWithStripe, fetchSubscription } = useSubscription();
   const router = useRouter();
   const searchParams = useSearchParams();
   const paymentStatus = searchParams.get('payment');
@@ -39,38 +39,6 @@ function ProfileContent() {
   const hasActiveSubscription = subscription && 
     ['active', 'trialing'].includes(subscription.status) && 
     new Date(subscription.current_period_end) > new Date();
-  // Determine the display status based on cancel_at_period_end
-  const getDisplayStatus = () => {
-    if (!currentSubscription) return null;
-    
-    if (currentSubscription.cancel_at_period_end && 
-        currentSubscription.status === 'active' &&
-        new Date(currentSubscription.current_period_end) > new Date()) {
-      return {
-        status: 'canceled',
-        displayText: 'Gekündigt',
-        color: 'bg-orange-400',
-        description: `Läuft bis ${new Date(currentSubscription.current_period_end).toLocaleDateString('de-DE')}`
-      };
-    }
-    
-    if (currentSubscription.status === 'active') {
-      return {
-        status: 'active',
-        displayText: 'Aktiv',
-        color: 'bg-green-400',
-        description: 'Premium Plan'
-      };
-    }
-    
-    return {
-      status: currentSubscription.status,
-      displayText: currentSubscription.status,
-      color: 'bg-red-400',
-      description: 'Abonnement beendet'
-    };
-  };
-
 
   // Show payment success message if redirected from successful payment
   useEffect(() => {
@@ -269,7 +237,7 @@ function ProfileContent() {
                   <span className="loading loading-ring loading-md text-white"></span>
                   <span className="ml-3 text-neutral-400">Loading...</span>
                 </div>
-              ) : currentSubscription && getDisplayStatus() ? (
+              ) : subscription ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-2xl">
                     <div className="flex items-center">
@@ -286,7 +254,7 @@ function ProfileContent() {
                         </p>
                       </div>
                     </div>
-                    {currentSubscription.status === 'active' && !currentSubscription.cancel_at_period_end && (
+                    {subscription.status === 'active' && (
                       <CheckCircle className="w-6 h-6 text-green-400" />
                     )}
                   </div>
@@ -305,7 +273,7 @@ function ProfileContent() {
 
                   {/* Subscription Actions */}
                   <div className="space-y-3">
-                    {currentSubscription.status === 'active' && !currentSubscription.cancel_at_period_end && (
+                    {subscription.status === 'active' && (
                       <button
                         onClick={() => setIsCancelModalOpen(true)}
                         className="w-full p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all duration-300 border border-red-500/20 hover:border-red-500/40"
@@ -314,12 +282,12 @@ function ProfileContent() {
                       </button>
                     )}
 
-                    {currentSubscription.cancel_at_period_end && currentSubscription.status === 'active' && (
+                    {subscription.status === 'canceled' && (
                       <button
                         onClick={handleReactivateSubscription}
                         className="w-full p-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-2xl transition-all duration-300 border border-green-500/20 hover:border-green-500/40"
                       >
-                        Kündigung rückgängig machen
+                        Abonnement reaktivieren
                       </button>
                     )}
                   </div>
@@ -421,7 +389,7 @@ function ProfileContent() {
           >
             <h3 className="text-xl font-semibold mb-4 text-white">Abonnement kündigen?</h3>
             <p className="text-neutral-400 mb-6">
-              Du behältst Zugriff bis zum Ende deiner Abrechnungsperiode am {new Date(currentSubscription?.current_period_end || '').toLocaleDateString('de-DE')}. Es werden keine Rückerstattungen gewährt.
+              Du behältst Zugriff bis zum Ende deiner Abrechnungsperiode am {new Date(subscription?.current_period_end || '').toLocaleDateString('de-DE')}. Es werden keine Rückerstattungen gewährt.
             </p>
             <div className="flex gap-4 justify-end">
               <button

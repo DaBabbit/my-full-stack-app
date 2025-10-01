@@ -25,7 +25,6 @@ interface AuthContextType {
     error: Error | null;
   }>;
   updatePassword: (newPassword: string) => Promise<void>;
-  updateEmail: (newEmail: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   isSubscriber: boolean;
 }
@@ -46,15 +45,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isSubscriber, setIsSubscriber] = useState(false);
   
 
-
   const checkSubscription = useCallback(async (userId: string) => {
     try {
+      // Get the most recent subscription for this user (regardless of status)
       const { data, error } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', userId)
-        .in('status', ['active', 'trialing'])
         .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       
       if (error) {
@@ -63,15 +62,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // console.log("AuthContext - subscription data: ", data)
+      console.log("AuthContext - subscription data: ", data);
 
+      // Check if subscription is truly active (not canceled and period hasn't ended)
       const isValid = data && 
         ['active', 'trialing'].includes(data.status) && 
-        new Date(data.current_period_end) > new Date();
-      // console.log("AuthContext -  isValid: ", data)
+        new Date(data.current_period_end) > new Date() &&
+        !data.cancel_at_period_end; // Don't show as active if it's canceled
+
+      console.log("AuthContext - isValid calculation:", {
+        hasData: !!data,
+        status: data?.status,
+        statusValid: data ? ['active', 'trialing'].includes(data.status) : false,
+        periodValid: data ? new Date(data.current_period_end) > new Date() : false,
+        notCanceled: data ? !data.cancel_at_period_end : false,
+        finalResult: !!isValid
+      });
 
       setIsSubscriber(!!isValid);
-      console.log("AuthContext -  set isSubscriber: ", isSubscriber)
+      console.log("AuthContext - set isSubscriber: ", !!isValid);
     } catch (error) {
       console.error('Subscription check error:', error);
       setIsSubscriber(false);
@@ -80,187 +89,162 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    console.log("AuthContext - mounted useEffect:", mounted);
-    
-    const initializeAuth = async () => {
-      try {
-        setIsLoading(true);
-        console.log("AuthContext - Starting Try in InitializeAuth!");
 
-        // // First, get initial session
+    const getSession = async () => {
+      try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error || !mounted) {
-          setIsLoading(false);
+        if (error) {
+          console.error('Session error:', error);
           return;
         }
 
-        // Update initial state
-        setSession(session);
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-
-        if (currentUser) {
-          await checkSubscription(currentUser.id);
-        }
-        
-        // Then set up listener for future changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (_event, newSession) => {
-            if (!mounted) return;
-            
-            const newUser = newSession?.user ?? null;
-            setSession(newSession);
-            setUser(newUser);
-            
-            if (newUser) {
-              await checkSubscription(newUser.id);
-            } else {
-              setIsSubscriber(false);
-            }
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            await checkSubscription(session.user.id);
+          } else {
+            setIsSubscriber(false);
           }
-        );
-
-        // Only set loading to false after everything is initialized
-        if (mounted) setIsLoading(false);
-        
-        return () => {
-          mounted = false;
-          subscription.unsubscribe();
-        };
+        }
       } catch (error) {
-        console.error("Auth initialization error:", error);
-        if (mounted) setIsLoading(false);
+        console.error('Session retrieval error:', error);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    initializeAuth();
-  }, [checkSubscription]);
+    getSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (mounted) {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await checkSubscription(session.user.id);
+        } else {
+          setIsSubscriber(false);
+        }
+        
+        setIsLoading(false);
+      }
+    });
+
+    // Listen for subscription changes
+    const subscriptionChannel = supabase
+      .channel('subscription_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subscriptions'
+        },
+        async (payload: SubscriptionPayload) => {
+          if (mounted && user && payload.new.user_id === user.id) {
+            console.log('Subscription changed, rechecking...');
+            await checkSubscription(user.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe();
+      subscriptionChannel?.unsubscribe();
+    };
+  }, [checkSubscription, user?.id]);
+
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
+
+  const signInWithEmail = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return {
+      user: data.user,
+      session: data.session,
+    };
+  };
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
+
+    return { data, error };
+  };
+
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw error;
+    }
+    setIsSubscriber(false);
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
 
   const value = {
     user,
     session,
     isLoading,
     supabase,
-    signInWithGoogle: async () => {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-    },
-    signInWithEmail: async (email: string, password: string) => {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (authError) throw authError;
-
-      // Check if user was previously soft-deleted
-      const { data: profile } = await supabase
-        .from('users')
-        .select('is_deleted, deleted_at')
-        .eq('id', authData.user?.id)
-        .single();
-
-      if (profile?.is_deleted) {
-        // Reactivate the account
-        await supabase
-          .from('users')
-          .update({ 
-            is_deleted: false, 
-            deleted_at: null,
-            reactivated_at: new Date().toISOString() 
-          })
-          .eq('id', authData.user?.id);
-
-        // You could trigger a welcome back notification here
-      }
-
-      return authData;
-    },
-    signOut: async () => {
-      try {
-        // First cleanup all active connections/states
-        window.dispatchEvent(new Event('cleanup-before-logout'));
-        
-        // Wait a small amount of time for cleanup
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Then perform the actual signout
-        await supabase.auth.signOut();
-        
-        // Force redirect to login
-        window.location.assign('/login');
-      } catch (error) {
-        console.error('Error signing out:', error);
-      }
-    },
-    signUpWithEmail: async (email: string, password: string) => {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      if (error) throw error;
-      return { data, error };
-    },
-    updatePassword: async (newPassword: string) => {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-      if (error) throw error;
-    },
-    updateEmail: async (newEmail: string) => {
-      const { error } = await supabase.auth.updateUser({
-        email: newEmail
-      });
-      if (error) throw error;
-    },
-    resetPassword: async (email: string) => {
-      // OTP-basierte Password Reset - keine redirectTo
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/update-password`
-        }
-      });
-      if (error) throw error;
-    },
-    deleteAccount: async () => {
-      // First delete user data from any related tables
-      const { error: dataError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', user?.id);
-      
-      if (dataError) throw dataError;
-
-      // Then delete the user's subscription if it exists
-      const { error: subscriptionError } = await supabase
-        .from('subscriptions')
-        .delete()
-        .eq('user_id', user?.id);
-
-      if (subscriptionError) throw subscriptionError;
-
-      // Finally delete the user's auth account
-      const { error: authError } = await supabase.auth.admin.deleteUser(
-        user?.id as string
-      );
-
-      if (authError) throw authError;
-
-      // Sign out after successful deletion
-      await supabase.auth.signOut();
-    },
+    signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
+    signOut,
+    updatePassword,
+    resetPassword,
     isSubscriber,
   };
-
 
   return (
     <AuthContext.Provider value={value}>
@@ -269,4 +253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext); 
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

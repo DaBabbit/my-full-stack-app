@@ -36,7 +36,6 @@ function ProfileContent() {
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [isReactivating, setIsReactivating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const { isInTrial, trialEndTime } = useTrialStatus();
 
   // Check if user has active subscription (including trial)
@@ -88,8 +87,13 @@ function ProfileContent() {
       });
 
       if (response.ok) {
-        await fetchSubscription();
-        setIsCancelModalOpen(false);        setIsCancelModalOpen(false);
+        setSuccessMessage('Abonnement erfolgreich gekündigt!');
+        setTimeout(async () => {
+          await fetchSubscription();
+          setIsCancelModalOpen(false);
+          setSuccessMessage(null);
+          window.location.reload();
+        }, 2000);        setIsCancelModalOpen(false);
       } else {
         const data = await response.json();
         setError(data.error || 'Failed to cancel subscription');
@@ -113,8 +117,13 @@ function ProfileContent() {
       });
 
       if (response.ok) {
-        await fetchSubscription();
-        setIsCancelModalOpen(false);      } else {
+        setSuccessMessage('Abonnement erfolgreich gekündigt!');
+        setTimeout(async () => {
+          await fetchSubscription();
+          setIsCancelModalOpen(false);
+          setSuccessMessage(null);
+          window.location.reload();
+        }, 2000);      } else {
         const data = await response.json();
         setError(data.error || 'Failed to reactivate subscription');
       }
@@ -153,7 +162,33 @@ function ProfileContent() {
             </div>
           </motion.div>
         )}
+        {/* Success Message */}
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-6 p-4 bg-green-500/10 rounded-2xl border border-green-500/20"
+          >
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
+              <p className="text-green-400 font-medium">{successMessage}</p>
+            </div>
+          </motion.div>
+        )}
 
+        {/* Success Message */}
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-6 p-4 bg-green-500/10 rounded-2xl border border-green-500/20"
+          >
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
+              <p className="text-green-400 font-medium">{successMessage}</p>
+            </div>
+          </motion.div>
+        )}
         {/* Success Message */}
         {successMessage && (
           <motion.div
@@ -423,6 +458,38 @@ function ProfileContent() {
                 className="px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all duration-300 border border-red-500/20 hover:border-red-500/40 disabled:opacity-50"
               >
                 {isCancelling ? 'Wird gekündigt...' : 'Kündigen'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      {/* Reactivate Confirmation Modal */}
+      {isReactivateModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 max-w-md w-full border border-neutral-700"
+          >
+            <h3 className="text-xl font-semibold mb-4 text-white">Abonnement wiederherstellen?</h3>
+            <p className="text-neutral-400 mb-6">
+              Ihr Abonnement wird sofort wiederhergestellt und die Abrechnung läuft ab dem {new Date().toLocaleDateString('de-DE')} weiter. 
+              Die nächste Zahlung erfolgt am {new Date(currentSubscription?.current_period_end || '').toLocaleDateString('de-DE')}.
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => setIsReactivateModalOpen(false)}
+                className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                disabled={isReactivating}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleReactivateSubscription}
+                disabled={isReactivating}
+                className="px-6 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-all duration-300 border border-green-500/20 hover:border-green-500/40 disabled:opacity-50"
+              >
+                {isReactivating ? 'Wird wiederhergestellt...' : 'Wiederherstellen'}
               </button>
             </div>
           </motion.div>

@@ -163,7 +163,6 @@ function ProfileContent() {
           </motion.div>
         )}
         {/* Success Message */}
-        {successMessage && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -171,13 +170,11 @@ function ProfileContent() {
           >
             <div className="flex items-center">
               <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
-              <p className="text-green-400 font-medium">{successMessage}</p>
             </div>
           </motion.div>
         )}
 
         {/* Success Message */}
-        {successMessage && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -185,12 +182,10 @@ function ProfileContent() {
           >
             <div className="flex items-center">
               <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
-              <p className="text-green-400 font-medium">{successMessage}</p>
             </div>
           </motion.div>
         )}
         {/* Success Message */}
-        {successMessage && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -198,7 +193,6 @@ function ProfileContent() {
           >
             <div className="flex items-center">
               <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
-              <p className="text-green-400 font-medium">{successMessage}</p>
             </div>
           </motion.div>
         )}

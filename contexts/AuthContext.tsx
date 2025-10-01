@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const isValid = data && 
         ['active', 'trialing'].includes(data.status) && 
-        new Date(data.current_period_end) > new Date() && !data.cancel_at_period_end;
+        new Date(data.current_period_end) > new Date();
       // console.log("AuthContext -  isValid: ", data)
 
       setIsSubscriber(!!isValid);

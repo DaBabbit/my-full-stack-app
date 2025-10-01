@@ -61,8 +61,7 @@ export function useSubscription() {
       // Check if subscription is truly active (not canceled and period hasn't ended)
       const isValid = data && 
         ['active', 'trialing'].includes(data.status) && 
-        new Date(data.current_period_end) > new Date() &&
-        !data.cancel_at_period_end; // Don't show as active if it's canceled
+        new Date(data.current_period_end) > new Date();
 
       const result = isValid ? data : null;
       

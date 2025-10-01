@@ -85,7 +85,7 @@ function ProfileContent() {
 
       if (response.ok) {
         await fetchSubscription();
-        setIsCancelModalOpen(false);
+        setIsCancelModalOpen(false);        setIsCancelModalOpen(false);
       } else {
         const data = await response.json();
         setError(data.error || 'Failed to cancel subscription');
@@ -110,7 +110,7 @@ function ProfileContent() {
 
       if (response.ok) {
         await fetchSubscription();
-      } else {
+        setIsCancelModalOpen(false);      } else {
         const data = await response.json();
         setError(data.error || 'Failed to reactivate subscription');
       }
@@ -263,7 +263,7 @@ function ProfileContent() {
                     <div className="flex items-center p-4 bg-neutral-800/50 rounded-2xl">
                       <Calendar className="w-5 h-5 text-neutral-400 mr-3" />
                       <div>
-                        <p className="text-white font-medium">Nächste Abrechnung</p>
+                        <p className="text-white font-medium">{currentSubscription?.cancel_at_period_end ? "Ende Abrechnungszeitraum" : "Nächste Abrechnung"}</p>
                         <p className="text-sm text-neutral-400">
                           {new Date(currentSubscription.current_period_end).toLocaleDateString('de-DE')}
                         </p>
@@ -287,7 +287,7 @@ function ProfileContent() {
                         onClick={handleReactivateSubscription}
                         className="w-full p-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-2xl transition-all duration-300 border border-green-500/20 hover:border-green-500/40"
                       >
-                        Kündigung rückgängig machen
+                        Abo wiederherstellen
                       </button>
                     )}
                   </div>

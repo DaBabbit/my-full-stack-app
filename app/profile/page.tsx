@@ -39,38 +39,6 @@ function ProfileContent() {
   const hasActiveSubscription = subscription && 
     ['active', 'trialing'].includes(subscription.status) && 
     new Date(subscription.current_period_end) > new Date();
-  // Determine the display status based on cancel_at_period_end
-  const getDisplayStatus = () => {
-    if (!currentSubscription) return null;
-    
-    if (currentSubscription.cancel_at_period_end && 
-        currentSubscription.status === 'active' &&
-        new Date(currentSubscription.current_period_end) > new Date()) {
-      return {
-        status: 'canceled',
-        displayText: 'Gekündigt',
-        color: 'bg-orange-400',
-        description: `Läuft bis ${new Date(currentSubscription.current_period_end).toLocaleDateString('de-DE')}`
-      };
-    }
-    
-    if (currentSubscription.status === 'active') {
-      return {
-        status: 'active',
-        displayText: 'Aktiv',
-        color: 'bg-green-400',
-        description: 'Premium Plan'
-      };
-    }
-    
-    return {
-      status: currentSubscription.status,
-      displayText: currentSubscription.status,
-      color: 'bg-red-400',
-      description: 'Abonnement beendet'
-    };
-  };
-
 
   // Show payment success message if redirected from successful payment
   useEffect(() => {
@@ -269,17 +237,17 @@ function ProfileContent() {
                   <span className="loading loading-ring loading-md text-white"></span>
                   <span className="ml-3 text-neutral-400">Loading...</span>
                 </div>
-              ) : currentSubscription && getDisplayStatus() ? (
+              ) : (currentSubscription && currentSubscription.status) ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-2xl">
                     <div className="flex items-center">
                       <div className={`w-3 h-3 rounded-full mr-3 ${
-                        subscription.status === 'active' ? 'bg-green-400' : 
-                        subscription.status === 'canceled' ? 'bg-red-400' : 'bg-yellow-400'
+                        currentSubscription.status === 'active' ? 'bg-green-400' : 
+                        currentSubscription.status === 'canceled' ? 'bg-red-400' : 'bg-yellow-400'
                       }`} />
                       <div>
                         <p className="text-white font-medium">
-                          Status: <span className="capitalize">{subscription.status}</span>
+                          Status: <span className="capitalize">{currentSubscription.status}</span>
                         </p>
                         <p className="text-sm text-neutral-400">
                           Plan: Premium
@@ -291,13 +259,13 @@ function ProfileContent() {
                     )}
                   </div>
 
-                  {subscription.current_period_end && (
+                  {currentSubscription?.current_period_end && (
                     <div className="flex items-center p-4 bg-neutral-800/50 rounded-2xl">
                       <Calendar className="w-5 h-5 text-neutral-400 mr-3" />
                       <div>
                         <p className="text-white font-medium">Nächste Abrechnung</p>
                         <p className="text-sm text-neutral-400">
-                          {new Date(subscription.current_period_end).toLocaleDateString('de-DE')}
+                          {new Date(currentSubscription.current_period_end).toLocaleDateString('de-DE')}
                         </p>
                       </div>
                     </div>

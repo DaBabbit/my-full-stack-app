@@ -23,7 +23,7 @@ import {
   ArrowRight,
   Lock
 } from 'lucide-react';
-import { toast, ToastContainer } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function ProfileContent() {

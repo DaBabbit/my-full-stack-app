@@ -225,12 +225,16 @@ export default function VideosPage() {
     
     // Umfassende Validierung
     const trimmedName = newVideo.name.trim()
+  
+  
     ;
     
     if (!trimmedName) {
       alert('Bitte geben Sie einen Videotitel ein.');
       return;
     }
+
+   
     
     if (trimmedName.length < 3) {
       alert('Der Videotitel muss mindestens 3 Zeichen lang sein.');

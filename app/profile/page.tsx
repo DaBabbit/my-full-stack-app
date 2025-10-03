@@ -21,7 +21,8 @@ import {
   Crown,
   ExternalLink,
   ArrowRight,
-  Lock
+  Lock,
+  FileText
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -373,14 +374,14 @@ function ProfileContent() {
               )}
             </motion.div>
 
-            {/* Quick Links */}
+            {/* Aktionen */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700"
             >
-              <h3 className="text-lg font-semibold text-white mb-4">Quick Links</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Aktionen</h3>
               <div className="space-y-3">
                 <button
                   onClick={() => router.push('/dashboard')}
@@ -400,6 +401,17 @@ function ProfileContent() {
                   <div className="flex items-center">
                     <CreditCard className="w-5 h-5 text-neutral-400 mr-3" />
                     <span className="text-white">Videos</span>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-neutral-400" />
+                </button>
+
+                <button
+                  onClick={() => router.push('/profile/invoices')}
+                  className="w-full flex items-center justify-between p-3 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-2xl transition-colors"
+                >
+                  <div className="flex items-center">
+                    <FileText className="w-5 h-5 text-neutral-400 mr-3" />
+                    <span className="text-white">Rechnungen</span>
                   </div>
                   <ExternalLink className="w-4 h-4 text-neutral-400" />
                 </button>

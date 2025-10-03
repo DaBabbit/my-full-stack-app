@@ -23,7 +23,7 @@ import {
   ArrowRight,
   Lock
 } from 'lucide-react';
-import { ToastContainer } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function ProfileContent() {
@@ -88,8 +88,16 @@ function ProfileContent() {
       });
 
       if (response.ok) {
+        toast.success('Abonnement erfolgreich gekündigt!', {
+          position: "top-right",
+          autoClose: 2000,
+          theme: "dark"
+        });
         await fetchSubscription();
-        setIsCancelModalOpen(false);        setIsCancelModalOpen(false);
+        setIsCancelModalOpen(false);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       } else {
         const data = await response.json();
         setError(data.error || 'Failed to cancel subscription');
@@ -416,6 +424,39 @@ function ProfileContent() {
         </div>
       )}
 
+      {/* Reactivate Confirmation Modal */}
+      {isReactivateModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 max-w-md w-full border border-neutral-700"
+          >
+            <h3 className="text-xl font-semibold mb-4 text-white">Abonnement wiederherstellen?</h3>
+            <p className="text-neutral-400 mb-6">
+              Ihr Abonnement wird sofort wiederhergestellt und die Abrechnung läuft ab dem {new Date().toLocaleDateString('de-DE')} weiter. 
+              Die nächste Zahlung erfolgt am {new Date(currentSubscription?.current_period_end || '').toLocaleDateString('de-DE')}.
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => setIsReactivateModalOpen(false)}
+                className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                disabled={isReactivating}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleReactivateSubscription}
+                disabled={isReactivating}
+                className="px-6 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-all duration-300 border border-green-500/20 hover:border-green-500/40 disabled:opacity-50"
+              >
+                {isReactivating ? 'Wird wiederhergestellt...' : 'Wiederherstellen'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Cancel Confirmation Modal */}
       {isCancelModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -447,6 +488,23 @@ function ProfileContent() {
           </motion.div>
         </div>
       )}
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+        toastStyle={{
+          background: '#1f2937',
+          color: '#f9fafb',
+          border: '1px solid #374151'
+        }}
+      />
       <ToastContainer
         position="top-right"
         autoClose={2000}

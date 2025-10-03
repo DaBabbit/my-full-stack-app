@@ -35,7 +35,7 @@ function ProfileContent() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
-  const [isReactivating] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isInTrial, trialEndTime } = useTrialStatus();
 
@@ -90,14 +90,15 @@ function ProfileContent() {
       if (response.ok) {
         toast.success('Abonnement erfolgreich gekündigt!', {
           position: "top-right",
-          autoClose: 2000,
+          autoClose: 3000,
           theme: "dark"
         });
         await fetchSubscription();
         setIsCancelModalOpen(false);
+        // Elegant reload after a short delay to show the toast
         setTimeout(() => {
           window.location.reload();
-        }, 2000);
+        }, 1500);
       } else {
         const data = await response.json();
         setError(data.error || 'Failed to cancel subscription');
@@ -112,6 +113,9 @@ function ProfileContent() {
 
   const handleReactivateSubscription = async () => {
     if (!subscription?.stripe_subscription_id) return;
+    
+    setIsReactivating(true);
+    setError(null);
 
     try {
       const response = await fetch('/api/stripe/reactivate', {
@@ -121,14 +125,28 @@ function ProfileContent() {
       });
 
       if (response.ok) {
+        toast.success('Abonnement erfolgreich wiederhergestellt!', {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "dark"
+        });
         await fetchSubscription();
-        setIsCancelModalOpen(false);      } else {
+        setIsReactivateModalOpen(false);
+        // Elegant reload after a short delay to show the toast
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
         const data = await response.json();
         setError(data.error || 'Failed to reactivate subscription');
+        toast.error('Fehler beim Wiederherstellen des Abonnements');
       }
     } catch (err) {
       console.error('Reactivate subscription error:', err);
       setError('Failed to reactivate subscription');
+      toast.error('Fehler beim Wiederherstellen des Abonnements');
+    } finally {
+      setIsReactivating(false);
     }
   };
 

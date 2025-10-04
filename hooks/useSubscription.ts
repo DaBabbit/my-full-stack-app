@@ -132,19 +132,25 @@ export function useSubscription() {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
+    let channel = supabase
       .channel('subscription_updates')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'subscriptions',
           filter: `user_id=eq.${user.id}`
         },
         async (payload) => {
+          console.log('Subscription realtime update received:', payload);
           const isValid = checkValidSubscription([payload.new as Subscription]);
           setSubscription(isValid ? payload.new as Subscription : null);
+          setCurrentSubscription(payload.new as Subscription);
+          
+          // Clear cache on update
+          subscriptionCache.delete(user.id);
+          
           if (!isValid) {
             console.log('Subscription expired or invalidated');
           }
@@ -152,10 +158,49 @@ export function useSubscription() {
       )
       .subscribe();
 
+    // Handle visibility changes - reconnect Realtime when tab becomes visible
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible, refreshing subscription and reconnecting...');
+        
+        // Refresh subscription data
+        await fetchSubscription();
+        
+        // Reconnect realtime channel
+        await supabase.removeChannel(channel);
+        channel = supabase
+          .channel('subscription_updates_reconnect')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'subscriptions',
+              filter: `user_id=eq.${user.id}`
+            },
+            async (payload) => {
+              console.log('Subscription realtime update received:', payload);
+              const isValid = checkValidSubscription([payload.new as Subscription]);
+              setSubscription(isValid ? payload.new as Subscription : null);
+              setCurrentSubscription(payload.new as Subscription);
+              subscriptionCache.delete(user.id);
+              
+              if (!isValid) {
+                console.log('Subscription expired or invalidated');
+              }
+            }
+          )
+          .subscribe();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeChannel(channel);
     };
-  }, [user, supabase, checkValidSubscription]);
+  }, [user, supabase, checkValidSubscription, fetchSubscription]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;

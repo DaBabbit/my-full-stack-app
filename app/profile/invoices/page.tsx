@@ -43,7 +43,22 @@ export default function InvoicesPage() {
       router.push('/login');
       return;
     }
+    
     fetchInvoices();
+    
+    // Handle tab visibility changes - refresh invoices when tab becomes visible
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Invoices tab became visible, refreshing data...');
+        await fetchInvoices();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [user, router]);
 
   const fetchInvoices = async () => {

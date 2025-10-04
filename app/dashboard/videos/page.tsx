@@ -256,13 +256,26 @@ export default function VideosPage() {
       return channel;
     };
     
-    const channelPromise = setupRealtimeSubscription();
+    let channelPromise = setupRealtimeSubscription();
     
-    // Also refresh on visibility change (tab switching)
-    const handleVisibilityChange = () => {
+    // Handle tab visibility changes - reconnect Realtime and refresh data
+    const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
-        console.log('Tab became visible, refreshing data...');
-        fetchVideos();
+        console.log('Tab became visible, reconnecting and refreshing data...');
+        
+        // Refresh data when tab becomes visible
+        await fetchVideos();
+        
+        // Unsubscribe old channel and create new one to ensure fresh connection
+        const oldChannel = await channelPromise;
+        await oldChannel.unsubscribe();
+        console.log('Old channel unsubscribed, creating new subscription...');
+        
+        // Create new subscription
+        const newChannel = await setupRealtimeSubscription();
+        channelPromise = Promise.resolve(newChannel);
+      } else {
+        console.log('Tab hidden, pausing realtime...');
       }
     };
     

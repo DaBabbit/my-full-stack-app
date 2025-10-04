@@ -138,6 +138,15 @@ export default function VideosPage() {
     }
 
     fetchVideos();
+    
+    // Set up auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchVideos();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [user, router]);
 
   // Handle mobile detection and resize
@@ -167,10 +176,21 @@ export default function VideosPage() {
 
   const fetchVideos = async () => {
     try {
+      setIsLoading(true);
+      
       // Import supabase client
       const { supabase } = await import('@/utils/supabase');
       
-      // Fetch videos directly from Supabase
+      // Get current user to ensure we have the right context
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        console.error('User not authenticated');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch videos directly from Supabase with explicit user filter
       const { data: videos, error } = await supabase
         .from('videos')
         .select(`
@@ -190,10 +210,17 @@ export default function VideosPage() {
           format,
           thumbnail_url
         `)
+        .eq('user_id', currentUser.id) // Explicit user filter for security
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching videos:', error);
+        setErrorDetails({
+          title: 'Fehler beim Laden der Videos',
+          message: 'Die Videos konnten nicht geladen werden. Bitte versuchen Sie es erneut.',
+          details: error.message
+        });
+        setShowErrorModal(true);
         return;
       }
 
@@ -218,8 +245,16 @@ export default function VideosPage() {
 
       setVideos(transformedVideos);
       setLastFetchTime(Date.now());
+      
+      console.log(`Successfully loaded ${transformedVideos.length} videos`);
     } catch (error) {
       console.error('Error fetching videos:', error);
+      setErrorDetails({
+        title: 'Fehler beim Laden der Videos',
+        message: 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+      setShowErrorModal(true);
     } finally {
       setIsLoading(false);
     }
@@ -323,7 +358,7 @@ export default function VideosPage() {
       }
       
       // Insert new video directly to Supabase
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('videos')
         .insert([
           {
@@ -336,18 +371,58 @@ export default function VideosPage() {
             inspiration_source: newVideo.inspiration_source || null,
             description: newVideo.description || null,
           }
-        ]);
+        ])
+        .select();
 
       if (error) {
         console.error('Error creating video:', error);
-        alert(`Fehler beim Erstellen des Videos: ${error.message}`);
+        let errorMessage = 'Fehler beim Erstellen des Videos';
+        if (error.message.includes('row-level security policy')) {
+          errorMessage = 'Berechtigung verweigert: Sie haben nicht die erforderlichen Rechte, Videos zu erstellen.';
+        } else if (error.message.includes('cutter_assignments')) {
+          errorMessage = 'Video-Erstellung fehlgeschlagen: Es gab ein Problem mit der Datenbankstruktur. Bitte kontaktieren Sie den Support.';
+        } else if (error.message.includes('permission denied')) {
+          errorMessage = 'Zugriff verweigert: Sie haben keine Berechtigung, Videos zu erstellen.';
+        } else {
+          errorMessage = `Fehler beim Erstellen des Videos: ${error.message}`;
+        }
+        
+        setErrorDetails({
+          title: 'Video-Erstellung fehlgeschlagen',
+          message: errorMessage,
+          details: error.message
+        });
+        setShowErrorModal(true);
         return;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error('Video konnte nicht erstellt werden');
       }
 
       console.log('Video erfolgreich erstellt!');
 
-      // Success - refresh videos and close modal
-      fetchVideos();
+      // Success - add new video to state instead of full refresh
+      const newVideoData = data[0];
+      const transformedNewVideo = {
+        id: newVideoData.id,
+        name: newVideoData.title,
+        status: newVideoData.status,
+        storage_location: newVideoData.storage_location,
+        created_at: newVideoData.created_at,
+        publication_date: newVideoData.publication_date,
+        responsible_person: newVideoData.responsible_person,
+        inspiration_source: newVideoData.inspiration_source,
+        description: newVideoData.description,
+        last_updated: newVideoData.last_updated,
+        updated_at: newVideoData.updated_at,
+        duration: newVideoData.duration,
+        file_size: newVideoData.file_size,
+        format: newVideoData.format,
+        thumbnail_url: newVideoData.thumbnail_url
+      };
+      
+      setVideos(prevVideos => [transformedNewVideo, ...prevVideos]);
       setShowAddModal(false);
       setNewVideo({
         name: '',
@@ -359,7 +434,12 @@ export default function VideosPage() {
       });
     } catch (error) {
       console.error('Error adding video:', error);
-      alert('Fehler beim Erstellen des Videos. Bitte versuche es erneut.');
+      setErrorDetails({
+        title: 'Video-Erstellung fehlgeschlagen',
+        message: 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+      setShowErrorModal(true);
     }
   };
 
@@ -387,14 +467,23 @@ export default function VideosPage() {
       // Import supabase client
       const { supabase } = await import('@/utils/supabase');
       
-      // Update video status directly in Supabase
-      const { error } = await supabase
+      // Get current user to ensure we have the right context
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        throw new Error('Benutzer nicht angemeldet');
+      }
+      
+      // Update video status directly in Supabase with explicit user_id check
+      const { data, error } = await supabase
         .from('videos')
         .update({ 
           status: newStatus,
-          updated_at: new Date().toISOString()
+          last_updated: new Date().toISOString()
         })
-        .eq('id', videoId);
+        .eq('id', videoId)
+        .eq('user_id', currentUser.id) // Explicit user_id check for security
+        .select();
 
       if (error) {
         console.error('Error updating video status:', error);
@@ -413,7 +502,9 @@ export default function VideosPage() {
         if (error.message.includes('row-level security policy')) {
           errorMessage = 'Berechtigung verweigert: Sie haben nicht die erforderlichen Rechte für diese Status-Änderung.';
         } else if (error.message.includes('cutter_assignments')) {
-          errorMessage = 'Status-Änderung fehlgeschlagen: Cutter-Zuweisung konnte nicht erstellt werden.';
+          errorMessage = 'Status-Änderung fehlgeschlagen: Es gab ein Problem mit der Datenbankstruktur. Bitte kontaktieren Sie den Support.';
+        } else if (error.message.includes('permission denied')) {
+          errorMessage = 'Zugriff verweigert: Sie haben keine Berechtigung, dieses Video zu bearbeiten.';
         } else {
           errorMessage = `Fehler beim Aktualisieren des Status: ${error.message}`;
         }
@@ -428,9 +519,21 @@ export default function VideosPage() {
         return;
       }
 
+      if (!data || data.length === 0) {
+        throw new Error('Video nicht gefunden oder keine Berechtigung');
+      }
+
       console.log('Status erfolgreich aktualisiert!');
-      // Refresh videos to ensure consistency
-      fetchVideos();
+      
+      // Instead of full refresh, just update the specific video in state
+      setVideos(prevVideos => 
+        prevVideos.map(video => 
+          video.id === videoId 
+            ? { ...video, status: newStatus, last_updated: new Date().toISOString() }
+            : video
+        )
+      );
+      
     } catch (error) {
       console.error('Error updating status:', error);
       
@@ -476,7 +579,14 @@ export default function VideosPage() {
     try {
       const { supabase } = await import('@/utils/supabase');
       
-      const { error } = await supabase
+      // Get current user to ensure we have the right context
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        throw new Error('Benutzer nicht angemeldet');
+      }
+      
+      const { data, error } = await supabase
         .from('videos')
         .update({
           title: editingVideo.name,
@@ -485,23 +595,67 @@ export default function VideosPage() {
           responsible_person: editingVideo.responsible_person || null,
           inspiration_source: editingVideo.inspiration_source || null,
           description: editingVideo.description || null,
-          updated_at: new Date().toISOString()
+          last_updated: new Date().toISOString()
         })
-        .eq('id', editingVideo.id);
+        .eq('id', editingVideo.id)
+        .eq('user_id', currentUser.id) // Explicit user_id check for security
+        .select();
 
       if (error) {
         console.error('Error updating video:', error);
-        alert(`Fehler beim Aktualisieren des Videos: ${error.message}`);
+        let errorMessage = 'Fehler beim Aktualisieren des Videos';
+        if (error.message.includes('row-level security policy')) {
+          errorMessage = 'Berechtigung verweigert: Sie haben nicht die erforderlichen Rechte, dieses Video zu bearbeiten.';
+        } else if (error.message.includes('cutter_assignments')) {
+          errorMessage = 'Video-Update fehlgeschlagen: Es gab ein Problem mit der Datenbankstruktur. Bitte kontaktieren Sie den Support.';
+        } else if (error.message.includes('permission denied')) {
+          errorMessage = 'Zugriff verweigert: Sie haben keine Berechtigung, dieses Video zu bearbeiten.';
+        } else {
+          errorMessage = `Fehler beim Aktualisieren des Videos: ${error.message}`;
+        }
+        
+        setErrorDetails({
+          title: 'Video-Update fehlgeschlagen',
+          message: errorMessage,
+          details: error.message
+        });
+        setShowErrorModal(true);
         return;
       }
 
-      // Success - refresh videos and close modal
-      fetchVideos();
+      if (!data || data.length === 0) {
+        throw new Error('Video nicht gefunden oder keine Berechtigung');
+      }
+
+      // Success - update video in state instead of full refresh
+      const updatedVideoData = data[0];
+      setVideos(prevVideos => 
+        prevVideos.map(video => 
+          video.id === editingVideo.id 
+            ? {
+                ...video,
+                name: updatedVideoData.title,
+                status: updatedVideoData.status,
+                publication_date: updatedVideoData.publication_date,
+                responsible_person: updatedVideoData.responsible_person,
+                inspiration_source: updatedVideoData.inspiration_source,
+                description: updatedVideoData.description,
+                last_updated: updatedVideoData.last_updated
+              }
+            : video
+        )
+      );
+      
       setShowEditModal(false);
       setEditingVideo(null);
     } catch (error) {
       console.error('Error updating video:', error);
-      alert('Fehler beim Aktualisieren des Videos. Bitte versuche es erneut.');
+      setErrorDetails({
+        title: 'Video-Update fehlgeschlagen',
+        message: 'Fehler beim Aktualisieren des Videos. Bitte versuchen Sie es erneut.',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+      setShowErrorModal(true);
     }
   };
 
@@ -516,23 +670,53 @@ export default function VideosPage() {
     try {
       const { supabase } = await import('@/utils/supabase');
       
+      // Get current user to ensure we have the right context
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        throw new Error('Benutzer nicht angemeldet');
+      }
+      
       const { error } = await supabase
         .from('videos')
         .delete()
-        .eq('id', videoToDelete.id);
+        .eq('id', videoToDelete.id)
+        .eq('user_id', currentUser.id); // Explicit user_id check for security
 
       if (error) {
         console.error('Error deleting video:', error);
-        alert(`Fehler beim Löschen des Videos: ${error.message}`);
+        let errorMessage = 'Fehler beim Löschen des Videos';
+        if (error.message.includes('row-level security policy')) {
+          errorMessage = 'Berechtigung verweigert: Sie haben nicht die erforderlichen Rechte, dieses Video zu löschen.';
+        } else if (error.message.includes('cutter_assignments')) {
+          errorMessage = 'Video-Löschung fehlgeschlagen: Es gab ein Problem mit der Datenbankstruktur. Bitte kontaktieren Sie den Support.';
+        } else if (error.message.includes('permission denied')) {
+          errorMessage = 'Zugriff verweigert: Sie haben keine Berechtigung, dieses Video zu löschen.';
+        } else {
+          errorMessage = `Fehler beim Löschen des Videos: ${error.message}`;
+        }
+        
+        setErrorDetails({
+          title: 'Video-Löschung fehlgeschlagen',
+          message: errorMessage,
+          details: error.message
+        });
+        setShowErrorModal(true);
         return;
       }
 
-      // Success - refresh videos
-      fetchVideos();
+      // Success - remove video from state instead of full refresh
+      setVideos(prevVideos => prevVideos.filter(video => video.id !== videoToDelete.id));
+      setShowDeleteModal(false);
       setVideoToDelete(null);
     } catch (error) {
       console.error('Error deleting video:', error);
-      alert('Fehler beim Löschen des Videos. Bitte versuche es erneut.');
+      setErrorDetails({
+        title: 'Video-Löschung fehlgeschlagen',
+        message: 'Fehler beim Löschen des Videos. Bitte versuchen Sie es erneut.',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+      setShowErrorModal(true);
     }
   };
 
@@ -1488,7 +1672,7 @@ export default function VideosPage() {
         }}
         onConfirm={confirmDeleteVideo}
         title="Video löschen"
-        message={`Möchten Sie das Video "${videoToDelete?.name}" wirklich löschen?`}
+        message={`Möchten Sie das Video "${videoToDelete?.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`}
         itemName={videoToDelete?.name}
       />
 

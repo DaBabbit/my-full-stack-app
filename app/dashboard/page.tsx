@@ -131,7 +131,23 @@ export default function Dashboard() {
             
             if (payload.eventType === 'INSERT') {
               // New video was created
-              const newVideo = payload.new as any;
+              const newVideo = payload.new as {
+                id: string;
+                title: string;
+                status: string;
+                storage_location?: string;
+                created_at: string;
+                publication_date?: string;
+                responsible_person?: string;
+                inspiration_source?: string;
+                description?: string;
+                last_updated?: string;
+                updated_at?: string;
+                duration?: number;
+                file_size?: number;
+                format?: string;
+                thumbnail_url?: string;
+              };
               const transformedNewVideo = {
                 id: newVideo.id,
                 name: newVideo.title,
@@ -158,7 +174,22 @@ export default function Dashboard() {
               });
             } else if (payload.eventType === 'UPDATE') {
               // Video was updated
-              const updatedVideo = payload.new as any;
+              const updatedVideo = payload.new as {
+                id: string;
+                title: string;
+                status: string;
+                storage_location?: string;
+                publication_date?: string;
+                responsible_person?: string;
+                inspiration_source?: string;
+                description?: string;
+                last_updated?: string;
+                updated_at?: string;
+                duration?: number;
+                file_size?: number;
+                format?: string;
+                thumbnail_url?: string;
+              };
               setVideos(prevVideos =>
                 prevVideos.map(video =>
                   video.id === updatedVideo.id
@@ -183,7 +214,7 @@ export default function Dashboard() {
               );
             } else if (payload.eventType === 'DELETE') {
               // Video was deleted
-              const deletedVideo = payload.old as any;
+              const deletedVideo = payload.old as { id: string };
               setVideos(prevVideos =>
                 prevVideos.filter(video => video.id !== deletedVideo.id)
               );

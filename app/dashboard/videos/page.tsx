@@ -139,14 +139,110 @@ export default function VideosPage() {
 
     fetchVideos();
     
-    // Set up auto-refresh every 30 seconds
-    const interval = setInterval(() => {
+    // Set up Supabase Realtime subscription for videos
+    const setupRealtimeSubscription = async () => {
+      const { supabase } = await import('@/utils/supabase');
+      
+      // Subscribe to changes in the videos table
+      const channel = supabase
+        .channel('videos_realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+            schema: 'public',
+            table: 'videos',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Realtime update received:', payload);
+            
+            if (payload.eventType === 'INSERT') {
+              // New video was created
+              const newVideo = payload.new as any;
+              const transformedNewVideo = {
+                id: newVideo.id,
+                name: newVideo.title,
+                status: newVideo.status,
+                storage_location: newVideo.storage_location,
+                created_at: newVideo.created_at,
+                publication_date: newVideo.publication_date,
+                responsible_person: newVideo.responsible_person,
+                inspiration_source: newVideo.inspiration_source,
+                description: newVideo.description,
+                last_updated: newVideo.last_updated,
+                updated_at: newVideo.updated_at,
+                duration: newVideo.duration,
+                file_size: newVideo.file_size,
+                format: newVideo.format,
+                thumbnail_url: newVideo.thumbnail_url
+              };
+              
+              setVideos(prevVideos => {
+                // Check if video already exists
+                const exists = prevVideos.some(v => v.id === newVideo.id);
+                if (exists) return prevVideos;
+                return [transformedNewVideo, ...prevVideos];
+              });
+            } else if (payload.eventType === 'UPDATE') {
+              // Video was updated
+              const updatedVideo = payload.new as any;
+              setVideos(prevVideos =>
+                prevVideos.map(video =>
+                  video.id === updatedVideo.id
+                    ? {
+                        ...video,
+                        name: updatedVideo.title,
+                        status: updatedVideo.status,
+                        storage_location: updatedVideo.storage_location,
+                        publication_date: updatedVideo.publication_date,
+                        responsible_person: updatedVideo.responsible_person,
+                        inspiration_source: updatedVideo.inspiration_source,
+                        description: updatedVideo.description,
+                        last_updated: updatedVideo.last_updated,
+                        updated_at: updatedVideo.updated_at,
+                        duration: updatedVideo.duration,
+                        file_size: updatedVideo.file_size,
+                        format: updatedVideo.format,
+                        thumbnail_url: updatedVideo.thumbnail_url
+                      }
+                    : video
+                )
+              );
+            } else if (payload.eventType === 'DELETE') {
+              // Video was deleted
+              const deletedVideo = payload.old as any;
+              setVideos(prevVideos =>
+                prevVideos.filter(video => video.id !== deletedVideo.id)
+              );
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('Realtime subscription status:', status);
+        });
+      
+      return channel;
+    };
+    
+    const channelPromise = setupRealtimeSubscription();
+    
+    // Also refresh on visibility change (tab switching)
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        console.log('Tab became visible, refreshing data...');
         fetchVideos();
       }
-    }, 30000);
-
-    return () => clearInterval(interval);
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      channelPromise.then(channel => {
+        channel.unsubscribe();
+      });
+    };
   }, [user, router]);
 
   // Handle mobile detection and resize
@@ -402,27 +498,8 @@ export default function VideosPage() {
 
       console.log('Video erfolgreich erstellt!');
 
-      // Success - add new video to state instead of full refresh
-      const newVideoData = data[0];
-      const transformedNewVideo = {
-        id: newVideoData.id,
-        name: newVideoData.title,
-        status: newVideoData.status,
-        storage_location: newVideoData.storage_location,
-        created_at: newVideoData.created_at,
-        publication_date: newVideoData.publication_date,
-        responsible_person: newVideoData.responsible_person,
-        inspiration_source: newVideoData.inspiration_source,
-        description: newVideoData.description,
-        last_updated: newVideoData.last_updated,
-        updated_at: newVideoData.updated_at,
-        duration: newVideoData.duration,
-        file_size: newVideoData.file_size,
-        format: newVideoData.format,
-        thumbnail_url: newVideoData.thumbnail_url
-      };
-      
-      setVideos(prevVideos => [transformedNewVideo, ...prevVideos]);
+      // Realtime subscription will handle adding the new video automatically
+      // No need to manually update state here
       setShowAddModal(false);
       setNewVideo({
         name: '',
@@ -525,14 +602,8 @@ export default function VideosPage() {
 
       console.log('Status erfolgreich aktualisiert!');
       
-      // Instead of full refresh, just update the specific video in state
-      setVideos(prevVideos => 
-        prevVideos.map(video => 
-          video.id === videoId 
-            ? { ...video, status: newStatus, last_updated: new Date().toISOString() }
-            : video
-        )
-      );
+      // Realtime subscription will handle the update automatically
+      // No need to manually update state here
       
     } catch (error) {
       console.error('Error updating status:', error);
@@ -627,24 +698,8 @@ export default function VideosPage() {
         throw new Error('Video nicht gefunden oder keine Berechtigung');
       }
 
-      // Success - update video in state instead of full refresh
-      const updatedVideoData = data[0];
-      setVideos(prevVideos => 
-        prevVideos.map(video => 
-          video.id === editingVideo.id 
-            ? {
-                ...video,
-                name: updatedVideoData.title,
-                status: updatedVideoData.status,
-                publication_date: updatedVideoData.publication_date,
-                responsible_person: updatedVideoData.responsible_person,
-                inspiration_source: updatedVideoData.inspiration_source,
-                description: updatedVideoData.description,
-                last_updated: updatedVideoData.last_updated
-              }
-            : video
-        )
-      );
+      // Realtime subscription will handle the update automatically
+      // No need to manually update state here
       
       setShowEditModal(false);
       setEditingVideo(null);
@@ -705,8 +760,8 @@ export default function VideosPage() {
         return;
       }
 
-      // Success - remove video from state instead of full refresh
-      setVideos(prevVideos => prevVideos.filter(video => video.id !== videoToDelete.id));
+      // Realtime subscription will handle the deletion automatically
+      // No need to manually update state here
       setShowDeleteModal(false);
       setVideoToDelete(null);
     } catch (error) {

@@ -110,6 +110,111 @@ export default function Dashboard() {
     }
 
     fetchVideos();
+    
+    // Set up Supabase Realtime subscription for videos
+    const setupRealtimeSubscription = async () => {
+      const { supabase } = await import('@/utils/supabase');
+      
+      // Subscribe to changes in the videos table
+      const channel = supabase
+        .channel('dashboard_videos_realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+            schema: 'public',
+            table: 'videos',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Dashboard realtime update received:', payload);
+            
+            if (payload.eventType === 'INSERT') {
+              // New video was created
+              const newVideo = payload.new as any;
+              const transformedNewVideo = {
+                id: newVideo.id,
+                name: newVideo.title,
+                status: newVideo.status,
+                storage_location: newVideo.storage_location,
+                created_at: newVideo.created_at,
+                publication_date: newVideo.publication_date,
+                responsible_person: newVideo.responsible_person,
+                inspiration_source: newVideo.inspiration_source,
+                description: newVideo.description,
+                last_updated: newVideo.last_updated,
+                updated_at: newVideo.updated_at,
+                duration: newVideo.duration,
+                file_size: newVideo.file_size,
+                format: newVideo.format,
+                thumbnail_url: newVideo.thumbnail_url
+              };
+              
+              setVideos(prevVideos => {
+                // Check if video already exists
+                const exists = prevVideos.some(v => v.id === newVideo.id);
+                if (exists) return prevVideos;
+                return [transformedNewVideo, ...prevVideos];
+              });
+            } else if (payload.eventType === 'UPDATE') {
+              // Video was updated
+              const updatedVideo = payload.new as any;
+              setVideos(prevVideos =>
+                prevVideos.map(video =>
+                  video.id === updatedVideo.id
+                    ? {
+                        ...video,
+                        name: updatedVideo.title,
+                        status: updatedVideo.status,
+                        storage_location: updatedVideo.storage_location,
+                        publication_date: updatedVideo.publication_date,
+                        responsible_person: updatedVideo.responsible_person,
+                        inspiration_source: updatedVideo.inspiration_source,
+                        description: updatedVideo.description,
+                        last_updated: updatedVideo.last_updated,
+                        updated_at: updatedVideo.updated_at,
+                        duration: updatedVideo.duration,
+                        file_size: updatedVideo.file_size,
+                        format: updatedVideo.format,
+                        thumbnail_url: updatedVideo.thumbnail_url
+                      }
+                    : video
+                )
+              );
+            } else if (payload.eventType === 'DELETE') {
+              // Video was deleted
+              const deletedVideo = payload.old as any;
+              setVideos(prevVideos =>
+                prevVideos.filter(video => video.id !== deletedVideo.id)
+              );
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('Dashboard realtime subscription status:', status);
+        });
+      
+      return channel;
+    };
+    
+    const channelPromise = setupRealtimeSubscription();
+    
+    // Also refresh on visibility change (tab switching)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Dashboard tab became visible, refreshing data...');
+        fetchVideos();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      channelPromise.then(channel => {
+        channel.unsubscribe();
+      });
+    };
   }, [user, router]);
 
   // Handle mobile detection and resize

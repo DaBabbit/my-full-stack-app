@@ -93,6 +93,10 @@ export default function VideosPage() {
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [showPermissionError, setShowPermissionError] = useState(false);
   const [permissionErrorAction, setPermissionErrorAction] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [updatingVideoIds, setUpdatingVideoIds] = useState<Set<string>>(new Set());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -213,6 +217,7 @@ export default function VideosPage() {
       })) || [];
 
       setVideos(transformedVideos);
+      setLastFetchTime(Date.now());
     } catch (error) {
       console.error('Error fetching videos:', error);
     } finally {
@@ -366,6 +371,18 @@ export default function VideosPage() {
       return;
     }
 
+    // Optimistic update - immediately update UI
+    setVideos(prevVideos => 
+      prevVideos.map(video => 
+        video.id === videoId 
+          ? { ...video, status: newStatus, updated_at: new Date().toISOString() }
+          : video
+      )
+    );
+
+    // Add to updating set
+    setUpdatingVideoIds(prev => new Set(prev).add(videoId));
+
     try {
       // Import supabase client
       const { supabase } = await import('@/utils/supabase');
@@ -381,6 +398,15 @@ export default function VideosPage() {
 
       if (error) {
         console.error('Error updating video status:', error);
+        
+        // Revert optimistic update on error
+        setVideos(prevVideos => 
+          prevVideos.map(video => 
+            video.id === videoId 
+              ? { ...video, status: video.status } // Revert to original status
+              : video
+          )
+        );
         
         // Better error message for RLS violations
         let errorMessage = 'Fehler beim Aktualisieren des Status';
@@ -403,11 +429,33 @@ export default function VideosPage() {
       }
 
       console.log('Status erfolgreich aktualisiert!');
-      // Refresh videos to show updated status
+      // Refresh videos to ensure consistency
       fetchVideos();
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Fehler beim Aktualisieren des Status. Bitte versuche es erneut.');
+      
+      // Revert optimistic update on error
+      setVideos(prevVideos => 
+        prevVideos.map(video => 
+          video.id === videoId 
+            ? { ...video, status: video.status } // Revert to original status
+            : video
+        )
+      );
+      
+      setErrorDetails({
+        title: 'Status-Update fehlgeschlagen',
+        message: 'Fehler beim Aktualisieren des Status. Bitte versuche es erneut.',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+      setShowErrorModal(true);
+    } finally {
+      // Remove from updating set
+      setUpdatingVideoIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(videoId);
+        return newSet;
+      });
     }
   };
 

@@ -158,19 +158,17 @@ export function useWorkspaceMembers() {
         }
       }
 
-      // Check if user with email exists
-      const { data: existingUserData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle();
+      // Check if user with email exists - use RPC function to bypass RLS
+      const { data: userId, error: rpcError } = await supabase
+        .rpc('get_user_id_by_email', { user_email: email });
 
-      console.log('[inviteMember] User exists check:', existingUserData, userError);
+      console.log('[inviteMember] User exists check (RPC):', { 
+        email, 
+        userId, 
+        error: rpcError 
+      });
 
       const invitationToken = generateInvitationToken();
-
-      // Always set user_id if we found the user
-      const userId = existingUserData?.id || null;
 
       if (userId) {
         console.log('[inviteMember] User exists, creating invitation for registered user with user_id:', userId);

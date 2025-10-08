@@ -54,6 +54,15 @@ interface Video {
   file_size?: number;
   format?: string;
   thumbnail_url?: string;
+  workspace_owner_id?: string;
+  created_by?: string;
+  // Workspace member permissions (only set for shared workspace videos)
+  workspace_permissions?: {
+    can_view: boolean;
+    can_create: boolean;
+    can_edit: boolean;
+    can_delete: boolean;
+  };
 }
 
 const sidebarItems = [
@@ -145,6 +154,8 @@ export default function VideosPage() {
       const { supabase } = await import('@/utils/supabase');
       
       // Subscribe to changes in the videos table
+      // Note: We listen to ALL videos and filter client-side because we need
+      // to catch changes to shared workspace videos as well
       const channel = supabase
         .channel('videos_realtime')
         .on(
@@ -152,102 +163,14 @@ export default function VideosPage() {
           {
             event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
             schema: 'public',
-            table: 'videos',
-            filter: `user_id=eq.${user.id}`
+            table: 'videos'
+            // No filter - we'll catch all changes and refresh to get proper permissions
           },
           (payload) => {
-            console.log('Realtime update received:', payload);
+            console.log('[Realtime] Video update received, refreshing...', payload.eventType);
             
-            if (payload.eventType === 'INSERT') {
-              // New video was created
-              const newVideo = payload.new as {
-                id: string;
-                title: string;
-                status: string;
-                storage_location?: string;
-                created_at: string;
-                publication_date?: string;
-                responsible_person?: string;
-                inspiration_source?: string;
-                description?: string;
-                last_updated?: string;
-                updated_at?: string;
-                duration?: number;
-                file_size?: number;
-                format?: string;
-                thumbnail_url?: string;
-              };
-              const transformedNewVideo = {
-                id: newVideo.id,
-                name: newVideo.title,
-                status: newVideo.status,
-                storage_location: newVideo.storage_location,
-                created_at: newVideo.created_at,
-                publication_date: newVideo.publication_date,
-                responsible_person: newVideo.responsible_person,
-                inspiration_source: newVideo.inspiration_source,
-                description: newVideo.description,
-                last_updated: newVideo.last_updated,
-                updated_at: newVideo.updated_at,
-                duration: newVideo.duration,
-                file_size: newVideo.file_size,
-                format: newVideo.format,
-                thumbnail_url: newVideo.thumbnail_url
-              };
-              
-              setVideos(prevVideos => {
-                // Check if video already exists
-                const exists = prevVideos.some(v => v.id === newVideo.id);
-                if (exists) return prevVideos;
-                return [transformedNewVideo, ...prevVideos];
-              });
-            } else if (payload.eventType === 'UPDATE') {
-              // Video was updated
-              const updatedVideo = payload.new as {
-                id: string;
-                title: string;
-                status: string;
-                storage_location?: string;
-                publication_date?: string;
-                responsible_person?: string;
-                inspiration_source?: string;
-                description?: string;
-                last_updated?: string;
-                updated_at?: string;
-                duration?: number;
-                file_size?: number;
-                format?: string;
-                thumbnail_url?: string;
-              };
-              setVideos(prevVideos =>
-                prevVideos.map(video =>
-                  video.id === updatedVideo.id
-                    ? {
-                        ...video,
-                        name: updatedVideo.title,
-                        status: updatedVideo.status,
-                        storage_location: updatedVideo.storage_location,
-                        publication_date: updatedVideo.publication_date,
-                        responsible_person: updatedVideo.responsible_person,
-                        inspiration_source: updatedVideo.inspiration_source,
-                        description: updatedVideo.description,
-                        last_updated: updatedVideo.last_updated,
-                        updated_at: updatedVideo.updated_at,
-                        duration: updatedVideo.duration,
-                        file_size: updatedVideo.file_size,
-                        format: updatedVideo.format,
-                        thumbnail_url: updatedVideo.thumbnail_url
-                      }
-                    : video
-                )
-              );
-            } else if (payload.eventType === 'DELETE') {
-              // Video was deleted
-              const deletedVideo = payload.old as { id: string };
-              setVideos(prevVideos =>
-                prevVideos.filter(video => video.id !== deletedVideo.id)
-              );
-            }
+            // Simply refresh all videos to ensure proper permissions and workspace membership
+            fetchVideos();
           }
         )
         .subscribe((status) => {
@@ -315,6 +238,26 @@ export default function VideosPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [userDropdownOpen]);
 
+  // Helper function: Check if user can edit a specific video
+  const canEditVideo = (video: Video): boolean => {
+    // If it's the user's own video (no workspace_permissions = own video)
+    if (!video.workspace_permissions) {
+      return permissions.canEditVideos;
+    }
+    // If it's a shared workspace video, check workspace permissions
+    return video.workspace_permissions.can_edit;
+  };
+
+  // Helper function: Check if user can delete a specific video
+  const canDeleteVideo = (video: Video): boolean => {
+    // If it's the user's own video (no workspace_permissions = own video)
+    if (!video.workspace_permissions) {
+      return permissions.canDeleteVideos;
+    }
+    // If it's a shared workspace video, check workspace permissions
+    return video.workspace_permissions.can_delete;
+  };
+
   const fetchVideos = async () => {
     try {
       setIsLoading(true);
@@ -330,9 +273,24 @@ export default function VideosPage() {
         setIsLoading(false);
         return;
       }
+
+      console.log('[fetchVideos] Fetching videos for user:', currentUser.id);
       
-      // Fetch videos directly from Supabase with explicit user filter
-      const { data: videos, error } = await supabase
+      // Step 1: Get workspace memberships (active only)
+      const { data: memberships, error: membershipError } = await supabase
+        .from('workspace_members')
+        .select('workspace_owner_id, permissions')
+        .eq('user_id', currentUser.id)
+        .eq('status', 'active');
+
+      if (membershipError) {
+        console.error('[fetchVideos] Error fetching memberships:', membershipError);
+      }
+
+      console.log('[fetchVideos] Active memberships:', memberships?.length || 0);
+
+      // Step 2: Fetch OWN videos (user_id = currentUser.id)
+      const { data: ownVideos, error: ownError } = await supabase
         .from('videos')
         .select(`
           id,
@@ -349,24 +307,69 @@ export default function VideosPage() {
           duration,
           file_size,
           format,
-          thumbnail_url
+          thumbnail_url,
+          workspace_owner_id,
+          created_by
         `)
-        .eq('user_id', currentUser.id) // Explicit user filter for security
+        .eq('user_id', currentUser.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching videos:', error);
-        setErrorDetails({
-          title: 'Fehler beim Laden der Videos',
-          message: 'Die Videos konnten nicht geladen werden. Bitte versuchen Sie es erneut.',
-          details: error.message
-        });
-        setShowErrorModal(true);
-        return;
+      if (ownError) {
+        console.error('[fetchVideos] Error fetching own videos:', ownError);
       }
 
+      console.log('[fetchVideos] Own videos:', ownVideos?.length || 0);
+
+      // Step 3: Fetch SHARED workspace videos
+      let sharedVideos: any[] = [];
+      if (memberships && memberships.length > 0) {
+        const workspaceOwnerIds = memberships.map(m => m.workspace_owner_id);
+        
+        const { data: shared, error: sharedError } = await supabase
+          .from('videos')
+          .select(`
+            id,
+            title,
+            status,
+            publication_date,
+            responsible_person,
+            storage_location,
+            inspiration_source,
+            description,
+            created_at,
+            last_updated,
+            updated_at,
+            duration,
+            file_size,
+            format,
+            thumbnail_url,
+            workspace_owner_id,
+            created_by
+          `)
+          .in('workspace_owner_id', workspaceOwnerIds)
+          .order('created_at', { ascending: false });
+
+        if (sharedError) {
+          console.error('[fetchVideos] Error fetching shared videos:', sharedError);
+        } else {
+          // Attach permissions to each shared video
+          sharedVideos = shared?.map(video => {
+            const membership = memberships.find(m => m.workspace_owner_id === video.workspace_owner_id);
+            return {
+              ...video,
+              workspace_permissions: membership?.permissions
+            };
+          }) || [];
+          
+          console.log('[fetchVideos] Shared videos:', sharedVideos.length);
+        }
+      }
+
+      // Step 4: Combine own and shared videos
+      const allVideos = [...(ownVideos || []), ...sharedVideos];
+
       // Transform data to match interface
-      const transformedVideos = videos?.map(video => ({
+      const transformedVideos = allVideos.map(video => ({
         id: video.id,
         name: video.title,
         status: video.status,
@@ -381,15 +384,23 @@ export default function VideosPage() {
         duration: video.duration,
         file_size: video.file_size,
         format: video.format,
-        thumbnail_url: video.thumbnail_url
-      })) || [];
+        thumbnail_url: video.thumbnail_url,
+        workspace_owner_id: video.workspace_owner_id,
+        created_by: video.created_by,
+        workspace_permissions: video.workspace_permissions
+      }));
+
+      // Sort by created_at descending
+      transformedVideos.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
       setVideos(transformedVideos);
       setLastFetchTime(Date.now());
       
-      console.log(`Successfully loaded ${transformedVideos.length} videos`);
+      console.log(`[fetchVideos] Successfully loaded ${transformedVideos.length} videos (${ownVideos?.length || 0} own, ${sharedVideos.length} shared)`);
     } catch (error) {
-      console.error('Error fetching videos:', error);
+      console.error('[fetchVideos] Error fetching videos:', error);
       setErrorDetails({
         title: 'Fehler beim Laden der Videos',
         message: 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.',
@@ -1271,7 +1282,7 @@ export default function VideosPage() {
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => {
-                                if (permissions.canEditVideos) {
+                                if (canEditVideo(video)) {
                                   handleEditVideo(video);
                                 } else {
                                   setPermissionErrorAction('Video bearbeiten');
@@ -1279,16 +1290,16 @@ export default function VideosPage() {
                                 }
                               }}
                               className={`transition-colors ${
-                                permissions.canEditVideos 
+                                canEditVideo(video)
                                   ? 'text-white hover:text-neutral-300' 
                                   : 'text-neutral-600 hover:text-neutral-500 cursor-pointer'
                               }`}
-                              title={permissions.canEditVideos ? 'Video bearbeiten' : 'Berechtigungen anzeigen'}
+                              title={canEditVideo(video) ? 'Video bearbeiten' : 'Keine Berechtigung'}
                             >
                               <Edit className="h-4 w-4" />
                             </button>
                             
-                            {permissions.canDeleteVideos && (
+                            {canDeleteVideo(video) && (
                               <button
                                 onClick={() => handleDeleteVideo(video)}
                                 className="text-red-400 hover:text-red-300 transition-colors"
@@ -1339,7 +1350,7 @@ export default function VideosPage() {
                         <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
                           <button
                             onClick={() => {
-                              if (permissions.canEditVideos) {
+                              if (canEditVideo(video)) {
                                 handleEditVideo(video);
                               } else {
                                 setPermissionErrorAction('Video bearbeiten');
@@ -1347,16 +1358,16 @@ export default function VideosPage() {
                               }
                             }}
                             className={`p-1 transition-colors ${
-                              permissions.canEditVideos 
+                              canEditVideo(video)
                                 ? 'text-white hover:text-neutral-300' 
                                 : 'text-neutral-600 hover:text-neutral-500 cursor-pointer'
                             }`}
-                            title={permissions.canEditVideos ? 'Video bearbeiten' : 'Berechtigungen anzeigen'}
+                            title={canEditVideo(video) ? 'Video bearbeiten' : 'Keine Berechtigung'}
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                           
-                          {permissions.canDeleteVideos && (
+                          {canDeleteVideo(video) && (
                             <button
                               onClick={() => handleDeleteVideo(video)}
                               className="p-1 text-red-400 hover:text-red-300 transition-colors"

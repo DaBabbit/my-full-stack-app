@@ -285,24 +285,32 @@ export function useWorkspaceMembers() {
     memberId: string
   ): Promise<{ success: boolean; error?: string }> => {
     if (!user?.id || !isOwner) {
+      console.error('[removeMember] No permission:', { userId: user?.id, isOwner });
       return { success: false, error: 'Keine Berechtigung' };
     }
 
     try {
-      const { error: deleteError } = await supabase
+      console.log('[removeMember] Removing member:', { memberId, workspaceOwnerId: user.id });
+      
+      const { data, error: deleteError } = await supabase
         .from('workspace_members')
         .delete()
         .eq('id', memberId)
         .eq('workspace_owner_id', user.id)
-        .neq('user_id', user.id); // Prevent removing yourself
+        .select();
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('[removeMember] Delete error:', deleteError);
+        throw deleteError;
+      }
+
+      console.log('[removeMember] Successfully removed:', data);
 
       await fetchMembers();
       return { success: true };
-    } catch (err) {
-      console.error('Error removing member:', err);
-      return { success: false, error: 'Fehler beim Entfernen' };
+    } catch (err: any) {
+      console.error('[removeMember] Error removing member:', err);
+      return { success: false, error: err.message || 'Fehler beim Entfernen' };
     }
   }, [user?.id, isOwner, supabase, fetchMembers]);
 

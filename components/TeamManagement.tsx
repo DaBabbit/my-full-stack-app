@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Users, UserPlus, Trash2, Edit, Eye, Crown, Check, X } from 'lucide-react';
 import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import InviteUserModal from './InviteUserModal';
+import RemoveMemberModal from './RemoveMemberModal';
 import { WorkspaceMember, WorkspacePermissions } from '@/types/workspace';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,6 +13,9 @@ export default function TeamManagement() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editPermissions, setEditPermissions] = useState<WorkspacePermissions | null>(null);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<WorkspaceMember | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const handleInvite = async (email: string, permissions: WorkspacePermissions) => {
     const result = await inviteMember(email, permissions);
@@ -38,12 +42,29 @@ export default function TeamManagement() {
     }
   };
 
-  const handleRemoveMember = async (member: WorkspaceMember) => {
-    if (!confirm(`Möchtest du ${member.user?.email} wirklich aus dem Team entfernen?`)) {
-      return;
-    }
+  const openRemoveModal = (member: WorkspaceMember) => {
+    setMemberToRemove(member);
+    setShowRemoveModal(true);
+  };
 
-    await removeMember(member.id);
+  const closeRemoveModal = () => {
+    setShowRemoveModal(false);
+    setMemberToRemove(null);
+    setIsRemoving(false);
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove) return;
+
+    setIsRemoving(true);
+    const result = await removeMember(memberToRemove.id);
+    
+    if (result.success) {
+      closeRemoveModal();
+    } else {
+      alert(result.error || 'Fehler beim Entfernen des Mitglieds');
+      setIsRemoving(false);
+    }
   };
 
   const getRoleIcon = (role: string) => {
@@ -184,7 +205,7 @@ export default function TeamManagement() {
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleRemoveMember(member)}
+                            onClick={() => openRemoveModal(member)}
                             className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
                             title="Mitglied entfernen"
                           >
@@ -259,6 +280,15 @@ export default function TeamManagement() {
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         onInvite={handleInvite}
+      />
+
+      {/* Remove Member Modal */}
+      <RemoveMemberModal
+        isOpen={showRemoveModal}
+        onClose={closeRemoveModal}
+        onConfirm={handleRemoveMember}
+        member={memberToRemove}
+        isRemoving={isRemoving}
       />
     </>
   );

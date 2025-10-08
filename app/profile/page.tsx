@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { AccountManagement } from '@/components/AccountManagement';
+import TeamManagement from '@/components/TeamManagement';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Suspense } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -242,6 +243,17 @@ function ProfileContent() {
 
             {/* Account Management */}
             <AccountManagement />
+
+            {/* Team Management - Only for users with active subscription */}
+            {hasActiveSubscription && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <TeamManagement />
+              </motion.div>
+            )}
           </div>
 
           {/* Right Column - Subscription Status */}

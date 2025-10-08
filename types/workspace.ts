@@ -29,6 +29,11 @@ export interface WorkspaceMember {
     firstname?: string;
     lastname?: string;
   };
+  owner?: {
+    email: string;
+    firstname?: string;
+    lastname?: string;
+  };
 }
 
 export interface InviteMemberRequest {

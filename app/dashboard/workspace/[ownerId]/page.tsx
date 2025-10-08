@@ -865,7 +865,6 @@ export default function SharedWorkspacePage() {
             setVideoToDelete(null);
           }}
           onConfirm={confirmDeleteVideo}
-          videoTitle={videoToDelete?.name || ''}
         />
       )}
 

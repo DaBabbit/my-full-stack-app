@@ -14,12 +14,10 @@ import {
   LayoutDashboard,
   Video,
   Settings,
-  Plus,
   Menu,
   X,
   Search,
   User,
-  Edit,
   ExternalLink,
   LogOut,
   CreditCard,
@@ -190,6 +188,7 @@ export default function SharedWorkspacePage() {
     if (ownerId && permissions.can_view) {
       fetchVideos();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId, permissions.can_view]);
 
   // Real-time subscription
@@ -224,6 +223,7 @@ export default function SharedWorkspacePage() {
     return () => {
       channelPromise.then(channel => channel.unsubscribe());
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId, permissions.can_view]);
 
   // Filter videos by search term

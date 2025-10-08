@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { AccountManagement } from '@/components/AccountManagement';
 import TeamManagement from '@/components/TeamManagement';
+import IncomingInvitations from '@/components/IncomingInvitations';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Suspense } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -243,6 +244,15 @@ function ProfileContent() {
 
             {/* Account Management */}
             <AccountManagement />
+
+            {/* Incoming Invitations - For all users */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <IncomingInvitations />
+            </motion.div>
 
             {/* Team Management - Only for users with active subscription */}
             {hasActiveSubscription && (

@@ -159,30 +159,28 @@ export function useWorkspaceMembers() {
       }
 
       // Check if user with email exists
-      const { data: existingUser, error: userError } = await supabase
+      const { data: existingUserData, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('email', email)
         .maybeSingle();
 
-      console.log('[inviteMember] User exists check:', existingUser, userError);
-
-      // Ignore 406 errors (RLS) - we'll handle non-existing users
-      if (userError && userError.code !== 'PGRST116') {
-        console.error('[inviteMember] User lookup error:', userError);
-        // Continue anyway - treat as non-existing user
-      }
+      console.log('[inviteMember] User exists check:', existingUserData, userError);
 
       const invitationToken = generateInvitationToken();
 
-      if (existingUser) {
-        console.log('[inviteMember] User exists, creating invitation for registered user');
+      // Always set user_id if we found the user
+      const userId = existingUserData?.id || null;
+
+      if (userId) {
+        console.log('[inviteMember] User exists, creating invitation for registered user with user_id:', userId);
+        
         // User exists - check if they are already an owner (has active subscription)
         const { data: isUserOwner } = await supabase
           .from('workspace_members')
           .select('id')
-          .eq('user_id', existingUser.id)
-          .eq('workspace_owner_id', existingUser.id)
+          .eq('user_id', userId)
+          .eq('workspace_owner_id', userId)
           .eq('role', 'owner')
           .eq('status', 'active')
           .maybeSingle();
@@ -194,12 +192,12 @@ export function useWorkspaceMembers() {
           };
         }
 
-        // User exists and is not an owner - create membership
+        // User exists and is not an owner - create membership WITH user_id
         const { error: insertError } = await supabase
           .from('workspace_members')
           .insert({
             workspace_owner_id: user.id,
-            user_id: existingUser.id,
+            user_id: userId, // Set user_id for registered users!
             role: 'collaborator',
             permissions,
             invited_by: user.id,
@@ -209,12 +207,14 @@ export function useWorkspaceMembers() {
           });
 
         if (insertError) {
-          console.error('Insert error:', insertError);
+          console.error('[inviteMember] Insert error:', insertError);
           if (insertError.code === '23505') {
             return { success: false, error: 'Dieser Benutzer ist bereits Mitglied deines Teams.' };
           }
           return { success: false, error: 'Fehler beim Einladen: ' + (insertError.message || 'Unbekannter Fehler') };
         }
+        
+        console.log('[inviteMember] Successfully created invitation with user_id');
       } else {
         console.log('[inviteMember] User does NOT exist, creating invitation for non-registered user');
         

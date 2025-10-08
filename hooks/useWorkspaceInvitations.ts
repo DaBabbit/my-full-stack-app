@@ -93,22 +93,30 @@ export function useWorkspaceInvitations() {
     }
 
     try {
+      console.log('[acceptInvitation] Accepting invitation:', invitationId, 'for user:', user.id);
+      
       // Update the invitation to active status
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('workspace_members')
         .update({
           status: 'active',
-          user_id: user.id, // Set the actual user_id
+          user_id: user.id, // Ensure user_id is set
           updated_at: new Date().toISOString()
         })
-        .eq('id', invitationId);
+        .eq('id', invitationId)
+        .select();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[acceptInvitation] Update error:', updateError);
+        throw updateError;
+      }
+
+      console.log('[acceptInvitation] Successfully accepted:', data);
 
       await fetchInvitations();
       return { success: true };
     } catch (err) {
-      console.error('Error accepting invitation:', err);
+      console.error('[acceptInvitation] Error accepting invitation:', err);
       return { success: false, error: 'Fehler beim Annehmen der Einladung' };
     }
   }, [user?.id, supabase, fetchInvitations]);
@@ -120,18 +128,25 @@ export function useWorkspaceInvitations() {
     }
 
     try {
+      console.log('[declineInvitation] Declining invitation:', invitationId);
+      
       // Delete the invitation
       const { error: deleteError } = await supabase
         .from('workspace_members')
         .delete()
         .eq('id', invitationId);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('[declineInvitation] Delete error:', deleteError);
+        throw deleteError;
+      }
+
+      console.log('[declineInvitation] Successfully declined');
 
       await fetchInvitations();
       return { success: true };
     } catch (err) {
-      console.error('Error declining invitation:', err);
+      console.error('[declineInvitation] Error declining invitation:', err);
       return { success: false, error: 'Fehler beim Ablehnen der Einladung' };
     }
   }, [user?.id, supabase, fetchInvitations]);

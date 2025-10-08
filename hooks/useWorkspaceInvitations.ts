@@ -21,6 +21,8 @@ export function useWorkspaceInvitations() {
     try {
       setIsLoading(true);
       
+      console.log('[useWorkspaceInvitations] Fetching invitations for user:', user.email, user.id);
+      
       // Fetch invitations by email (for users not yet registered) or by user_id
       const { data, error: fetchError } = await supabase
         .from('workspace_members')
@@ -37,12 +39,17 @@ export function useWorkspaceInvitations() {
         .neq('workspace_owner_id', user.id) // Don't show own invitations
         .order('invited_at', { ascending: false });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('[useWorkspaceInvitations] Fetch error:', fetchError);
+        throw fetchError;
+      }
 
+      console.log('[useWorkspaceInvitations] Found invitations:', data?.length || 0, data);
+      
       setInvitations(data as WorkspaceMember[] || []);
       setError(null);
     } catch (err) {
-      console.error('Error fetching invitations:', err);
+      console.error('[useWorkspaceInvitations] Error fetching invitations:', err);
       setError('Fehler beim Laden der Einladungen');
     } finally {
       setIsLoading(false);

@@ -175,7 +175,7 @@ export default function WelcomePage() {
                 <span className="loading loading-spinner loading-md"></span>
               ) : (
                 <>
-                  <span>Los geht's</span>
+                  <span>Los geht&apos;s</span>
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}

@@ -34,6 +34,7 @@ export function useWorkspaceMembers() {
       setIsOwner(!!ownerCheck);
 
       // Fetch members where current user is the owner (including pending invitations)
+      // For pending invitations with NULL user_id, we won't have user data
       const { data, error: fetchError } = await supabase
         .from('workspace_members')
         .select(`
@@ -208,13 +209,13 @@ export function useWorkspaceMembers() {
           return { success: false, error: 'Fehler beim Einladen: ' + (insertError.message || 'Unbekannter Fehler') };
         }
       } else {
-        // User doesn't exist yet - create pending invitation without user_id
+        // User doesn't exist yet - create pending invitation with NULL user_id
         // The user_id will be set when they accept the invitation
         const { error: insertError } = await supabase
           .from('workspace_members')
           .insert({
             workspace_owner_id: user.id,
-            user_id: user.id, // Temporary - will be updated on acceptance
+            user_id: null, // NULL until user accepts invitation
             role: 'collaborator',
             permissions,
             invited_by: user.id,

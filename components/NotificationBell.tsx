@@ -4,15 +4,19 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useWorkspaceInvitations } from '@/hooks/useWorkspaceInvitations';
 import OnboardingTasks from './OnboardingTasks';
+import WorkspaceInvitations from './WorkspaceInvitations';
 
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { tasks, completedCount, totalCount, progressPercentage, isLoading } = useOnboarding();
+  const { invitations, isLoading: invitationsLoading } = useWorkspaceInvitations();
 
-  // Calculate unread count (incomplete tasks)
-  const unreadCount = totalCount - completedCount;
+  // Calculate unread count (incomplete tasks + pending invitations)
+  const incompleteTasks = totalCount - completedCount;
+  const unreadCount = incompleteTasks + invitations.length;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -68,19 +72,26 @@ export default function NotificationBell() {
             </div>
 
             {/* Content */}
-            {isLoading ? (
+            {isLoading || invitationsLoading ? (
               <div className="p-8 flex items-center justify-center">
                 <span className="loading loading-spinner loading-md text-white"></span>
               </div>
             ) : unreadCount > 0 ? (
               <>
+                {/* Workspace Invitations */}
+                {invitations.length > 0 && (
+                  <WorkspaceInvitations />
+                )}
+                
                 {/* Onboarding Tasks */}
-                <OnboardingTasks
-                  tasks={tasks}
-                  completedCount={completedCount}
-                  totalCount={totalCount}
-                  progressPercentage={progressPercentage}
-                />
+                {incompleteTasks > 0 && (
+                  <OnboardingTasks
+                    tasks={tasks}
+                    completedCount={completedCount}
+                    totalCount={totalCount}
+                    progressPercentage={progressPercentage}
+                  />
+                )}
               </>
             ) : (
               /* Empty State */

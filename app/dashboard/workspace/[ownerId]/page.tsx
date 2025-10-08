@@ -865,6 +865,9 @@ export default function SharedWorkspacePage() {
             setVideoToDelete(null);
           }}
           onConfirm={confirmDeleteVideo}
+          title="Video löschen?"
+          message="Möchten Sie dieses Video wirklich unwiderruflich löschen?"
+          itemName={videoToDelete?.name}
         />
       )}
 

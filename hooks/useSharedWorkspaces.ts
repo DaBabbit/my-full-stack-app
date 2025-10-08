@@ -33,20 +33,10 @@ export function useSharedWorkspaces() {
       
       console.log('[useSharedWorkspaces] Fetching shared workspaces for user:', user.id);
 
-      // Fetch active workspace memberships with owner details
+      // Fetch active workspace memberships
       const { data: memberships, error } = await supabase
         .from('workspace_members')
-        .select(`
-          workspace_owner_id,
-          permissions,
-          invited_at,
-          users!workspace_members_workspace_owner_id_fkey (
-            id,
-            email,
-            firstname,
-            lastname
-          )
-        `)
+        .select('workspace_owner_id, permissions, invited_at')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .neq('workspace_owner_id', user.id); // Exclude own workspace
@@ -59,12 +49,41 @@ export function useSharedWorkspaces() {
 
       console.log('[useSharedWorkspaces] Raw memberships:', memberships);
 
+      if (!memberships || memberships.length === 0) {
+        setSharedWorkspaces([]);
+        return;
+      }
+
+      // Fetch owner details for each workspace using RPC (bypasses RLS)
+      const ownerIds = memberships.map(m => m.workspace_owner_id);
+      const { data: owners, error: ownersError } = await supabase
+        .rpc('get_workspace_owner_details', { owner_ids: ownerIds });
+
+      if (ownersError) {
+        console.error('[useSharedWorkspaces] Error fetching owners:', ownersError);
+        // Fallback: try direct query
+        const { data: fallbackOwners } = await supabase
+          .from('users')
+          .select('id, email, firstname, lastname')
+          .in('id', ownerIds);
+        
+        console.log('[useSharedWorkspaces] Fallback owners:', fallbackOwners);
+      } else {
+        console.log('[useSharedWorkspaces] Owners (via RPC):', owners);
+      }
+
       // Transform data
-      const workspaces: SharedWorkspace[] = (memberships || []).map((membership: any) => {
-        const owner = membership.users;
+      const workspaces: SharedWorkspace[] = memberships.map((membership: any) => {
+        const owner = owners?.find(o => o.id === membership.workspace_owner_id);
         const ownerName = owner?.firstname && owner?.lastname
           ? `${owner.firstname} ${owner.lastname}`
           : owner?.email || 'Unbekannt';
+
+        console.log('[useSharedWorkspaces] Mapping workspace:', {
+          workspace_owner_id: membership.workspace_owner_id,
+          owner,
+          ownerName
+        });
 
         return {
           workspace_owner_id: membership.workspace_owner_id,

@@ -554,7 +554,7 @@ export default function SharedWorkspacePage() {
 
         {/* Content Area */}
         <div className="flex-1 overflow-auto p-4 sm:p-8">
-          {/* Header with Permissions Info */}
+          {/* Header with Permissions Info and Create Button */}
           <div className="mb-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
@@ -582,11 +582,20 @@ export default function SharedWorkspacePage() {
                   )}
                 </div>
               </div>
+
+              {/* Create Video Button */}
+              {permissions.can_create && (
+                <button
+                  onClick={() => alert('Video-Erstellung für geteilte Workspaces kommt in Kürze!')}
+                  className="bg-white hover:bg-neutral-100 text-black px-4 sm:px-6 py-2 sm:py-3 rounded-2xl flex items-center space-x-2 transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] font-medium text-sm sm:text-base"
+                >
+                  <span className="text-xl sm:text-2xl">+</span>
+                  <span className="hidden sm:inline">Neues Video</span>
+                  <span className="sm:hidden">Video hinzufügen</span>
+                </button>
+              )}
             </div>
           </div>
-
-          {/* Subscription Warning */}
-          <SubscriptionWarning className="mb-6" />
 
           {/* Workspace Description */}
           <div className="mb-6 bg-neutral-900/30 border border-neutral-700/50 rounded-2xl p-4">

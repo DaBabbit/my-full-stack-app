@@ -27,6 +27,7 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<void>;
   updateEmail: (newEmail: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updateUserProfile: (firstname: string, lastname: string) => Promise<void>;
   isSubscriber: boolean;
 }
 
@@ -229,6 +230,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           emailRedirectTo: `${window.location.origin}/update-password`
         }
       });
+      if (error) throw error;
+    },
+    updateUserProfile: async (firstname: string, lastname: string) => {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      // Update user profile in users table
+      const { error } = await supabase
+        .from('users')
+        .update({
+          firstname: firstname.trim(),
+          lastname: lastname.trim(),
+          onboarding_completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
       if (error) throw error;
     },
     deleteAccount: async () => {

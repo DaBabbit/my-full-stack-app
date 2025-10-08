@@ -11,20 +11,35 @@ export async function GET(request: Request) {
   if (code) {
     console.log('AuthCallback: Exchanging code for session');
     const supabase = createRouteHandlerClient({ cookies });
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code);
     
     if (error) {
       console.error('AuthCallback: Error:', error);
       return NextResponse.redirect(new URL('/login?error=auth-failed', requestUrl.origin));
     }
 
-    // Redirect to the next page if provided, otherwise go to home
+    // Check if user has completed onboarding
+    if (session?.user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('firstname, lastname')
+        .eq('id', session.user.id)
+        .single();
+
+      // If user doesn't have name, redirect to welcome
+      if (!userData?.firstname || !userData?.lastname) {
+        console.log('AuthCallback: User needs onboarding, redirecting to welcome');
+        return NextResponse.redirect(new URL('/welcome', requestUrl.origin));
+      }
+    }
+
+    // Redirect to the next page if provided, otherwise go to dashboard
     if (next) {
       console.log('AuthCallback: Redirecting to:', next);
       return NextResponse.redirect(new URL(next, requestUrl.origin));
     }
 
-    console.log('AuthCallback: Success, redirecting to home');
+    console.log('AuthCallback: Success, redirecting to dashboard');
     return NextResponse.redirect(new URL('/dashboard', requestUrl.origin));
   }
 

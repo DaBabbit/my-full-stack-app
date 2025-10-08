@@ -6,18 +6,45 @@ import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/components/LoginForm';
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, supabase } = useAuth();
   const router = useRouter();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      router.replace('/dashboard');
-    } else {
-      setIsLoading(false);
-    }
-  }, [user, router]);
+    const checkUserProfile = async () => {
+      if (user) {
+        try {
+          // Check if user has completed onboarding
+          const { data, error } = await supabase
+            .from('users')
+            .select('firstname, lastname, onboarding_completed_at')
+            .eq('id', user.id)
+            .single();
+
+          if (error) {
+            console.error('Error checking profile:', error);
+            router.replace('/welcome');
+            return;
+          }
+
+          // If user has no name, redirect to welcome
+          if (!data?.firstname || !data?.lastname) {
+            router.replace('/welcome');
+          } else {
+            router.replace('/dashboard');
+          }
+        } catch (err) {
+          console.error('Error:', err);
+          router.replace('/welcome');
+        }
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    checkUserProfile();
+  }, [user, router, supabase]);
 
   const handleSubmit = async (email: string, password: string, isSignUp: boolean) => {
     setError('');
@@ -34,10 +61,11 @@ export default function LoginPage() {
           return;
         }
         
-        router.replace('/dashboard');
+        // New users always go to welcome screen
+        router.replace('/welcome');
       } else {
         await signInWithEmail(email, password);
-        router.replace('/dashboard');
+        // Existing users: check will be done in useEffect
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Authentication failed');

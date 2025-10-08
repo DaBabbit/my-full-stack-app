@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
 import DashboardSkeleton from '@/components/DashboardSkeleton';
+import NotificationBell from '@/components/NotificationBell';
 import { usePermissions } from '@/hooks/usePermissions';
 import { motion } from 'framer-motion';
 import { 
@@ -14,7 +15,6 @@ import {
   Plus,
   Menu,
   X,
-  Bell,
   User,
   PlayCircle,
   Clock,
@@ -398,9 +398,7 @@ export default function Dashboard() {
 
           <div className="flex items-center space-x-3">
             {/* Notifications */}
-            <button className="p-2 text-neutral-400 rounded-lg hover:text-white hover:bg-neutral-800 transition-colors">
-              <Bell className="w-6 h-6" />
-            </button>
+            <NotificationBell />
 
             {/* User Menu */}
             <div className="relative user-dropdown">

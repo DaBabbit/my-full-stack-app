@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
+import NotificationBell from '@/components/NotificationBell';
 import PermissionErrorModal from '@/components/PermissionErrorModal';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import ErrorModal from '@/components/ErrorModal';
@@ -18,7 +19,6 @@ import {
   Menu,
   X,
   Search,
-  Bell,
   User,
   Edit,
   ExternalLink,
@@ -906,9 +906,7 @@ export default function VideosPage() {
 
           <div className="flex items-center space-x-3">
             {/* Notifications */}
-            <button className="p-2 text-neutral-400 rounded-lg hover:text-white hover:bg-neutral-800 transition-colors">
-              <Bell className="w-6 h-6" />
-            </button>
+            <NotificationBell />
 
             {/* User Menu */}
             <div className="relative user-dropdown">

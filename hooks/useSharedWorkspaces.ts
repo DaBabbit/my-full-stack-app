@@ -71,29 +71,38 @@ export function useSharedWorkspaces() {
           throw rpcError || new Error('RPC returned no data');
         }
       } catch (rpcError) {
-        console.log('[useSharedWorkspaces] RPC not available, using direct query:', rpcError);
+        console.log('[useSharedWorkspaces] RPC not available, using fallback method');
         
-        // Fallback: Fetch owners individually
+        // Fallback: Fetch owner details via workspace_members where they are the owner
         const ownerPromises = ownerIds.map(async (ownerId) => {
-          // Get owner's email from workspace_members invited_by or other source
-          const { data: ownerData } = await supabase
+          console.log('[useSharedWorkspaces] Fetching owner for ID:', ownerId);
+          
+          // Try to get owner data from workspace_members table where this user IS the owner
+          const { data: ownerMember, error: memberError } = await supabase
             .from('workspace_members')
-            .select('users!workspace_members_invited_by_fkey(id, email, firstname, lastname)')
+            .select('user_id, invitation_email')
             .eq('workspace_owner_id', ownerId)
-            .limit(1)
+            .eq('user_id', ownerId)
+            .eq('role', 'owner')
             .maybeSingle();
           
-          console.log('[useSharedWorkspaces] Owner data for', ownerId, ':', ownerData);
+          console.log('[useSharedWorkspaces] Owner member entry:', ownerMember, 'Error:', memberError);
           
-          // If we have the owner data, return it
-          if (ownerData?.users) {
-            return ownerData.users;
+          if (ownerMember?.invitation_email) {
+            // We have the owner's email, try to get their name from auth metadata
+            // Since we can't query users table directly, we use the email
+            return {
+              id: ownerId,
+              email: ownerMember.invitation_email,
+              firstname: null,
+              lastname: null
+            };
           }
           
-          // Last resort: just use owner_id as identifier
+          // Last fallback: use a generic placeholder
           return {
             id: ownerId,
-            email: `User ${ownerId.substring(0, 8)}...`,
+            email: `Workspace Owner`,
             firstname: null,
             lastname: null
           };

@@ -97,12 +97,21 @@ export default function VideosPage() {
       href: '/dashboard/videos',
       active: true
     },
-    ...sharedWorkspaces.map(workspace => ({
-      name: `Workspace: ${workspace.owner_name}`,
-      icon: Users,
-      href: `/dashboard/workspace/${workspace.workspace_owner_id}`,
-      active: false
-    }))
+    ...sharedWorkspaces.map(workspace => {
+      // Format owner name: prioritize firstname + lastname, fallback to email first part
+      let displayName = workspace.owner_name;
+      if (displayName.includes('@')) {
+        // If it's an email, just use the part before @
+        displayName = displayName.split('@')[0];
+      }
+      
+      return {
+        name: displayName, // Just the name, without "Workspace:" prefix
+        icon: Users,
+        href: `/dashboard/workspace/${workspace.workspace_owner_id}`,
+        active: false
+      };
+    })
   ];
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);

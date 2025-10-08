@@ -312,12 +312,21 @@ export default function SharedWorkspacePage() {
   const sidebarItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', active: false },
     { name: 'Videos', icon: Video, href: '/dashboard/videos', active: false },
-    ...sharedWorkspaces.map(workspace => ({
-      name: `Workspace: ${workspace.owner_name}`,
-      icon: Users,
-      href: `/dashboard/workspace/${workspace.workspace_owner_id}`,
-      active: workspace.workspace_owner_id === ownerId
-    }))
+    ...sharedWorkspaces.map(workspace => {
+      // Format owner name: prioritize firstname + lastname, fallback to email first part
+      let displayName = workspace.owner_name;
+      if (displayName.includes('@')) {
+        // If it's an email, just use the part before @
+        displayName = displayName.split('@')[0];
+      }
+      
+      return {
+        name: displayName, // Just the name, without "Workspace:" prefix
+        icon: Users,
+        href: `/dashboard/workspace/${workspace.workspace_owner_id}`,
+        active: workspace.workspace_owner_id === ownerId
+      };
+    })
   ];
 
   const sidebarBottomItems = [
@@ -343,17 +352,20 @@ export default function SharedWorkspacePage() {
         {/* Logo */}
         <div className={`p-6 flex items-center border-b border-neutral-800 ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!sidebarCollapsed && (
-            <Image
-              src="/kosmamedia-logo.svg"
-              alt="Logo"
-              width={120}
-              height={40}
-              className="brightness-0 invert"
-            />
+            <div className="flex-1">
+              <Image
+                src="/kosmamedia-logo.svg"
+                alt="Logo"
+                width={120}
+                height={40}
+                className="brightness-0 invert"
+                priority
+              />
+            </div>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-neutral-800 rounded-lg transition-colors text-neutral-400"
+            className="p-2 hover:bg-neutral-800 rounded-lg transition-colors text-neutral-400 flex-shrink-0"
           >
             {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
           </button>

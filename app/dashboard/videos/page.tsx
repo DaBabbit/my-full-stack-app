@@ -321,7 +321,33 @@ export default function VideosPage() {
       console.log('[fetchVideos] Own videos:', ownVideos?.length || 0);
 
       // Step 3: Fetch SHARED workspace videos
-      let sharedVideos: any[] = [];
+      interface SharedVideo {
+        id: string;
+        title: string;
+        status: string;
+        publication_date?: string;
+        responsible_person?: string;
+        storage_location?: string;
+        inspiration_source?: string;
+        description?: string;
+        created_at: string;
+        last_updated?: string;
+        updated_at?: string;
+        duration?: number;
+        file_size?: number;
+        format?: string;
+        thumbnail_url?: string;
+        workspace_owner_id?: string;
+        created_by?: string;
+        workspace_permissions?: {
+          can_view: boolean;
+          can_create: boolean;
+          can_edit: boolean;
+          can_delete: boolean;
+        };
+      }
+      
+      let sharedVideos: SharedVideo[] = [];
       if (memberships && memberships.length > 0) {
         const workspaceOwnerIds = memberships.map(m => m.workspace_owner_id);
         
@@ -387,7 +413,7 @@ export default function VideosPage() {
         thumbnail_url: video.thumbnail_url,
         workspace_owner_id: video.workspace_owner_id,
         created_by: video.created_by,
-        workspace_permissions: video.workspace_permissions
+        workspace_permissions: 'workspace_permissions' in video ? video.workspace_permissions : undefined
       }));
 
       // Sort by created_at descending

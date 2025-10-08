@@ -74,7 +74,7 @@ export function useSharedWorkspaces() {
 
       // Transform data
       const workspaces: SharedWorkspace[] = memberships.map((membership: any) => {
-        const owner = owners?.find(o => o.id === membership.workspace_owner_id);
+        const owner = owners?.find((o: any) => o.id === membership.workspace_owner_id);
         const ownerName = owner?.firstname && owner?.lastname
           ? `${owner.firstname} ${owner.lastname}`
           : owner?.email || 'Unbekannt';

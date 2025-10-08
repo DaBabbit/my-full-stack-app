@@ -33,7 +33,7 @@ export function useWorkspaceMembers() {
 
       setIsOwner(!!ownerCheck);
 
-      // Fetch members where current user is the owner
+      // Fetch members where current user is the owner (including pending invitations)
       const { data, error: fetchError } = await supabase
         .from('workspace_members')
         .select(`
@@ -45,7 +45,7 @@ export function useWorkspaceMembers() {
           )
         `)
         .eq('workspace_owner_id', user.id)
-        .eq('status', 'active')
+        .in('status', ['active', 'pending'])
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -147,7 +147,24 @@ export function useWorkspaceMembers() {
       const invitationToken = generateInvitationToken();
 
       if (existingUser) {
-        // User exists, create active membership
+        // User exists - check if they are already an owner (has active subscription)
+        const { data: isUserOwner } = await supabase
+          .from('workspace_members')
+          .select('id')
+          .eq('user_id', existingUser.id)
+          .eq('workspace_owner_id', existingUser.id)
+          .eq('role', 'owner')
+          .eq('status', 'active')
+          .single();
+
+        if (isUserOwner) {
+          return { 
+            success: false, 
+            error: 'Dieser Benutzer hat bereits ein eigenes Workspace mit aktivem Abo und kann nicht eingeladen werden.' 
+          };
+        }
+
+        // User exists and is not an owner - create membership
         const { error: insertError } = await supabase
           .from('workspace_members')
           .insert({
@@ -163,21 +180,30 @@ export function useWorkspaceMembers() {
 
         if (insertError) {
           if (insertError.code === '23505') {
-            return { success: false, error: 'Benutzer ist bereits Mitglied' };
+            return { success: false, error: 'Benutzer ist bereits Mitglied dieses Workspaces' };
           }
           throw insertError;
         }
       } else {
-        // User doesn't exist yet, create pending invitation
-        // We'll create a temporary user_id that will be updated when they accept
-        const tempUserId = `temp_${invitationToken}`;
-        
-        // Store invitation without user_id (will be handled differently)
-        // For now, we'll send email invitation
-        return { 
-          success: false, 
-          error: 'Benutzer existiert noch nicht im System. Bitte lade nur existierende Benutzer ein.' 
-        };
+        // User doesn't exist yet - create pending invitation without user_id
+        // The user_id will be set when they accept the invitation
+        const { error: insertError } = await supabase
+          .from('workspace_members')
+          .insert({
+            workspace_owner_id: user.id,
+            user_id: user.id, // Temporary - will be updated on acceptance
+            role: 'collaborator',
+            permissions,
+            invited_by: user.id,
+            status: 'pending',
+            invitation_token: invitationToken,
+            invitation_email: email
+          });
+
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          throw insertError;
+        }
       }
 
       await fetchMembers();

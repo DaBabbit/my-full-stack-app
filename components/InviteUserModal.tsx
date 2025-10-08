@@ -84,14 +84,25 @@ export default function InviteUserModal({ isOpen, onClose, onInvite }: InviteUse
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <>
+          {/* Backdrop with blur */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="bg-neutral-900/95 backdrop-blur-md rounded-3xl p-6 max-w-lg w-full border border-neutral-700"
-          >
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={handleClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-50"
+          />
+          
+          {/* Modal Content */}
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-50 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-neutral-900/95 backdrop-blur-md rounded-3xl p-6 max-w-lg w-full border border-neutral-700 pointer-events-auto"
+            >
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
@@ -266,8 +277,9 @@ export default function InviteUserModal({ isOpen, onClose, onInvite }: InviteUse
                 </button>
               </div>
             </form>
-          </motion.div>
-        </div>
+            </motion.div>
+          </div>
+        </>
       )}
     </AnimatePresence>
   );

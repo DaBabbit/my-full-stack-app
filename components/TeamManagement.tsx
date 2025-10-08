@@ -151,14 +151,14 @@ export default function TeamManagement() {
                       {/* Member Info */}
                       <div className="flex items-center flex-1">
                         <div className="w-10 h-10 bg-neutral-700 rounded-full flex items-center justify-center text-sm font-medium text-white mr-3">
-                          {member.user?.firstname?.[0] || member.user?.email?.[0]?.toUpperCase() || '?'}
+                          {member.user?.firstname?.[0] || member.user?.email?.[0]?.toUpperCase() || member.invitation_email?.[0]?.toUpperCase() || '?'}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
                             <p className="text-white font-medium">
                               {member.user?.firstname && member.user?.lastname
                                 ? `${member.user.firstname} ${member.user.lastname}`
-                                : member.user?.email || 'Unbekannt'}
+                                : member.user?.email || member.invitation_email || 'Unbekannt'}
                             </p>
                             {member.status === 'pending' && (
                               <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full">

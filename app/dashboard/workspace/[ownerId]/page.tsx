@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useParams } from 'next/navigation';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
-import SubscriptionWarning from '@/components/SubscriptionWarning';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';

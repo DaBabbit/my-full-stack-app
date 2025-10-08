@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Check, X, Users, Loader2, Mail, Eye, Edit, Plus, Trash2 } from 'lucide-react';
 import { useWorkspaceInvitations } from '@/hooks/useWorkspaceInvitations';
@@ -8,6 +8,15 @@ import { useWorkspaceInvitations } from '@/hooks/useWorkspaceInvitations';
 export default function IncomingInvitations() {
   const { invitations, isLoading, acceptInvitation, declineInvitation } = useWorkspaceInvitations();
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  // Debug log
+  useEffect(() => {
+    console.log('[IncomingInvitations] Rendered with:', {
+      invitations: invitations.length,
+      isLoading,
+      invitationsData: invitations
+    });
+  }, [invitations, isLoading]);
 
   const handleAccept = async (invitationId: string) => {
     setProcessingId(invitationId);

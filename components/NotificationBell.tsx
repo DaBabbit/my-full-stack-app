@@ -18,6 +18,17 @@ export default function NotificationBell() {
   const incompleteTasks = totalCount - completedCount;
   const unreadCount = incompleteTasks + invitations.length;
 
+  // Debug log
+  useEffect(() => {
+    console.log('[NotificationBell] Rendered with:', {
+      invitations: invitations.length,
+      incompleteTasks,
+      unreadCount,
+      isLoading,
+      invitationsLoading
+    });
+  }, [invitations.length, incompleteTasks, unreadCount, isLoading, invitationsLoading]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

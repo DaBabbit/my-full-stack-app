@@ -3,6 +3,7 @@
 import { AlertTriangle, CreditCard, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
+import SubscriptionStatusSkeleton from './SubscriptionStatusSkeleton';
 
 interface SubscriptionWarningProps {
   className?: string;
@@ -12,8 +13,13 @@ export default function SubscriptionWarning({ className = '' }: SubscriptionWarn
   const router = useRouter();
   const { hasActiveSubscription, subscriptionStatus, isLoading } = usePermissions();
 
-  // Don't show warning while loading or if user has active subscription
-  if (isLoading || hasActiveSubscription) {
+  // Show skeleton while loading
+  if (isLoading) {
+    return <SubscriptionStatusSkeleton />;
+  }
+
+  // Don't show warning if user has active subscription
+  if (hasActiveSubscription) {
     return null;
   }
 

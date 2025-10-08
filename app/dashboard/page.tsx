@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
+import DashboardSkeleton from '@/components/DashboardSkeleton';
 import { usePermissions } from '@/hooks/usePermissions';
 import { motion } from 'framer-motion';
 import { 
@@ -570,16 +571,20 @@ export default function Dashboard() {
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="p-4 ml-0 md:ml-64 pt-24"
       >
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Content Planner</h1>
-          <p className="text-neutral-400">Willkommen zurück! Hier ist deine Content-Übersicht.</p>
-          
-          {/* Subscription Warning */}
-          <SubscriptionWarning className="mt-6" />
-        </div>
+        {isLoading ? (
+          <DashboardSkeleton />
+        ) : (
+          <>
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-white mb-2">Content Planner</h1>
+              <p className="text-neutral-400">Willkommen zurück! Hier ist deine Content-Übersicht.</p>
+              
+              {/* Subscription Warning */}
+              <SubscriptionWarning className="mt-6" />
+            </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Videos */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -683,13 +688,9 @@ export default function Dashboard() {
           </div>
 
           {/* Recent Activity */}
-        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700">
-          <h2 className="text-xl font-semibold text-white mb-4">Letzte Aktivitäten</h2>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <span className="loading loading-ring loading-md text-white"></span>
-            </div>
-          ) : videos.length > 0 ? (
+            <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700">
+              <h2 className="text-xl font-semibold text-white mb-4">Letzte Aktivitäten</h2>
+              {videos.length > 0 ? (
             <div className="space-y-4">
               {videos.slice(0, 5).map((video) => {
                 const statusInfo = getStatusIcon(video.status);
@@ -723,9 +724,11 @@ export default function Dashboard() {
               >
                 Erstes Video erstellen
               </button>
-          </div>
-          )}
-        </div>
+              </div>
+              )}
+            </div>
+          </>
+        )}
       </motion.main>
 
       {/* Mobile sidebar overlay */}

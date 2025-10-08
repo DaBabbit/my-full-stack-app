@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import debounce from 'lodash/debounce';
 
@@ -16,33 +16,45 @@ export interface Subscription {
   updated_at: string;
 }
 
+// Globaler Cache außerhalb der Komponente für bessere Performance
+const subscriptionCache = new Map<string, {data: Subscription | null, timestamp: number}>();
+const CACHE_DURATION = 30000; // 30 seconds
+
 export function useSubscription() {
   const { user, supabase } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isFetchingRef = useRef(false);
 
-  const subscriptionCache = new Map<string, {data: Subscription | null, timestamp: number}>();
-  const CACHE_DURATION = 30000; // 30 seconds
-
-  const fetchSubscription = useCallback(async () => {
+  const fetchSubscription = useCallback(async (forceRefresh = false) => {
     if (!user?.id) {
       setSubscription(null);
+      setCurrentSubscription(null);
       setLoading(false);
       return;
     }
 
-    // Check cache first
-    const cached = subscriptionCache.get(user.id);
-    const now = Date.now();
+    // Verhindere mehrfache gleichzeitige Fetches
+    if (isFetchingRef.current && !forceRefresh) {
+      return;
+    }
+
+    // Check cache first (außer bei forceRefresh)
+    if (!forceRefresh) {
+      const cached = subscriptionCache.get(user.id);
+      const now = Date.now();
+      
+      if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+        setSubscription(cached.data);
+        setLoading(false);
+        return;
+      }
+    }
+
+    isFetchingRef.current = true;
     
-    if (cached && (now - cached.timestamp < CACHE_DURATION)) {
-      setSubscription(cached.data);
-      setLoading(false);
-      return;
-    }
-
     try {
       // Get the most recent subscription for this user (regardless of status)
       const { data, error } = await supabase
@@ -68,21 +80,34 @@ export function useSubscription() {
       // Update cache
       subscriptionCache.set(user.id, {
         data: result,
-        timestamp: now
+        timestamp: Date.now()
       });
       
       setSubscription(result);
+      setError(null);
     } catch (err) {
       console.error('Subscription fetch error:', err);
       setError('Failed to load subscription');
       setSubscription(null);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   }, [user?.id, supabase]);
 
+  // Initiales Laden - sofort beim Mount starten
   useEffect(() => {
+    // Sofort starten ohne Verzögerung
     fetchSubscription();
+    
+    // Optional: Periodisches Refresh alle 60 Sekunden für lange Sessions
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchSubscription(true); // Force refresh
+      }
+    }, 60000); // 60 Sekunden
+    
+    return () => clearInterval(intervalId);
   }, [fetchSubscription]);
 
   const checkValidSubscription = useCallback((data: Subscription[]): boolean => {
@@ -129,11 +154,12 @@ export function useSubscription() {
     debouncedSyncWithStripe(subscriptionId);
   }, [debouncedSyncWithStripe]);
 
+  // Realtime Subscription Setup - optimiert
   useEffect(() => {
     if (!user) return;
 
     let channel = supabase
-      .channel('subscription_updates')
+      .channel(`subscription_updates_${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -156,20 +182,22 @@ export function useSubscription() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Subscription channel status:', status);
+      });
 
     // Handle visibility changes - reconnect Realtime when tab becomes visible
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
-        console.log('Tab became visible, refreshing subscription and reconnecting...');
+        console.log('Tab became visible, refreshing subscription...');
         
-        // Refresh subscription data
-        await fetchSubscription();
+        // Refresh subscription data mit force refresh
+        await fetchSubscription(true);
         
         // Reconnect realtime channel
         await supabase.removeChannel(channel);
         channel = supabase
-          .channel('subscription_updates_reconnect')
+          .channel(`subscription_updates_${user.id}_${Date.now()}`)
           .on(
             'postgres_changes',
             {
@@ -190,7 +218,9 @@ export function useSubscription() {
               }
             }
           )
-          .subscribe();
+          .subscribe((status) => {
+            console.log('Subscription channel reconnected:', status);
+          });
       }
     };
     

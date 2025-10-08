@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
+import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import PermissionErrorModal from '@/components/PermissionErrorModal';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import ErrorModal from '@/components/ErrorModal';
@@ -1122,16 +1123,15 @@ export default function VideosPage() {
         </div>
 
         {/* Videos Table */}
-        <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-neutral-700">
-            <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
-          </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <span className="loading loading-ring loading-lg text-white"></span>
+        {isLoading ? (
+          <VideoTableSkeleton />
+        ) : (
+          <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-neutral-700">
+              <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
             </div>
-          ) : filteredVideos.length === 0 ? (
+
+            {filteredVideos.length === 0 ? (
             <div className="text-center py-12">
               <Video className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-white mb-2">
@@ -1480,8 +1480,9 @@ export default function VideosPage() {
                 })}
               </div>
             </>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </motion.main>
 
       {/* Add Video Modal */}

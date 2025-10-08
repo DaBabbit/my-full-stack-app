@@ -138,13 +138,17 @@ export function useWorkspaceMembers() {
     }
 
     try {
-      // Check if user is already a member
+      console.log('[inviteMember] Inviting:', email);
+      
+      // Check if user is already a member by invitation_email
       const { data: existingMember } = await supabase
         .from('workspace_members')
-        .select('id, status')
+        .select('id, status, invitation_email')
         .eq('workspace_owner_id', user.id)
         .eq('invitation_email', email)
         .maybeSingle();
+
+      console.log('[inviteMember] Existing member check:', existingMember);
 
       if (existingMember) {
         if (existingMember.status === 'active') {
@@ -161,15 +165,18 @@ export function useWorkspaceMembers() {
         .eq('email', email)
         .maybeSingle();
 
+      console.log('[inviteMember] User exists check:', existingUser, userError);
+
       // Ignore 406 errors (RLS) - we'll handle non-existing users
       if (userError && userError.code !== 'PGRST116') {
-        console.error('User lookup error:', userError);
+        console.error('[inviteMember] User lookup error:', userError);
         // Continue anyway - treat as non-existing user
       }
 
       const invitationToken = generateInvitationToken();
 
       if (existingUser) {
+        console.log('[inviteMember] User exists, creating invitation for registered user');
         // User exists - check if they are already an owner (has active subscription)
         const { data: isUserOwner } = await supabase
           .from('workspace_members')
@@ -209,6 +216,8 @@ export function useWorkspaceMembers() {
           return { success: false, error: 'Fehler beim Einladen: ' + (insertError.message || 'Unbekannter Fehler') };
         }
       } else {
+        console.log('[inviteMember] User does NOT exist, creating invitation for non-registered user');
+        
         // User doesn't exist yet - create pending invitation with NULL user_id
         // The user_id will be set when they accept the invitation
         const { error: insertError } = await supabase
@@ -225,14 +234,17 @@ export function useWorkspaceMembers() {
           });
 
         if (insertError) {
-          console.error('Insert error:', insertError);
+          console.error('[inviteMember] Insert error:', insertError);
           if (insertError.code === '23505') {
             return { success: false, error: 'Ein Benutzer mit dieser E-Mail wurde bereits eingeladen.' };
           }
           return { success: false, error: 'Fehler beim Einladen: ' + (insertError.message || 'Unbekannter Fehler') };
         }
+        
+        console.log('[inviteMember] Successfully created invitation for non-registered user');
       }
 
+      console.log('[inviteMember] Invitation created successfully');
       await fetchMembers();
       return { success: true, invitationToken };
     } catch (err: any) {

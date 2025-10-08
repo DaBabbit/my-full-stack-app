@@ -23,8 +23,9 @@ export function useWorkspaceInvitations() {
       
       console.log('[useWorkspaceInvitations] Fetching invitations for user:', user.email, user.id);
       
-      // Fetch invitations by email (for users not yet registered) or by user_id
-      const { data, error: fetchError } = await supabase
+      // Fetch invitations by email - split into two queries for better debugging
+      // Query 1: By invitation_email
+      const { data: emailInvitations, error: emailError } = await supabase
         .from('workspace_members')
         .select(`
           *,
@@ -34,19 +35,48 @@ export function useWorkspaceInvitations() {
             lastname
           )
         `)
-        .or(`invitation_email.eq.${user.email},user_id.eq.${user.id}`)
+        .eq('invitation_email', user.email)
         .eq('status', 'pending')
-        .neq('workspace_owner_id', user.id) // Don't show own invitations
+        .neq('workspace_owner_id', user.id)
         .order('invited_at', { ascending: false });
 
-      if (fetchError) {
-        console.error('[useWorkspaceInvitations] Fetch error:', fetchError);
-        throw fetchError;
+      if (emailError) {
+        console.error('[useWorkspaceInvitations] Email query error:', emailError);
       }
 
-      console.log('[useWorkspaceInvitations] Found invitations:', data?.length || 0, data);
+      console.log('[useWorkspaceInvitations] Email invitations:', emailInvitations?.length || 0, emailInvitations);
+
+      // Query 2: By user_id (for registered users who already accepted)
+      const { data: userIdInvitations, error: userIdError } = await supabase
+        .from('workspace_members')
+        .select(`
+          *,
+          owner:workspace_owner_id (
+            email,
+            firstname,
+            lastname
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .neq('workspace_owner_id', user.id)
+        .order('invited_at', { ascending: false });
+
+      if (userIdError) {
+        console.error('[useWorkspaceInvitations] User ID query error:', userIdError);
+      }
+
+      console.log('[useWorkspaceInvitations] User ID invitations:', userIdInvitations?.length || 0, userIdInvitations);
+
+      // Combine results and remove duplicates
+      const combined = [...(emailInvitations || []), ...(userIdInvitations || [])];
+      const unique = combined.filter((item, index, self) => 
+        index === self.findIndex((t) => t.id === item.id)
+      );
+
+      console.log('[useWorkspaceInvitations] Total unique invitations:', unique.length);
       
-      setInvitations(data as WorkspaceMember[] || []);
+      setInvitations(unique as WorkspaceMember[]);
       setError(null);
     } catch (err) {
       console.error('[useWorkspaceInvitations] Error fetching invitations:', err);

@@ -54,30 +54,61 @@ export function useSharedWorkspaces() {
         return;
       }
 
-      // Fetch owner details for each workspace using RPC (bypasses RLS)
+      // Fetch owner details for each workspace
       const ownerIds = memberships.map(m => m.workspace_owner_id);
-      const { data: owners, error: ownersError } = await supabase
-        .rpc('get_workspace_owner_details', { owner_ids: ownerIds });
-
-      if (ownersError) {
-        console.error('[useSharedWorkspaces] Error fetching owners:', ownersError);
-        // Fallback: try direct query
-        const { data: fallbackOwners } = await supabase
-          .from('users')
-          .select('id, email, firstname, lastname')
-          .in('id', ownerIds);
+      
+      // Try RPC first, fallback to direct query
+      let owners: any[] | null = null;
+      
+      try {
+        const { data: rpcOwners, error: rpcError } = await supabase
+          .rpc('get_workspace_owner_details', { owner_ids: ownerIds });
         
-        console.log('[useSharedWorkspaces] Fallback owners:', fallbackOwners);
-      } else {
-        console.log('[useSharedWorkspaces] Owners (via RPC):', owners);
+        if (!rpcError && rpcOwners) {
+          owners = rpcOwners;
+          console.log('[useSharedWorkspaces] Owners (via RPC):', owners);
+        } else {
+          throw rpcError || new Error('RPC returned no data');
+        }
+      } catch (rpcError) {
+        console.log('[useSharedWorkspaces] RPC not available, using direct query:', rpcError);
+        
+        // Fallback: Fetch owners individually
+        const ownerPromises = ownerIds.map(async (ownerId) => {
+          // Get owner's email from workspace_members invited_by or other source
+          const { data: ownerData } = await supabase
+            .from('workspace_members')
+            .select('users!workspace_members_invited_by_fkey(id, email, firstname, lastname)')
+            .eq('workspace_owner_id', ownerId)
+            .limit(1)
+            .maybeSingle();
+          
+          console.log('[useSharedWorkspaces] Owner data for', ownerId, ':', ownerData);
+          
+          // If we have the owner data, return it
+          if (ownerData?.users) {
+            return ownerData.users;
+          }
+          
+          // Last resort: just use owner_id as identifier
+          return {
+            id: ownerId,
+            email: `User ${ownerId.substring(0, 8)}...`,
+            firstname: null,
+            lastname: null
+          };
+        });
+        
+        owners = await Promise.all(ownerPromises);
+        console.log('[useSharedWorkspaces] Fallback owners:', owners);
       }
 
       // Transform data
       const workspaces: SharedWorkspace[] = memberships.map((membership: any) => {
-        const owner = owners?.find((o: any) => o.id === membership.workspace_owner_id);
+        const owner = owners?.find((o: any) => o && o.id === membership.workspace_owner_id);
         const ownerName = owner?.firstname && owner?.lastname
           ? `${owner.firstname} ${owner.lastname}`
-          : owner?.email || 'Unbekannt';
+          : owner?.email || `Workspace ${membership.workspace_owner_id.substring(0, 8)}`;
 
         console.log('[useSharedWorkspaces] Mapping workspace:', {
           workspace_owner_id: membership.workspace_owner_id,

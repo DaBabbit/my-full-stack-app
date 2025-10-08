@@ -341,7 +341,7 @@ export default function SharedWorkspacePage() {
         className={`hidden md:flex flex-col bg-neutral-900/50 backdrop-blur-md border-r border-neutral-800 relative ${sidebarCollapsed ? 'items-center' : ''}`}
       >
         {/* Logo */}
-        <div className="p-6 flex items-center justify-between border-b border-neutral-800">
+        <div className={`p-6 flex items-center border-b border-neutral-800 ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!sidebarCollapsed && (
             <Image
               src="/kosmamedia-logo.svg"
@@ -353,9 +353,9 @@ export default function SharedWorkspacePage() {
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-neutral-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-neutral-800 rounded-lg transition-colors text-neutral-400"
           >
-            {sidebarCollapsed ? <ChevronRight className="w-5 h-5 text-neutral-400" /> : <ChevronLeft className="w-5 h-5 text-neutral-400" />}
+            {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
           </button>
         </div>
 

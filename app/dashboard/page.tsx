@@ -7,6 +7,7 @@ import SubscriptionWarning from '@/components/SubscriptionWarning';
 import DashboardSkeleton from '@/components/DashboardSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -29,7 +30,8 @@ import {
   Scissors,
   Check,
   Rocket,
-  Crown
+  Crown,
+  Users
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -51,21 +53,6 @@ interface Video {
   thumbnail_url?: string;
 }
 
-const sidebarItems = [
-  {
-    name: 'Dashboard',
-    icon: LayoutDashboard,
-    href: '/dashboard',
-    active: true
-  },
-  {
-    name: 'Videos',
-    icon: Video,
-    href: '/dashboard/videos',
-    active: false
-  }
-];
-
 const sidebarBottomItems = [
   {
     name: 'Settings',
@@ -79,6 +66,29 @@ export default function Dashboard() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const permissions = usePermissions();
+  const { sharedWorkspaces } = useSharedWorkspaces();
+  
+  // Dynamic sidebar items including shared workspaces
+  const sidebarItems = [
+    {
+      name: 'Dashboard',
+      icon: LayoutDashboard,
+      href: '/dashboard',
+      active: true
+    },
+    {
+      name: 'Videos',
+      icon: Video,
+      href: '/dashboard/videos',
+      active: false
+    },
+    ...sharedWorkspaces.map(workspace => ({
+      name: `Workspace: ${workspace.owner_name}`,
+      icon: Users,
+      href: `/dashboard/workspace/${workspace.workspace_owner_id}`,
+      active: false
+    }))
+  ];
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);

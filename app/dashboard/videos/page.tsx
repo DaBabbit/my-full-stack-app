@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
@@ -33,7 +34,8 @@ import {
   Check,
   Rocket,
   Trash2,
-  Crown
+  Crown,
+  Users
 } from 'lucide-react';
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
@@ -65,21 +67,6 @@ interface Video {
   };
 }
 
-const sidebarItems = [
-  {
-    name: 'Dashboard',
-    icon: LayoutDashboard,
-    href: '/dashboard',
-    active: false
-  },
-  {
-    name: 'Videos',
-    icon: Video,
-    href: '/dashboard/videos',
-    active: true
-  }
-];
-
 const sidebarBottomItems = [
   {
     name: 'Settings',
@@ -94,6 +81,29 @@ export default function VideosPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const permissions = usePermissions();
+  const { sharedWorkspaces } = useSharedWorkspaces();
+  
+  // Dynamic sidebar items including shared workspaces
+  const sidebarItems = [
+    {
+      name: 'Dashboard',
+      icon: LayoutDashboard,
+      href: '/dashboard',
+      active: false
+    },
+    {
+      name: 'Videos',
+      icon: Video,
+      href: '/dashboard/videos',
+      active: true
+    },
+    ...sharedWorkspaces.map(workspace => ({
+      name: `Workspace: ${workspace.owner_name}`,
+      icon: Users,
+      href: `/dashboard/workspace/${workspace.workspace_owner_id}`,
+      active: false
+    }))
+  ];
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -276,20 +286,7 @@ export default function VideosPage() {
 
       console.log('[fetchVideos] Fetching videos for user:', currentUser.id);
       
-      // Step 1: Get workspace memberships (active only)
-      const { data: memberships, error: membershipError } = await supabase
-        .from('workspace_members')
-        .select('workspace_owner_id, permissions')
-        .eq('user_id', currentUser.id)
-        .eq('status', 'active');
-
-      if (membershipError) {
-        console.error('[fetchVideos] Error fetching memberships:', membershipError);
-      }
-
-      console.log('[fetchVideos] Active memberships:', memberships?.length || 0);
-
-      // Step 2: Fetch OWN videos (user_id = currentUser.id)
+      // Fetch ONLY OWN videos (user_id = currentUser.id)
       const { data: ownVideos, error: ownError } = await supabase
         .from('videos')
         .select(`
@@ -316,86 +313,21 @@ export default function VideosPage() {
 
       if (ownError) {
         console.error('[fetchVideos] Error fetching own videos:', ownError);
+        setErrorDetails({
+          title: 'Fehler beim Laden der Videos',
+          message: 'Die Videos konnten nicht geladen werden. Bitte versuchen Sie es erneut.',
+          details: ownError.message
+        });
+        setShowErrorModal(true);
+        return;
       }
 
       console.log('[fetchVideos] Own videos:', ownVideos?.length || 0);
 
-      // Step 3: Fetch SHARED workspace videos
-      interface SharedVideo {
-        id: string;
-        title: string;
-        status: string;
-        publication_date?: string;
-        responsible_person?: string;
-        storage_location?: string;
-        inspiration_source?: string;
-        description?: string;
-        created_at: string;
-        last_updated?: string;
-        updated_at?: string;
-        duration?: number;
-        file_size?: number;
-        format?: string;
-        thumbnail_url?: string;
-        workspace_owner_id?: string;
-        created_by?: string;
-        workspace_permissions?: {
-          can_view: boolean;
-          can_create: boolean;
-          can_edit: boolean;
-          can_delete: boolean;
-        };
-      }
-      
-      let sharedVideos: SharedVideo[] = [];
-      if (memberships && memberships.length > 0) {
-        const workspaceOwnerIds = memberships.map(m => m.workspace_owner_id);
-        
-        const { data: shared, error: sharedError } = await supabase
-          .from('videos')
-          .select(`
-            id,
-            title,
-            status,
-            publication_date,
-            responsible_person,
-            storage_location,
-            inspiration_source,
-            description,
-            created_at,
-            last_updated,
-            updated_at,
-            duration,
-            file_size,
-            format,
-            thumbnail_url,
-            workspace_owner_id,
-            created_by
-          `)
-          .in('workspace_owner_id', workspaceOwnerIds)
-          .order('created_at', { ascending: false });
+      const allVideos = ownVideos || [];
 
-        if (sharedError) {
-          console.error('[fetchVideos] Error fetching shared videos:', sharedError);
-        } else {
-          // Attach permissions to each shared video
-          sharedVideos = shared?.map(video => {
-            const membership = memberships.find(m => m.workspace_owner_id === video.workspace_owner_id);
-            return {
-              ...video,
-              workspace_permissions: membership?.permissions
-            };
-          }) || [];
-          
-          console.log('[fetchVideos] Shared videos:', sharedVideos.length);
-        }
-      }
-
-      // Step 4: Combine own and shared videos
-      const allVideos = [...(ownVideos || []), ...sharedVideos];
-
-      // Transform data to match interface
-      const transformedVideos = allVideos.map(video => ({
+      // Transform data to match interface (own videos have no workspace_permissions)
+      const transformedVideos: Video[] = allVideos.map(video => ({
         id: video.id,
         name: video.title,
         status: video.status,
@@ -413,7 +345,7 @@ export default function VideosPage() {
         thumbnail_url: video.thumbnail_url,
         workspace_owner_id: video.workspace_owner_id,
         created_by: video.created_by,
-        workspace_permissions: 'workspace_permissions' in video ? video.workspace_permissions : undefined
+        workspace_permissions: undefined  // Own videos don't have workspace permissions
       }));
 
       // Sort by created_at descending
@@ -424,7 +356,7 @@ export default function VideosPage() {
       setVideos(transformedVideos);
       setLastFetchTime(Date.now());
       
-      console.log(`[fetchVideos] Successfully loaded ${transformedVideos.length} videos (${ownVideos?.length || 0} own, ${sharedVideos.length} shared)`);
+      console.log(`[fetchVideos] Successfully loaded ${transformedVideos.length} own videos`);
     } catch (error) {
       console.error('[fetchVideos] Error fetching videos:', error);
       setErrorDetails({
@@ -1139,6 +1071,13 @@ export default function VideosPage() {
           
           {/* Subscription Warning */}
           <SubscriptionWarning className="mt-6" />
+          
+          {/* Workspace Description */}
+          <div className="mt-6 bg-neutral-900/30 border border-neutral-700/50 rounded-2xl p-4">
+            <p className="text-neutral-400 text-sm leading-relaxed">
+              <span className="font-medium text-neutral-300">Mein Workspace:</span> Hier befinden sich alle Videos aus Ihrem persönlichen Workspace. Diese Videos gehören zu Ihrem Account und können von Ihnen verwaltet werden.
+            </p>
+          </div>
           
           {/* Mobile Search Bar */}
           <div className="md:hidden mt-4">

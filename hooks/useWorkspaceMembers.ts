@@ -137,12 +137,34 @@ export function useWorkspaceMembers() {
     }
 
     try {
+      // Check if user is already a member
+      const { data: existingMember } = await supabase
+        .from('workspace_members')
+        .select('id, status')
+        .eq('workspace_owner_id', user.id)
+        .eq('invitation_email', email)
+        .maybeSingle();
+
+      if (existingMember) {
+        if (existingMember.status === 'active') {
+          return { success: false, error: 'Dieser Benutzer ist bereits ein aktives Mitglied deines Teams.' };
+        } else if (existingMember.status === 'pending') {
+          return { success: false, error: 'Dieser Benutzer wurde bereits eingeladen und wartet auf Bestätigung.' };
+        }
+      }
+
       // Check if user with email exists
-      const { data: existingUser } = await supabase
+      const { data: existingUser, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('email', email)
-        .single();
+        .maybeSingle();
+
+      // Ignore 406 errors (RLS) - we'll handle non-existing users
+      if (userError && userError.code !== 'PGRST116') {
+        console.error('User lookup error:', userError);
+        // Continue anyway - treat as non-existing user
+      }
 
       const invitationToken = generateInvitationToken();
 
@@ -155,7 +177,7 @@ export function useWorkspaceMembers() {
           .eq('workspace_owner_id', existingUser.id)
           .eq('role', 'owner')
           .eq('status', 'active')
-          .single();
+          .maybeSingle();
 
         if (isUserOwner) {
           return { 
@@ -179,10 +201,11 @@ export function useWorkspaceMembers() {
           });
 
         if (insertError) {
+          console.error('Insert error:', insertError);
           if (insertError.code === '23505') {
-            return { success: false, error: 'Benutzer ist bereits Mitglied dieses Workspaces' };
+            return { success: false, error: 'Dieser Benutzer ist bereits Mitglied deines Teams.' };
           }
-          throw insertError;
+          return { success: false, error: 'Fehler beim Einladen: ' + (insertError.message || 'Unbekannter Fehler') };
         }
       } else {
         // User doesn't exist yet - create pending invitation without user_id
@@ -202,15 +225,18 @@ export function useWorkspaceMembers() {
 
         if (insertError) {
           console.error('Insert error:', insertError);
-          throw insertError;
+          if (insertError.code === '23505') {
+            return { success: false, error: 'Ein Benutzer mit dieser E-Mail wurde bereits eingeladen.' };
+          }
+          return { success: false, error: 'Fehler beim Einladen: ' + (insertError.message || 'Unbekannter Fehler') };
         }
       }
 
       await fetchMembers();
       return { success: true, invitationToken };
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error inviting member:', err);
-      return { success: false, error: 'Fehler beim Einladen' };
+      return { success: false, error: err.message || 'Fehler beim Einladen. Bitte versuche es erneut.' };
     }
   }, [user?.id, isOwner, supabase, fetchMembers]);
 

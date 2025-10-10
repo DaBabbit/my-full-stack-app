@@ -16,7 +16,7 @@ export function useRealtimeVideos(userId?: string) {
 
     console.log('[useRealtimeVideos] Setting up realtime subscription for user:', userId);
 
-    // Subscribe to all video changes
+    // Subscribe to video changes vom eigenen User
     const channel = supabase
       .channel(`videos_realtime_${userId}`) // Unique channel name per user
       .on(
@@ -24,13 +24,18 @@ export function useRealtimeVideos(userId?: string) {
         {
           event: '*', // Listen to INSERT, UPDATE, DELETE
           schema: 'public',
-          table: 'videos'
+          table: 'videos',
+          filter: `user_id=eq.${userId}` // Nur eigene Videos
         },
         (payload) => {
-          console.log('[useRealtimeVideos] Video update received:', payload.eventType);
+          // NUR invalidieren wenn die Änderung von einem ANDEREN Client kommt
+          // Optimistic Updates handeln bereits die eigenen Änderungen
+          console.log('[useRealtimeVideos] Video update from another client:', payload.eventType);
           
-          // Invalidate queries to trigger refetch
-          queryClient.invalidateQueries({ queryKey: ['videos'] });
+          // Delay um Race Conditions mit Mutations zu vermeiden
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['videos'] });
+          }, 100);
         }
       )
       .subscribe((status) => {
@@ -67,10 +72,12 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
           filter: `workspace_owner_id=eq.${ownerId}`
         },
         (payload) => {
-          console.log('[useRealtimeWorkspaceVideos] Workspace video update:', payload.eventType);
+          console.log('[useRealtimeWorkspaceVideos] Workspace video update from another client:', payload.eventType);
           
-          // Invalidate workspace-specific queries
-          queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', ownerId] });
+          // Delay um Race Conditions mit Mutations zu vermeiden
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', ownerId] });
+          }, 100);
         }
       )
       .subscribe((status) => {

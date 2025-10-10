@@ -300,11 +300,11 @@ export function useVideoMutations() {
         queryClient.setQueryData(['videos', 'own'], context.previousVideos);
       }
       console.error('Update video error:', err);
-    },
-    // Always refetch after error or success
-    onSettled: () => {
+      // Bei Fehler invalidieren für korrekten State
       queryClient.invalidateQueries({ queryKey: ['videos', 'own'] });
     },
+    // onSettled ENTFERNT - Optimistic Update + Realtime reichen!
+    // Dies verhindert exzessives Refetching nach jeder Änderung
   });
 
   // Update Workspace Video Mutation
@@ -362,10 +362,10 @@ export function useVideoMutations() {
         queryClient.setQueryData(['videos', 'workspace', context.ownerId], context.previousVideos);
       }
       console.error('Update workspace video error:', err);
-    },
-    onSettled: (data, error, variables) => {
+      // Bei Fehler invalidieren für korrekten State
       queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', variables.ownerId] });
     },
+    // onSettled ENTFERNT - Optimistic Update + Realtime reichen!
   });
 
   // Delete Video Mutation

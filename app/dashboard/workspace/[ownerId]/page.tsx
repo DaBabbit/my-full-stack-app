@@ -72,7 +72,7 @@ export default function SharedWorkspacePage() {
   useRealtimeWorkspaceVideos(ownerId);
   
   // Expliziter Window Focus Refetch als Backup
-  useWindowFocusRefetch([['videos', 'workspace', ownerId || '']]);
+  useWindowFocusRefetch(['videos', 'workspace', ownerId || '']);
   
   // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch
   const showSkeleton = isLoading && !videos.length;

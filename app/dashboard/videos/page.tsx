@@ -80,7 +80,7 @@ export default function VideosPage() {
   useRealtimeVideos(user?.id);
   
   // Expliziter Window Focus Refetch als Backup
-  useWindowFocusRefetch([['videos', 'own', user?.id || '']]);
+  useWindowFocusRefetch(['videos', 'own', user?.id || '']);
   
   // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch
   const showSkeleton = isLoading && !videos.length;

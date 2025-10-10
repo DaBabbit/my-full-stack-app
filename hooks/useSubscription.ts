@@ -140,20 +140,21 @@ export function useSubscription() {
     };
   }, [user, supabase, queryClient]);
 
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    if (subscription?.stripe_subscription_id) {
-      // Add a delay before first sync
-      timeoutId = setTimeout(() => {
-        syncWithStripe(subscription.stripe_subscription_id);
-      }, 1000);
-    }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [syncWithStripe, subscription?.stripe_subscription_id]);
+  // Deaktiviert: Stripe Sync läuft in Endlosschleife bei Fehlern
+  // useEffect(() => {
+  //   let timeoutId: NodeJS.Timeout;
+  //   
+  //   if (subscription?.stripe_subscription_id) {
+  //     // Add a delay before first sync
+  //     timeoutId = setTimeout(() => {
+  //       syncWithStripe(subscription.stripe_subscription_id);
+  //     }, 1000);
+  //   }
+  //
+  //   return () => {
+  //     if (timeoutId) clearTimeout(timeoutId);
+  //   };
+  // }, [syncWithStripe, subscription?.stripe_subscription_id]);
 
   return {
     subscription,

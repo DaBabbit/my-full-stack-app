@@ -294,17 +294,27 @@ export function useVideoMutations() {
       // Return a context object with the snapshotted value
       return { previousVideos };
     },
+    // Update cache with real server data on success
+    onSuccess: (data) => {
+      // Update query data with actual server response
+      queryClient.setQueryData(['videos', 'own'], (old: Video[] | undefined) => {
+        if (!old) return old;
+        return old.map(video => 
+          video.id === data.id 
+            ? { ...data, name: data.title } // Use real server data
+            : video
+        );
+      });
+      console.log('[updateVideoMutation] Successfully updated with server data');
+    },
     // If the mutation fails, use the context returned from onMutate to roll back
     onError: (err, variables, context) => {
       if (context?.previousVideos) {
         queryClient.setQueryData(['videos', 'own'], context.previousVideos);
       }
       console.error('Update video error:', err);
-      // Bei Fehler invalidieren für korrekten State
-      queryClient.invalidateQueries({ queryKey: ['videos', 'own'] });
     },
-    // onSettled ENTFERNT - Optimistic Update + Realtime reichen!
-    // Dies verhindert exzessives Refetching nach jeder Änderung
+    // Kein onSettled! onSuccess handelt die Daten, Realtime nur für andere Clients
   });
 
   // Update Workspace Video Mutation
@@ -357,15 +367,26 @@ export function useVideoMutations() {
 
       return { previousVideos, ownerId };
     },
+    // Update cache with real server data on success
+    onSuccess: (data, variables) => {
+      // Update query data with actual server response
+      queryClient.setQueryData(['videos', 'workspace', variables.ownerId], (old: Video[] | undefined) => {
+        if (!old) return old;
+        return old.map(video => 
+          video.id === data.id 
+            ? { ...data, name: data.title } // Use real server data
+            : video
+        );
+      });
+      console.log('[updateWorkspaceVideoMutation] Successfully updated with server data');
+    },
     onError: (err, variables, context) => {
       if (context?.previousVideos && context?.ownerId) {
         queryClient.setQueryData(['videos', 'workspace', context.ownerId], context.previousVideos);
       }
       console.error('Update workspace video error:', err);
-      // Bei Fehler invalidieren für korrekten State
-      queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', variables.ownerId] });
     },
-    // onSettled ENTFERNT - Optimistic Update + Realtime reichen!
+    // Kein onSettled! onSuccess handelt die Daten, Realtime nur für andere Clients
   });
 
   // Delete Video Mutation

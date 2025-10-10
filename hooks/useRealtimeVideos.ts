@@ -28,14 +28,17 @@ export function useRealtimeVideos(userId?: string) {
           filter: `user_id=eq.${userId}` // Nur eigene Videos
         },
         (payload) => {
-          // NUR invalidieren wenn die Änderung von einem ANDEREN Client kommt
-          // Optimistic Updates handeln bereits die eigenen Änderungen
-          console.log('[useRealtimeVideos] Video update from another client:', payload.eventType);
+          console.log('[useRealtimeVideos] Video update received:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id);
           
-          // Delay um Race Conditions mit Mutations zu vermeiden
+          // WICHTIG: 500ms Delay um sicherzustellen dass Supabase die Änderung committed hat
+          // Dies verhindert dass der Refetch alte Daten zurückbringt
           setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['videos'] });
-          }, 100);
+            console.log('[useRealtimeVideos] Invalidating queries after delay');
+            queryClient.invalidateQueries({ 
+              queryKey: ['videos'],
+              refetchType: 'active' // Nur aktive Queries refetchen
+            });
+          }, 500);
         }
       )
       .subscribe((status) => {
@@ -72,12 +75,16 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
           filter: `workspace_owner_id=eq.${ownerId}`
         },
         (payload) => {
-          console.log('[useRealtimeWorkspaceVideos] Workspace video update from another client:', payload.eventType);
+          console.log('[useRealtimeWorkspaceVideos] Workspace video update received:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id);
           
-          // Delay um Race Conditions mit Mutations zu vermeiden
+          // WICHTIG: 500ms Delay um sicherzustellen dass Supabase die Änderung committed hat
           setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', ownerId] });
-          }, 100);
+            console.log('[useRealtimeWorkspaceVideos] Invalidating workspace queries after delay');
+            queryClient.invalidateQueries({ 
+              queryKey: ['videos', 'workspace', ownerId],
+              refetchType: 'active' // Nur aktive Queries refetchen
+            });
+          }, 500);
         }
       )
       .subscribe((status) => {

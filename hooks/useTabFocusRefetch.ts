@@ -13,13 +13,19 @@ export function useTabFocusRefetch() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('[useTabFocusRefetch] 🔄 Tab is now visible - Force refetching all video queries...');
+        console.log('[useTabFocusRefetch] 🔄 Tab is now visible - AGGRESSIVE refetching all queries...');
         
-        // Force refetch aller Video-Queries
+        // 🔥 AGGRESSIVE: Invalidate ALL video queries (nicht nur refetch)
+        queryClient.invalidateQueries({ 
+          queryKey: ['videos'],
+          exact: false // Alle Queries die mit 'videos' starten
+        });
+        
+        // Zusätzlich: Force refetch
         queryClient.refetchQueries({ 
           queryKey: ['videos'],
-          type: 'active', // Nur aktive Queries
-          exact: false // Alle Queries die mit 'videos' starten
+          type: 'active',
+          exact: false
         });
       } else {
         console.log('[useTabFocusRefetch] 😴 Tab hidden - pausing...');
@@ -27,7 +33,14 @@ export function useTabFocusRefetch() {
     };
 
     const handleFocus = () => {
-      console.log('[useTabFocusRefetch] 👁️ Window focused - Force refetching...');
+      console.log('[useTabFocusRefetch] 👁️ Window focused - AGGRESSIVE refetching...');
+      
+      // 🔥 AGGRESSIVE: Invalidate + Refetch
+      queryClient.invalidateQueries({ 
+        queryKey: ['videos'],
+        exact: false
+      });
+      
       queryClient.refetchQueries({ 
         queryKey: ['videos'],
         type: 'active',
@@ -39,7 +52,7 @@ export function useTabFocusRefetch() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
 
-    console.log('[useTabFocusRefetch] ✅ Tab focus handlers registered');
+    console.log('[useTabFocusRefetch] ✅ AGGRESSIVE tab focus handlers registered');
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);

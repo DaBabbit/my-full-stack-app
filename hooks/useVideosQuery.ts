@@ -251,7 +251,7 @@ export function useVideoMutations() {
     },
   });
 
-  // Update Video Mutation mit Optimistic Updates
+  // Update Video Mutation - KEIN Optimistic Update, nur echte Success-Verifikation
   const updateVideoMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: VideoUpdate }) => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -260,6 +260,25 @@ export function useVideoMutations() {
         throw new Error('Benutzer nicht angemeldet');
       }
 
+      console.log('[updateVideoMutation] 🔄 Starting update for video:', id, updates);
+
+      // 🔥 VERBINDUNGSTEST: Prüfe ob Supabase erreichbar ist
+      try {
+        const { error: testError } = await supabase
+          .from('videos')
+          .select('id')
+          .eq('id', id)
+          .single();
+        
+        if (testError) {
+          throw new Error(`Verbindung zu Supabase fehlgeschlagen: ${testError.message}`);
+        }
+      } catch (testErr) {
+        console.error('[updateVideoMutation] ❌ Connection test failed:', testErr);
+        throw new Error('Keine Verbindung zu Supabase. Bitte Seite aktualisieren.');
+      }
+
+      // Echte Mutation
       const { data, error } = await supabase
         .from('videos')
         .update({
@@ -272,35 +291,17 @@ export function useVideoMutations() {
         .single();
 
       if (error) {
+        console.error('[updateVideoMutation] ❌ Supabase error:', error);
         throw error;
       }
 
+      console.log('[updateVideoMutation] ✅ Successfully updated:', data);
       return data;
     },
-    // Optimistic Update
-    onMutate: async ({ id, updates }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['videos'] });
-
-      // Snapshot the previous value
-      const previousVideos = queryClient.getQueryData(['videos', 'own']);
-
-      // Optimistically update to the new value
-      queryClient.setQueryData(['videos', 'own'], (old: Video[] | undefined) => {
-        if (!old) return old;
-        return old.map(video => 
-          video.id === id 
-            ? { ...video, ...updates, name: video.title } 
-            : video
-        );
-      });
-
-      // Return a context object with the snapshotted value
-      return { previousVideos };
-    },
-    // Update cache with real server data on success
+    // KEIN onMutate - keine Optimistic Updates mehr!
+    // onSuccess: Cache mit echten Daten aktualisieren
     onSuccess: (data) => {
-      // Update query data with actual server response
+      console.log('[updateVideoMutation] ✅ onSuccess - Updating cache with real data');
       queryClient.setQueryData(['videos', 'own'], (old: Video[] | undefined) => {
         if (!old) return old;
         return old.map(video => 
@@ -309,19 +310,16 @@ export function useVideoMutations() {
             : video
         );
       });
-      console.log('[updateVideoMutation] Successfully updated with server data');
     },
-    // If the mutation fails, use the context returned from onMutate to roll back
-    onError: (err, variables, context) => {
-      if (context?.previousVideos) {
-        queryClient.setQueryData(['videos', 'own'], context.previousVideos);
-      }
-      console.error('Update video error:', err);
+    // Bei Fehler: Cache invalidieren für korrekten State
+    onError: (err) => {
+      console.error('[updateVideoMutation] ❌ Error occurred:', err);
+      // Cache invalidieren um korrekten State zu bekommen
+      queryClient.invalidateQueries({ queryKey: ['videos', 'own'] });
     },
-    // Kein onSettled! onSuccess handelt die Daten, Realtime nur für andere Clients
   });
 
-  // Update Workspace Video Mutation
+  // Update Workspace Video Mutation - KEIN Optimistic Update, nur echte Success-Verifikation
   const updateWorkspaceVideoMutation = useMutation({
     mutationFn: async ({ 
       id, 
@@ -338,6 +336,25 @@ export function useVideoMutations() {
         throw new Error('Benutzer nicht angemeldet');
       }
 
+      console.log('[updateWorkspaceVideoMutation] 🔄 Starting workspace update for video:', id, updates);
+
+      // 🔥 VERBINDUNGSTEST: Prüfe ob Supabase erreichbar ist
+      try {
+        const { error: testError } = await supabase
+          .from('videos')
+          .select('id')
+          .eq('id', id)
+          .single();
+        
+        if (testError) {
+          throw new Error(`Verbindung zu Supabase fehlgeschlagen: ${testError.message}`);
+        }
+      } catch (testErr) {
+        console.error('[updateWorkspaceVideoMutation] ❌ Connection test failed:', testErr);
+        throw new Error('Keine Verbindung zu Supabase. Bitte Seite aktualisieren.');
+      }
+
+      // Echte Mutation
       const { data, error } = await supabase
         .from('videos')
         .update({
@@ -349,31 +366,17 @@ export function useVideoMutations() {
         .single();
 
       if (error) {
+        console.error('[updateWorkspaceVideoMutation] ❌ Supabase error:', error);
         throw error;
       }
 
+      console.log('[updateWorkspaceVideoMutation] ✅ Successfully updated workspace video:', data);
       return data;
     },
-    // Optimistic Update for workspace videos
-    onMutate: async ({ id, updates, ownerId }) => {
-      await queryClient.cancelQueries({ queryKey: ['videos', 'workspace', ownerId] });
-
-      const previousVideos = queryClient.getQueryData(['videos', 'workspace', ownerId]);
-
-      queryClient.setQueryData(['videos', 'workspace', ownerId], (old: Video[] | undefined) => {
-        if (!old) return old;
-        return old.map(video => 
-          video.id === id 
-            ? { ...video, ...updates, name: video.title } 
-            : video
-        );
-      });
-
-      return { previousVideos, ownerId };
-    },
-    // Update cache with real server data on success
+    // KEIN onMutate - keine Optimistic Updates mehr!
+    // onSuccess: Cache mit echten Daten aktualisieren
     onSuccess: (data, variables) => {
-      // Update query data with actual server response
+      console.log('[updateWorkspaceVideoMutation] ✅ onSuccess - Updating workspace cache with real data');
       queryClient.setQueryData(['videos', 'workspace', variables.ownerId], (old: Video[] | undefined) => {
         if (!old) return old;
         return old.map(video => 
@@ -382,15 +385,13 @@ export function useVideoMutations() {
             : video
         );
       });
-      console.log('[updateWorkspaceVideoMutation] Successfully updated with server data');
     },
-    onError: (err, variables, context) => {
-      if (context?.previousVideos && context?.ownerId) {
-        queryClient.setQueryData(['videos', 'workspace', context.ownerId], context.previousVideos);
-      }
-      console.error('Update workspace video error:', err);
+    // Bei Fehler: Cache invalidieren für korrekten State
+    onError: (err, variables) => {
+      console.error('[updateWorkspaceVideoMutation] ❌ Error occurred:', err);
+      // Cache invalidieren um korrekten State zu bekommen
+      queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', variables.ownerId] });
     },
-    // Kein onSettled! onSuccess handelt die Daten, Realtime nur für andere Clients
   });
 
   // Delete Video Mutation

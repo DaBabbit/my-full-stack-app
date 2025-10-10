@@ -14,43 +14,32 @@ export function useRealtimeVideos(userId?: string) {
   useEffect(() => {
     if (!userId) return;
 
-    console.log('[useRealtimeVideos] Setting up realtime subscription for user:', userId);
+    console.log('[useRealtimeVideos] 🔥 REALTIME DEAKTIVIERT - Verwende Polling statt WebSocket');
+    
+    // 🚨 TEMPORÄR DEAKTIVIERT: Realtime verursacht Verbindungsprobleme
+    // Stattdessen verwenden wir Polling + Tab-Focus-Refetch
+    // 
+    // const channel = supabase
+    //   .channel(`videos_realtime_${userId}`)
+    //   .on('postgres_changes', { ... }, callback)
+    //   .subscribe();
 
-    // Subscribe to video changes vom eigenen User
-    const channel = supabase
-      .channel(`videos_realtime_${userId}`) // Unique channel name per user
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: 'videos',
-          filter: `user_id=eq.${userId}` // Nur eigene Videos
-        },
-        (payload: any) => {
-          console.log('[useRealtimeVideos] Video update received:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id);
-          
-          // WICHTIG: 500ms Delay um sicherzustellen dass Supabase die Änderung committed hat
-          // Dies verhindert dass der Refetch alte Daten zurückbringt
-          setTimeout(() => {
-            console.log('[useRealtimeVideos] Invalidating queries after delay');
-            queryClient.invalidateQueries({ 
-              queryKey: ['videos'],
-              refetchType: 'active' // Nur aktive Queries refetchen
-            });
-          }, 500);
-        }
-      )
-      .subscribe((status) => {
-        console.log('[useRealtimeVideos] Subscription status:', status);
-      });
+    // Polling als Alternative: Alle 30 Sekunden im Hintergrund refetchen
+    const interval = setInterval(() => {
+      if (!document.hidden) { // Nur wenn Tab aktiv
+        console.log('[useRealtimeVideos] Polling: Refetching videos...');
+        queryClient.refetchQueries({ 
+          queryKey: ['videos'],
+          type: 'active'
+        });
+      }
+    }, 30000); // 30 Sekunden
 
-    // Cleanup on unmount
     return () => {
-      console.log('[useRealtimeVideos] Unsubscribing from realtime');
-      channel.unsubscribe();
+      console.log('[useRealtimeVideos] Cleaning up polling interval');
+      clearInterval(interval);
     };
-  }, [userId]); // queryClient NICHT in Dependencies - es ist stabil
+  }, [userId, queryClient]);
 }
 
 /**
@@ -62,39 +51,23 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
   useEffect(() => {
     if (!ownerId) return;
 
-    console.log('[useRealtimeWorkspaceVideos] Setting up subscription for workspace:', ownerId);
-
-    const channel = supabase
-      .channel(`workspace_${ownerId}_videos`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'videos',
-          filter: `workspace_owner_id=eq.${ownerId}`
-        },
-        (payload: any) => {
-          console.log('[useRealtimeWorkspaceVideos] Workspace video update received:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id);
-          
-          // WICHTIG: 500ms Delay um sicherzustellen dass Supabase die Änderung committed hat
-          setTimeout(() => {
-            console.log('[useRealtimeWorkspaceVideos] Invalidating workspace queries after delay');
-            queryClient.invalidateQueries({ 
-              queryKey: ['videos', 'workspace', ownerId],
-              refetchType: 'active' // Nur aktive Queries refetchen
-            });
-          }, 500);
-        }
-      )
-      .subscribe((status) => {
-        console.log('[useRealtimeWorkspaceVideos] Subscription status:', status);
-      });
+    console.log('[useRealtimeWorkspaceVideos] 🔥 REALTIME DEAKTIVIERT - Verwende Polling für Workspace');
+    
+    // Polling als Alternative: Alle 30 Sekunden im Hintergrund refetchen
+    const interval = setInterval(() => {
+      if (!document.hidden) { // Nur wenn Tab aktiv
+        console.log('[useRealtimeWorkspaceVideos] Polling: Refetching workspace videos...');
+        queryClient.refetchQueries({ 
+          queryKey: ['videos', 'workspace', ownerId],
+          type: 'active'
+        });
+      }
+    }, 30000); // 30 Sekunden
 
     return () => {
-      console.log('[useRealtimeWorkspaceVideos] Unsubscribing from workspace realtime');
-      channel.unsubscribe();
+      console.log('[useRealtimeWorkspaceVideos] Cleaning up workspace polling interval');
+      clearInterval(interval);
     };
-  }, [ownerId]); // queryClient NICHT in Dependencies - es ist stabil
+  }, [ownerId, queryClient]);
 }
 

@@ -59,11 +59,15 @@ export default function EditableCell({
     if (localValue !== (value || '')) {
       setIsSaving(true);
       try {
+        console.log('[EditableCell] 🔄 Attempting to save:', field, localValue);
         await onSave(videoId, field, localValue);
+        console.log('[EditableCell] ✅ Successfully saved:', field, localValue);
       } catch (error) {
-        console.error('Error saving:', error);
+        console.error('[EditableCell] ❌ Error saving:', error);
         // Revert on error
         setLocalValue(value || '');
+        // Throw error weiter für Toast-Notification
+        throw error;
       } finally {
         setIsSaving(false);
       }

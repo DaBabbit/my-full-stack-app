@@ -67,8 +67,7 @@ export default function VideosPage() {
   const { 
     data: videos = [], 
     isLoading, 
-    isFetching,
-    dataUpdatedAt 
+    isFetching
   } = useVideosQuery(user?.id);
   const { 
     updateVideo, 

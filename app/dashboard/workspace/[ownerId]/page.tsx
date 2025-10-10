@@ -60,8 +60,7 @@ export default function SharedWorkspacePage() {
   const { 
     data: videos = [], 
     isLoading,
-    isFetching,
-    dataUpdatedAt 
+    isFetching
   } = useSharedWorkspaceVideosQuery(ownerId);
   const { 
     updateWorkspaceVideo, 

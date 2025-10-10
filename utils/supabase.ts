@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Fallback für Build-Zeit
+// 🔥 EINHEITLICHE SUPABASE-INSTANZ für alle Tabs
+// Verhindert Auth-State-Desynchronisation zwischen Browser-Tabs
+
 const getSupabaseConfig = () => {
   if (typeof window === 'undefined') {
     // Server-side: Fallback für Build
@@ -32,6 +34,8 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: true, // 🔥 Session-Detection in URL
+      flowType: 'pkce', // 🔥 PKCE Flow für bessere Sicherheit
     },
     global: {
       headers: {
@@ -42,6 +46,15 @@ export const supabase = createClient(
     },
     db: {
       schema: 'public'
+    },
+    realtime: {
+      // 🔥 REALTIME-KONFIGURATION für Tab-Wechsel
+      params: {
+        eventsPerSecond: 10, // Rate limiting
+      },
+      // Automatische Reconnect-Strategie
+      heartbeatIntervalMs: 30000, // 30s Heartbeat
+      reconnectAfterMs: [1000, 2000, 5000, 10000], // Exponential backoff
     }
   }
 ); 

@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // console.log("AuthContext -  isValid: ", data)
 
       setIsSubscriber(!!isValid);
-      console.log("AuthContext -  set isSubscriber: ", isSubscriber)
+      console.log("AuthContext -  set isSubscriber: ", !!isValid) // 🔥 FIX: Neuen Wert loggen, nicht alten!
     } catch (error) {
       console.error('Subscription check error:', error);
       setIsSubscriber(false);
@@ -105,10 +105,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await checkSubscription(currentUser.id);
         }
         
-        // Then set up listener for future changes
+        // 🔥 VERBESSERTE AUTH-STATE-SYNCHRONISATION zwischen Tabs
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (_event, newSession) => {
+          async (event, newSession) => {
             if (!mounted) return;
+            
+            console.log('[AuthContext] Auth state change:', event, newSession?.user?.id);
             
             const newUser = newSession?.user ?? null;
             setSession(newSession);
@@ -118,6 +120,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await checkSubscription(newUser.id);
             } else {
               setIsSubscriber(false);
+            }
+            
+            // 🔥 EXPLIZITE TAB-SYNCHRONISATION bei Auth-Änderungen
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+              console.log('[AuthContext] 🔄 Auth event detected, triggering tab sync...');
+              // Trigger visibility change event für andere Tabs
+              window.dispatchEvent(new Event('visibilitychange'));
             }
           }
         );

@@ -262,20 +262,29 @@ export function useVideoMutations() {
 
       console.log('[updateVideoMutation] 🔄 Starting update for video:', id, updates);
 
-      // 🔥 VERBINDUNGSTEST: Prüfe ob Supabase erreichbar ist
+      // 🔥 VERBESSERTER VERBINDUNGSTEST: Auth + DB-Verbindung
       try {
+        // 1. Auth-Session prüfen
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        if (authError || !session) {
+          throw new Error(`Auth-Session ungültig: ${authError?.message || 'Keine Session'}`);
+        }
+        
+        // 2. DB-Verbindung mit einfachem Query testen
         const { error: testError } = await supabase
           .from('videos')
           .select('id')
           .eq('id', id)
           .single();
         
-        if (testError) {
-          throw new Error(`Verbindung zu Supabase fehlgeschlagen: ${testError.message}`);
+        if (testError && testError.code !== 'PGRST116') { // PGRST116 = "not found" ist OK
+          throw new Error(`DB-Verbindung fehlgeschlagen: ${testError.message}`);
         }
+        
+        console.log('[updateVideoMutation] ✅ Connection test passed');
       } catch (testErr) {
         console.error('[updateVideoMutation] ❌ Connection test failed:', testErr);
-        throw new Error('Keine Verbindung zu Supabase. Bitte Seite aktualisieren.');
+        throw new Error(`Verbindungsproblem: ${testErr.message}. Bitte Seite aktualisieren.`);
       }
 
       // Echte Mutation
@@ -338,20 +347,29 @@ export function useVideoMutations() {
 
       console.log('[updateWorkspaceVideoMutation] 🔄 Starting workspace update for video:', id, updates);
 
-      // 🔥 VERBINDUNGSTEST: Prüfe ob Supabase erreichbar ist
+      // 🔥 VERBESSERTER VERBINDUNGSTEST: Auth + DB-Verbindung
       try {
+        // 1. Auth-Session prüfen
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        if (authError || !session) {
+          throw new Error(`Auth-Session ungültig: ${authError?.message || 'Keine Session'}`);
+        }
+        
+        // 2. DB-Verbindung mit einfachem Query testen
         const { error: testError } = await supabase
           .from('videos')
           .select('id')
           .eq('id', id)
           .single();
         
-        if (testError) {
-          throw new Error(`Verbindung zu Supabase fehlgeschlagen: ${testError.message}`);
+        if (testError && testError.code !== 'PGRST116') { // PGRST116 = "not found" ist OK
+          throw new Error(`DB-Verbindung fehlgeschlagen: ${testError.message}`);
         }
+        
+        console.log('[updateWorkspaceVideoMutation] ✅ Connection test passed');
       } catch (testErr) {
         console.error('[updateWorkspaceVideoMutation] ❌ Connection test failed:', testErr);
-        throw new Error('Keine Verbindung zu Supabase. Bitte Seite aktualisieren.');
+        throw new Error(`Verbindungsproblem: ${testErr.message}. Bitte Seite aktualisieren.`);
       }
 
       // Echte Mutation

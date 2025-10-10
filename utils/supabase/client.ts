@@ -1,35 +1,8 @@
 'use client'
 
-import { createClient } from '@supabase/supabase-js'
+// 🔥 DEPRECATED: Verwende utils/supabase.ts für einheitliche Instanz
+// Diese Datei wird entfernt um Auth-State-Desynchronisation zu vermeiden
 
-const createClientForBrowser = () => {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL')
-  }
-  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY')
-  }
+import { supabase } from '../supabase';
 
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-      global: {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        },
-      },
-      db: {
-        schema: 'public'
-      }
-    }
-  )
-}
-
-export default createClientForBrowser
+export default () => supabase; // Re-export der einheitlichen Instanz

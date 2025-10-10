@@ -284,7 +284,8 @@ export function useVideoMutations() {
         console.log('[updateVideoMutation] ✅ Connection test passed');
       } catch (testErr) {
         console.error('[updateVideoMutation] ❌ Connection test failed:', testErr);
-        throw new Error(`Verbindungsproblem: ${testErr.message}. Bitte Seite aktualisieren.`);
+        const errorMessage = testErr instanceof Error ? testErr.message : 'Unbekannter Fehler';
+        throw new Error(`Verbindungsproblem: ${errorMessage}. Bitte Seite aktualisieren.`);
       }
 
       // Echte Mutation
@@ -369,7 +370,8 @@ export function useVideoMutations() {
         console.log('[updateWorkspaceVideoMutation] ✅ Connection test passed');
       } catch (testErr) {
         console.error('[updateWorkspaceVideoMutation] ❌ Connection test failed:', testErr);
-        throw new Error(`Verbindungsproblem: ${testErr.message}. Bitte Seite aktualisieren.`);
+        const errorMessage = testErr instanceof Error ? testErr.message : 'Unbekannter Fehler';
+        throw new Error(`Verbindungsproblem: ${errorMessage}. Bitte Seite aktualisieren.`);
       }
 
       // Echte Mutation

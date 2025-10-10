@@ -113,7 +113,7 @@ export function useSubscription() {
     currentSubscription,
     isLoading: loading,
     error: error?.message || null,
-    syncWithStripe: () => {
+    syncWithStripe: (_subscriptionId?: string) => {
       console.log('[useSubscription] syncWithStripe is disabled');
     }, // Deaktiviert - verursacht 500 Errors
     fetchSubscription // Expose fetch function for manual refresh

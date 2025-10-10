@@ -1,25 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { WorkspaceMember } from '@/types/workspace';
 
 export function useWorkspaceInvitations() {
   const { user, supabase } = useAuth();
-  const [invitations, setInvitations] = useState<WorkspaceMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // Fetch invitations for current user
-  const fetchInvitations = useCallback(async () => {
-    if (!user?.id || !user?.email) {
-      setInvitations([]);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
+  const { data: invitations = [], isLoading, error } = useQuery({
+    queryKey: ['workspaceInvitations', user?.id, user?.email],
+    queryFn: async () => {
+      if (!user?.id || !user?.email) {
+        return [];
+      }
       
       console.log('[useWorkspaceInvitations] Fetching invitations for user:', user.email, user.id);
       
@@ -76,23 +71,22 @@ export function useWorkspaceInvitations() {
 
       console.log('[useWorkspaceInvitations] Total unique invitations:', unique.length);
       
-      setInvitations(unique as WorkspaceMember[]);
-      setError(null);
-    } catch (err) {
-      console.error('[useWorkspaceInvitations] Error fetching invitations:', err);
-      setError('Fehler beim Laden der Einladungen');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.id, user?.email, supabase]);
+      return unique as WorkspaceMember[];
+    },
+    enabled: !!user?.id && !!user?.email, // Nur fetchen wenn User vorhanden
+    staleTime: 1000 * 60 * 2, // 2 Minuten Cache - Invitations sollten relativ aktuell sein
+    gcTime: 1000 * 60 * 5, // 5 Minuten im Cache halten
+    refetchOnWindowFocus: true, // Bei Tab-Fokus refetchen da Invitations zeitkritisch sind
+    refetchOnMount: true, // Beim Mount fetchen für aktuelle Invitations
+  });
 
-  // Accept invitation
-  const acceptInvitation = useCallback(async (invitationId: string): Promise<{ success: boolean; error?: string }> => {
-    if (!user?.id) {
-      return { success: false, error: 'Nicht angemeldet' };
-    }
+  // Accept invitation mutation
+  const acceptInvitationMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      if (!user?.id) {
+        throw new Error('Nicht angemeldet');
+      }
 
-    try {
       console.log('[acceptInvitation] Accepting invitation:', invitationId, 'for user:', user.id);
       
       // Update the invitation to active status
@@ -112,22 +106,32 @@ export function useWorkspaceInvitations() {
       }
 
       console.log('[acceptInvitation] Successfully accepted:', data);
+      return data;
+    },
+    onSuccess: () => {
+      // Invalidate queries to refetch
+      queryClient.invalidateQueries({ queryKey: ['workspaceInvitations'] });
+      queryClient.invalidateQueries({ queryKey: ['sharedWorkspaces'] });
+    },
+  });
 
-      await fetchInvitations();
+  const acceptInvitation = async (invitationId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await acceptInvitationMutation.mutateAsync(invitationId);
       return { success: true };
     } catch (err) {
       console.error('[acceptInvitation] Error accepting invitation:', err);
       return { success: false, error: 'Fehler beim Annehmen der Einladung' };
     }
-  }, [user?.id, supabase, fetchInvitations]);
+  };
 
-  // Decline invitation
-  const declineInvitation = useCallback(async (invitationId: string): Promise<{ success: boolean; error?: string }> => {
-    if (!user?.id) {
-      return { success: false, error: 'Nicht angemeldet' };
-    }
+  // Decline invitation mutation
+  const declineInvitationMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      if (!user?.id) {
+        throw new Error('Nicht angemeldet');
+      }
 
-    try {
       console.log('[declineInvitation] Declining invitation:', invitationId);
       
       // Delete the invitation
@@ -142,53 +146,30 @@ export function useWorkspaceInvitations() {
       }
 
       console.log('[declineInvitation] Successfully declined');
+      return invitationId;
+    },
+    onSuccess: () => {
+      // Invalidate queries to refetch
+      queryClient.invalidateQueries({ queryKey: ['workspaceInvitations'] });
+    },
+  });
 
-      await fetchInvitations();
+  const declineInvitation = async (invitationId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await declineInvitationMutation.mutateAsync(invitationId);
       return { success: true };
     } catch (err) {
       console.error('[declineInvitation] Error declining invitation:', err);
       return { success: false, error: 'Fehler beim Ablehnen der Einladung' };
     }
-  }, [user?.id, supabase, fetchInvitations]);
-
-  // Initial load
-  useEffect(() => {
-    fetchInvitations();
-  }, [fetchInvitations]);
-
-  // Realtime subscription for invitations
-  useEffect(() => {
-    if (!user?.id || !user?.email) return;
-
-    const channel = supabase
-      .channel(`workspace_invitations_${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'workspace_members',
-          filter: `invitation_email=eq.${user.email}`
-        },
-        () => {
-          console.log('Workspace invitation updated, refreshing...');
-          fetchInvitations();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, user?.email, supabase, fetchInvitations]);
+  };
 
   return {
     invitations,
     isLoading,
-    error,
+    error: error?.message || null,
     acceptInvitation,
     declineInvitation,
-    fetchInvitations
   };
 }
 

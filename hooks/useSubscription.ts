@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import debounce from 'lodash/debounce';
 
@@ -16,46 +17,24 @@ export interface Subscription {
   updated_at: string;
 }
 
-// Globaler Cache außerhalb der Komponente für bessere Performance
-const subscriptionCache = new Map<string, {data: Subscription | null, timestamp: number}>();
-const CACHE_DURATION = 30000; // 30 seconds
+const checkValidSubscription = (data: Subscription | null): boolean => {
+  if (!data) return false;
+  return ['active', 'trialing'].includes(data.status) && 
+    new Date(data.current_period_end) > new Date();
+};
 
 export function useSubscription() {
   const { user, supabase } = useAuth();
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const isFetchingRef = useRef(false);
+  const queryClient = useQueryClient();
 
-  const fetchSubscription = useCallback(async (forceRefresh = false) => {
-    if (!user?.id) {
-      setSubscription(null);
-      setCurrentSubscription(null);
-      setLoading(false);
-      return;
-    }
-
-    // Verhindere mehrfache gleichzeitige Fetches
-    if (isFetchingRef.current && !forceRefresh) {
-      return;
-    }
-
-    // Check cache first (außer bei forceRefresh)
-    if (!forceRefresh) {
-      const cached = subscriptionCache.get(user.id);
-      const now = Date.now();
-      
-      if (cached && (now - cached.timestamp < CACHE_DURATION)) {
-        setSubscription(cached.data);
-        setLoading(false);
-        return;
+  // Fetch subscription with React Query
+  const { data: subscriptionData, isLoading: loading, error } = useQuery({
+    queryKey: ['subscription', user?.id],
+    queryFn: async () => {
+      if (!user?.id) {
+        return { subscription: null, currentSubscription: null };
       }
-    }
 
-    isFetchingRef.current = true;
-    
-    try {
       // Get the most recent subscription for this user (regardless of status)
       const { data, error } = await supabase
         .from('subscriptions')
@@ -68,54 +47,33 @@ export function useSubscription() {
       if (error) throw error;
 
       // Store the current subscription (regardless of status) for display purposes
-      setCurrentSubscription(data);
+      const currentSubscription = data;
 
       // Check if subscription is truly active (not canceled and period hasn't ended)
-      const isValid = data && 
-        ['active', 'trialing'].includes(data.status) && 
-        new Date(data.current_period_end) > new Date();
+      const isValid = checkValidSubscription(data);
 
-      const result = isValid ? data : null;
-      
-      // Update cache
-      subscriptionCache.set(user.id, {
-        data: result,
-        timestamp: Date.now()
-      });
-      
-      setSubscription(result);
-      setError(null);
-    } catch (err) {
-      console.error('Subscription fetch error:', err);
-      setError('Failed to load subscription');
-      setSubscription(null);
-    } finally {
-      setLoading(false);
-      isFetchingRef.current = false;
+      return {
+        subscription: isValid ? data : null,
+        currentSubscription
+      };
+    },
+    enabled: !!user?.id, // Nur fetchen wenn User vorhanden
+    staleTime: 1000 * 30, // 30 Sekunden Cache - Subscription-Status sollte relativ aktuell sein
+    gcTime: 1000 * 60 * 5, // 5 Minuten im Cache halten
+    refetchOnWindowFocus: true, // Bei Tab-Fokus refetchen für aktuellen Status
+    refetchOnMount: true, // Beim Mount fetchen
+    refetchInterval: 60000, // Alle 60 Sekunden im Hintergrund refetchen
+  });
+
+  const subscription = subscriptionData?.subscription || null;
+  const currentSubscription = subscriptionData?.currentSubscription || null;
+
+  const fetchSubscription = useCallback(async (forceRefresh = false) => {
+    if (forceRefresh) {
+      await queryClient.invalidateQueries({ queryKey: ['subscription', user?.id] });
     }
-  }, [user?.id, supabase]);
+  }, [queryClient, user?.id]);
 
-  // Initiales Laden - sofort beim Mount starten
-  useEffect(() => {
-    // Sofort starten ohne Verzögerung
-    fetchSubscription();
-    
-    // Optional: Periodisches Refresh alle 60 Sekunden für lange Sessions
-    const intervalId = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchSubscription(true); // Force refresh
-      }
-    }, 60000); // 60 Sekunden
-    
-    return () => clearInterval(intervalId);
-  }, [fetchSubscription]);
-
-  const checkValidSubscription = useCallback((data: Subscription[]): boolean => {
-    return data.some(sub => 
-      ['active', 'trialing'].includes(sub.status) &&
-      new Date(sub.current_period_end) > new Date()
-    );
-  }, []);
 
   const MAX_SYNC_RETRIES = 3;
   const [syncRetries, setSyncRetries] = useState(0);
@@ -154,11 +112,11 @@ export function useSubscription() {
     debouncedSyncWithStripe(subscriptionId);
   }, [debouncedSyncWithStripe]);
 
-  // Realtime Subscription Setup - optimiert
+  // Realtime Subscription Setup - optimiert mit React Query
   useEffect(() => {
     if (!user) return;
 
-    let channel = supabase
+    const channel = supabase
       .channel(`subscription_updates_${user.id}`)
       .on(
         'postgres_changes',
@@ -169,68 +127,19 @@ export function useSubscription() {
           filter: `user_id=eq.${user.id}`
         },
         async (payload) => {
-          console.log('Subscription realtime update received:', payload);
-          const isValid = checkValidSubscription([payload.new as Subscription]);
-          setSubscription(isValid ? payload.new as Subscription : null);
-          setCurrentSubscription(payload.new as Subscription);
-          
-          // Clear cache on update
-          subscriptionCache.delete(user.id);
-          
-          if (!isValid) {
-            console.log('Subscription expired or invalidated');
-          }
+          console.log('[useSubscription] Realtime update received, invalidating query...');
+          // Invalidate query to trigger refetch
+          queryClient.invalidateQueries({ queryKey: ['subscription', user.id] });
         }
       )
       .subscribe((status) => {
-        console.log('Subscription channel status:', status);
+        console.log('[useSubscription] Realtime subscription status:', status);
       });
 
-    // Handle visibility changes - reconnect Realtime when tab becomes visible
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Tab became visible, refreshing subscription...');
-        
-        // Refresh subscription data mit force refresh
-        await fetchSubscription(true);
-        
-        // Reconnect realtime channel
-        await supabase.removeChannel(channel);
-        channel = supabase
-          .channel(`subscription_updates_${user.id}_${Date.now()}`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'subscriptions',
-              filter: `user_id=eq.${user.id}`
-            },
-            async (payload) => {
-              console.log('Subscription realtime update received:', payload);
-              const isValid = checkValidSubscription([payload.new as Subscription]);
-              setSubscription(isValid ? payload.new as Subscription : null);
-              setCurrentSubscription(payload.new as Subscription);
-              subscriptionCache.delete(user.id);
-              
-              if (!isValid) {
-                console.log('Subscription expired or invalidated');
-              }
-            }
-          )
-          .subscribe((status) => {
-            console.log('Subscription channel reconnected:', status);
-          });
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeChannel(channel);
     };
-  }, [user, supabase, checkValidSubscription, fetchSubscription]);
+  }, [user, supabase, queryClient]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -251,10 +160,8 @@ export function useSubscription() {
     subscription,
     currentSubscription,
     isLoading: loading,
-    error,
-    syncWithStripe: useCallback((subscriptionId: string) => {
-      debouncedSyncWithStripe(subscriptionId);
-    }, [debouncedSyncWithStripe]),
+    error: error?.message || null,
+    syncWithStripe,
     fetchSubscription // Expose fetch function for manual refresh
   };
 } 

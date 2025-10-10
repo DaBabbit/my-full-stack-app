@@ -63,14 +63,12 @@ export default function VideosPage() {
   const { sharedWorkspaces } = useSharedWorkspaces();
   
   // React Query Hooks
-  const { data: videos = [], isLoading, error, refetch } = useVideosQuery();
+  const { data: videos = [], isLoading } = useVideosQuery();
   const { 
     updateVideo, 
     updateVideoAsync,
-    isUpdatingVideo,
     createVideo, 
-    deleteVideo,
-    isDeletingVideo 
+    deleteVideo
   } = useVideoMutations();
   
   // Setup Realtime
@@ -117,7 +115,7 @@ export default function VideosPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorDetails, setErrorDetails] = useState({ title: '', message: '', details: '' });
+  const [errorDetails] = useState({ title: '', message: '', details: '' });
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);

@@ -56,13 +56,11 @@ export default function SharedWorkspacePage() {
   const { sharedWorkspaces, isLoading: workspacesLoading } = useSharedWorkspaces();
   
   // React Query Hooks
-  const { data: videos = [], isLoading, error } = useSharedWorkspaceVideosQuery(ownerId);
+  const { data: videos = [], isLoading } = useSharedWorkspaceVideosQuery(ownerId);
   const { 
     updateWorkspaceVideo, 
     updateWorkspaceVideoAsync,
-    isUpdatingWorkspaceVideo,
-    deleteWorkspaceVideo,
-    isDeletingWorkspaceVideo 
+    deleteWorkspaceVideo
   } = useVideoMutations();
   
   // Setup Realtime
@@ -75,7 +73,7 @@ export default function SharedWorkspacePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorDetails, setErrorDetails] = useState<{ title: string; message: string; details: string }>({ title: '', message: '', details: '' });
+  const [errorDetails] = useState<{ title: string; message: string; details: string }>({ title: '', message: '', details: '' });
   const [toasts, setToasts] = useState<ToastProps[]>([]);
   
   const [workspaceOwnerName, setWorkspaceOwnerName] = useState<string>('');

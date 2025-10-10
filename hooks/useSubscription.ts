@@ -101,7 +101,6 @@ export function useSubscription() {
         setSyncRetries(0); // Reset retries on success
       } catch (error) {
         console.error('Error syncing with Stripe:', error);
-        setError(error instanceof Error ? error.message : 'Failed to sync with Stripe');
         setSyncRetries(prev => prev + 1);
       }
     }, 30000), // 30 second delay between calls

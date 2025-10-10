@@ -5,16 +5,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
+import { useVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
+import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import PermissionErrorModal from '@/components/PermissionErrorModal';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import ErrorModal from '@/components/ErrorModal';
+import EditableCell from '@/components/EditableCell';
+import EditableDescription from '@/components/EditableDescription';
+import EditableDate from '@/components/EditableDate';
+import { ToastContainer, ToastProps } from '@/components/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
-  Video, 
+  Video as VideoIcon, 
   Settings, 
   Plus,
   Menu,
@@ -40,33 +46,6 @@ import {
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
 
-interface Video {
-  id: string;
-  name: string;
-  status: string;
-  storage_location?: string;
-  created_at: string;
-  publication_date?: string;
-  responsible_person?: string;
-  inspiration_source?: string;
-  description?: string;
-  last_updated?: string;
-  updated_at?: string;
-  duration?: number;
-  file_size?: number;
-  format?: string;
-  thumbnail_url?: string;
-  workspace_owner_id?: string;
-  created_by?: string;
-  // Workspace member permissions (only set for shared workspace videos)
-  workspace_permissions?: {
-    can_view: boolean;
-    can_create: boolean;
-    can_edit: boolean;
-    can_delete: boolean;
-  };
-}
-
 const sidebarBottomItems = [
   {
     name: 'Settings',
@@ -83,6 +62,20 @@ export default function VideosPage() {
   const permissions = usePermissions();
   const { sharedWorkspaces } = useSharedWorkspaces();
   
+  // React Query Hooks
+  const { data: videos = [], isLoading, error, refetch } = useVideosQuery();
+  const { 
+    updateVideo, 
+    updateVideoAsync,
+    isUpdatingVideo,
+    createVideo, 
+    deleteVideo,
+    isDeletingVideo 
+  } = useVideoMutations();
+  
+  // Setup Realtime
+  useRealtimeVideos(user?.id);
+  
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [
     {
@@ -93,7 +86,7 @@ export default function VideosPage() {
     },
     {
       name: 'Videos',
-      icon: Video,
+      icon: VideoIcon,
       href: '/dashboard/videos',
       active: true
     },
@@ -113,8 +106,7 @@ export default function VideosPage() {
       };
     })
   ];
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // UI States
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -122,10 +114,6 @@ export default function VideosPage() {
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [showPermissionError, setShowPermissionError] = useState(false);
   const [permissionErrorAction, setPermissionErrorAction] = useState('');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [updatingVideoIds, setUpdatingVideoIds] = useState<Set<string>>(new Set());
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -133,6 +121,7 @@ export default function VideosPage() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+  const [toasts, setToasts] = useState<ToastProps[]>([]);
   const [newVideo, setNewVideo] = useState({
     name: '',
     status: 'Idee',
@@ -141,6 +130,16 @@ export default function VideosPage() {
     inspiration_source: '',
     description: ''
   });
+
+  // Toast helpers
+  const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts(prev => [...prev, { ...toast, id, onClose: removeToast }]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   // Status-Icons und Farben
   const getStatusIcon = (status: string) => {
@@ -156,80 +155,15 @@ export default function VideosPage() {
       case 'Hochgeladen':
         return { icon: Rocket, color: 'text-green-400' };
       default:
-        return { icon: Video, color: 'text-neutral-400' };
+        return { icon: VideoIcon, color: 'text-neutral-400' };
     }
   };
 
+  // Redirect wenn nicht angemeldet
   useEffect(() => {
     if (!user) {
       router.push('/login');
-      return;
     }
-
-    fetchVideos();
-    
-    // Set up Supabase Realtime subscription for videos
-    const setupRealtimeSubscription = async () => {
-      const { supabase } = await import('@/utils/supabase');
-      
-      // Subscribe to changes in the videos table
-      // Note: We listen to ALL videos and filter client-side because we need
-      // to catch changes to shared workspace videos as well
-      const channel = supabase
-        .channel('videos_realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-            schema: 'public',
-            table: 'videos'
-            // No filter - we'll catch all changes and refresh to get proper permissions
-          },
-          (payload) => {
-            console.log('[Realtime] Video update received, refreshing...', payload.eventType);
-            
-            // Simply refresh all videos to ensure proper permissions and workspace membership
-            fetchVideos();
-          }
-        )
-        .subscribe((status) => {
-          console.log('Realtime subscription status:', status);
-        });
-      
-      return channel;
-    };
-    
-    let channelPromise = setupRealtimeSubscription();
-    
-    // Handle tab visibility changes - reconnect Realtime and refresh data
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Tab became visible, reconnecting and refreshing data...');
-        
-        // Refresh data when tab becomes visible
-        await fetchVideos();
-        
-        // Unsubscribe old channel and create new one to ensure fresh connection
-        const oldChannel = await channelPromise;
-        await oldChannel.unsubscribe();
-        console.log('Old channel unsubscribed, creating new subscription...');
-        
-        // Create new subscription
-        const newChannel = await setupRealtimeSubscription();
-        channelPromise = Promise.resolve(newChannel);
-      } else {
-        console.log('Tab hidden, pausing realtime...');
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      channelPromise.then(channel => {
-        channel.unsubscribe();
-      });
-    };
   }, [user, router]);
 
   // Handle mobile detection and resize
@@ -277,105 +211,29 @@ export default function VideosPage() {
     return video.workspace_permissions.can_delete;
   };
 
-  const fetchVideos = async () => {
+  // Handler für Inline-Editing - Generischer Save Handler
+  const handleFieldSave = async (videoId: string, field: string, value: string) => {
     try {
-      setIsLoading(true);
-      
-      // Import supabase client
-      const { supabase } = await import('@/utils/supabase');
-      
-      // Get current user to ensure we have the right context
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
-      if (!currentUser) {
-        console.error('User not authenticated');
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('[fetchVideos] Fetching videos for user:', currentUser.id);
-      
-      // Fetch ONLY OWN videos (user_id = currentUser.id)
-      const { data: ownVideos, error: ownError } = await supabase
-        .from('videos')
-        .select(`
-          id,
-          title,
-          status,
-          publication_date,
-          responsible_person,
-          storage_location,
-          inspiration_source,
-          description,
-          created_at,
-          last_updated,
-          updated_at,
-          duration,
-          file_size,
-          format,
-          thumbnail_url,
-          workspace_owner_id,
-          created_by
-        `)
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: false });
-
-      if (ownError) {
-        console.error('[fetchVideos] Error fetching own videos:', ownError);
-        setErrorDetails({
-          title: 'Fehler beim Laden der Videos',
-          message: 'Die Videos konnten nicht geladen werden. Bitte versuchen Sie es erneut.',
-          details: ownError.message
-        });
-        setShowErrorModal(true);
-        return;
-      }
-
-      console.log('[fetchVideos] Own videos:', ownVideos?.length || 0);
-
-      const allVideos = ownVideos || [];
-
-      // Transform data to match interface (own videos have no workspace_permissions)
-      const transformedVideos: Video[] = allVideos.map(video => ({
-        id: video.id,
-        name: video.title,
-        status: video.status,
-        storage_location: video.storage_location,
-        created_at: video.created_at,
-        publication_date: video.publication_date,
-        responsible_person: video.responsible_person,
-        inspiration_source: video.inspiration_source,
-        description: video.description,
-        last_updated: video.last_updated,
-        updated_at: video.updated_at,
-        duration: video.duration,
-        file_size: video.file_size,
-        format: video.format,
-        thumbnail_url: video.thumbnail_url,
-        workspace_owner_id: video.workspace_owner_id,
-        created_by: video.created_by,
-        workspace_permissions: undefined  // Own videos don't have workspace permissions
-      }));
-
-      // Sort by created_at descending
-      transformedVideos.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      setVideos(transformedVideos);
-      setLastFetchTime(Date.now());
-      
-      console.log(`[fetchVideos] Successfully loaded ${transformedVideos.length} own videos`);
-    } catch (error) {
-      console.error('[fetchVideos] Error fetching videos:', error);
-      setErrorDetails({
-        title: 'Fehler beim Laden der Videos',
-        message: 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.',
-        details: error instanceof Error ? error.message : 'Unknown error'
+      await updateVideoAsync({
+        id: videoId,
+        updates: {
+          [field]: value || null
+        }
       });
-      setShowErrorModal(true);
-    } finally {
-      setIsLoading(false);
+      
+      addToast({
+        type: 'success',
+        title: 'Gespeichert',
+        message: 'Änderung wurde erfolgreich gespeichert',
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('Error saving field:', error);
+      addToast({
+        type: 'error',
+        title: 'Fehler beim Speichern',
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      });
     }
   };
 
@@ -436,93 +294,19 @@ export default function VideosPage() {
     }
 
     try {
-      // Import supabase client
-      const { supabase } = await import('@/utils/supabase');
-      
-      // Get current user
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
-      if (!currentUser) {
-        alert('Sie müssen angemeldet sein, um Videos zu erstellen.');
-        return;
-      }
-
-      // Ensure user exists in users table (fix foreign key constraint)
-      const { error: userCheckError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', currentUser.id)
-        .single();
-
-      if (userCheckError && userCheckError.code === 'PGRST116') {
-        // User doesn't exist in users table, create them
-        console.log('Creating user in users table...');
-        const { error: createUserError } = await supabase
-          .from('users')
-          .insert([
-            {
-              id: currentUser.id,
-              email: currentUser.email,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              is_deleted: false
-            }
-          ]);
-
-        if (createUserError) {
-          console.error('Error creating user:', createUserError);
-          alert('Fehler beim Erstellen des Benutzers. Bitte versuche es erneut.');
-          return;
-        }
-      }
-      
-      // Insert new video directly to Supabase
-      const { data, error } = await supabase
-        .from('videos')
-        .insert([
-          {
-            user_id: currentUser.id,
-            title: trimmedName,
-            status: newVideo.status,
-            publication_date: newVideo.publication_date || null,
-            responsible_person: newVideo.responsible_person || null,
-            storage_location: null, // Will be set automatically via Nextcloud integration
-            inspiration_source: newVideo.inspiration_source || null,
-            description: newVideo.description || null,
-          }
-        ])
-        .select();
-
-      if (error) {
-        console.error('Error creating video:', error);
-        let errorMessage = 'Fehler beim Erstellen des Videos';
-        if (error.message.includes('row-level security policy')) {
-          errorMessage = 'Berechtigung verweigert: Sie haben nicht die erforderlichen Rechte, Videos zu erstellen.';
-        } else if (error.message.includes('cutter_assignments')) {
-          errorMessage = 'Video-Erstellung fehlgeschlagen: Es gab ein Problem mit der Datenbankstruktur. Bitte kontaktieren Sie den Support.';
-        } else if (error.message.includes('permission denied')) {
-          errorMessage = 'Zugriff verweigert: Sie haben keine Berechtigung, Videos zu erstellen.';
-        } else {
-          errorMessage = `Fehler beim Erstellen des Videos: ${error.message}`;
-        }
-        
-        setErrorDetails({
-          title: 'Video-Erstellung fehlgeschlagen',
-          message: errorMessage,
-          details: error.message
-        });
-        setShowErrorModal(true);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        throw new Error('Video konnte nicht erstellt werden');
-      }
+      // Create video using React Query mutation
+      createVideo({
+        title: trimmedName,
+        status: newVideo.status,
+        publication_date: newVideo.publication_date || null,
+        responsible_person: newVideo.responsible_person || null,
+        inspiration_source: newVideo.inspiration_source || null,
+        description: newVideo.description || null,
+      });
 
       console.log('Video erfolgreich erstellt!');
 
-      // Realtime subscription will handle adding the new video automatically
-      // No need to manually update state here
+      // React Query will handle the update automatically
       setShowAddModal(false);
       setNewVideo({
         name: '',
@@ -532,14 +316,19 @@ export default function VideosPage() {
         inspiration_source: '',
         description: ''
       });
+      
+      addToast({
+        type: 'success',
+        title: 'Video erstellt',
+        message: `"${trimmedName}" wurde erfolgreich erstellt`
+      });
     } catch (error) {
       console.error('Error adding video:', error);
-      setErrorDetails({
+      addToast({
+        type: 'error',
         title: 'Video-Erstellung fehlgeschlagen',
-        message: 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
       });
-      setShowErrorModal(true);
     }
   };
 
@@ -551,107 +340,20 @@ export default function VideosPage() {
       return;
     }
 
-    // Optimistic update - immediately update UI
-    setVideos(prevVideos => 
-      prevVideos.map(video => 
-        video.id === videoId 
-          ? { ...video, status: newStatus, updated_at: new Date().toISOString() }
-          : video
-      )
-    );
-
-    // Add to updating set
-    setUpdatingVideoIds(prev => new Set(prev).add(videoId));
-
     try {
-      // Import supabase client
-      const { supabase } = await import('@/utils/supabase');
+      // Update using React Query with automatic optimistic updates
+      updateVideo({
+        id: videoId,
+        updates: { status: newStatus }
+      });
       
-      // Get current user to ensure we have the right context
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
-      if (!currentUser) {
-        throw new Error('Benutzer nicht angemeldet');
-      }
-      
-      // Update video status directly in Supabase with explicit user_id check
-      const { data, error } = await supabase
-        .from('videos')
-        .update({ 
-          status: newStatus,
-          last_updated: new Date().toISOString()
-        })
-        .eq('id', videoId)
-        .eq('user_id', currentUser.id) // Explicit user_id check for security
-        .select();
-
-      if (error) {
-        console.error('Error updating video status:', error);
-        
-        // Revert optimistic update on error
-        setVideos(prevVideos => 
-          prevVideos.map(video => 
-            video.id === videoId 
-              ? { ...video, status: video.status } // Revert to original status
-              : video
-          )
-        );
-        
-        // Better error message for RLS violations
-        let errorMessage = 'Fehler beim Aktualisieren des Status';
-        if (error.message.includes('row-level security policy')) {
-          errorMessage = 'Berechtigung verweigert: Sie haben nicht die erforderlichen Rechte für diese Status-Änderung.';
-        } else if (error.message.includes('cutter_assignments')) {
-          errorMessage = 'Status-Änderung fehlgeschlagen: Es gab ein Problem mit der Datenbankstruktur. Bitte kontaktieren Sie den Support.';
-        } else if (error.message.includes('permission denied')) {
-          errorMessage = 'Zugriff verweigert: Sie haben keine Berechtigung, dieses Video zu bearbeiten.';
-        } else {
-          errorMessage = `Fehler beim Aktualisieren des Status: ${error.message}`;
-        }
-        
-        // Show nice error modal instead of alert
-        setErrorDetails({
-          title: 'Status-Update fehlgeschlagen',
-          message: errorMessage,
-          details: error.message
-        });
-        setShowErrorModal(true);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        throw new Error('Video nicht gefunden oder keine Berechtigung');
-      }
-
       console.log('Status erfolgreich aktualisiert!');
-      
-      // Realtime subscription will handle the update automatically
-      // No need to manually update state here
-      
     } catch (error) {
       console.error('Error updating status:', error);
-      
-      // Revert optimistic update on error
-      setVideos(prevVideos => 
-        prevVideos.map(video => 
-          video.id === videoId 
-            ? { ...video, status: video.status } // Revert to original status
-            : video
-        )
-      );
-      
-      setErrorDetails({
+      addToast({
+        type: 'error',
         title: 'Status-Update fehlgeschlagen',
-        message: 'Fehler beim Aktualisieren des Status. Bitte versuche es erneut.',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
-      setShowErrorModal(true);
-    } finally {
-      // Remove from updating set
-      setUpdatingVideoIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(videoId);
-        return newSet;
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
       });
     }
   };
@@ -671,69 +373,32 @@ export default function VideosPage() {
     if (!editingVideo) return;
 
     try {
-      const { supabase } = await import('@/utils/supabase');
-      
-      // Get current user to ensure we have the right context
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
-      if (!currentUser) {
-        throw new Error('Benutzer nicht angemeldet');
-      }
-      
-      const { data, error } = await supabase
-        .from('videos')
-        .update({
-          title: editingVideo.name,
+      updateVideo({
+        id: editingVideo.id,
+        updates: {
           status: editingVideo.status,
           publication_date: editingVideo.publication_date || null,
           responsible_person: editingVideo.responsible_person || null,
           inspiration_source: editingVideo.inspiration_source || null,
           description: editingVideo.description || null,
-          last_updated: new Date().toISOString()
-        })
-        .eq('id', editingVideo.id)
-        .eq('user_id', currentUser.id) // Explicit user_id check for security
-        .select();
-
-      if (error) {
-        console.error('Error updating video:', error);
-        let errorMessage = 'Fehler beim Aktualisieren des Videos';
-        if (error.message.includes('row-level security policy')) {
-          errorMessage = 'Berechtigung verweigert: Sie haben nicht die erforderlichen Rechte, dieses Video zu bearbeiten.';
-        } else if (error.message.includes('cutter_assignments')) {
-          errorMessage = 'Video-Update fehlgeschlagen: Es gab ein Problem mit der Datenbankstruktur. Bitte kontaktieren Sie den Support.';
-        } else if (error.message.includes('permission denied')) {
-          errorMessage = 'Zugriff verweigert: Sie haben keine Berechtigung, dieses Video zu bearbeiten.';
-        } else {
-          errorMessage = `Fehler beim Aktualisieren des Videos: ${error.message}`;
         }
-        
-        setErrorDetails({
-          title: 'Video-Update fehlgeschlagen',
-          message: errorMessage,
-          details: error.message
-        });
-        setShowErrorModal(true);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        throw new Error('Video nicht gefunden oder keine Berechtigung');
-      }
-
-      // Realtime subscription will handle the update automatically
-      // No need to manually update state here
+      });
       
       setShowEditModal(false);
       setEditingVideo(null);
+      
+      addToast({
+        type: 'success',
+        title: 'Video aktualisiert',
+        message: 'Änderungen wurden erfolgreich gespeichert'
+      });
     } catch (error) {
       console.error('Error updating video:', error);
-      setErrorDetails({
+      addToast({
+        type: 'error',
         title: 'Video-Update fehlgeschlagen',
-        message: 'Fehler beim Aktualisieren des Videos. Bitte versuchen Sie es erneut.',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
       });
-      setShowErrorModal(true);
     }
   };
 
@@ -746,55 +411,23 @@ export default function VideosPage() {
     if (!videoToDelete) return;
 
     try {
-      const { supabase } = await import('@/utils/supabase');
+      deleteVideo(videoToDelete.id);
       
-      // Get current user to ensure we have the right context
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
-      if (!currentUser) {
-        throw new Error('Benutzer nicht angemeldet');
-      }
-      
-      const { error } = await supabase
-        .from('videos')
-        .delete()
-        .eq('id', videoToDelete.id)
-        .eq('user_id', currentUser.id); // Explicit user_id check for security
-
-      if (error) {
-        console.error('Error deleting video:', error);
-        let errorMessage = 'Fehler beim Löschen des Videos';
-        if (error.message.includes('row-level security policy')) {
-          errorMessage = 'Berechtigung verweigert: Sie haben nicht die erforderlichen Rechte, dieses Video zu löschen.';
-        } else if (error.message.includes('cutter_assignments')) {
-          errorMessage = 'Video-Löschung fehlgeschlagen: Es gab ein Problem mit der Datenbankstruktur. Bitte kontaktieren Sie den Support.';
-        } else if (error.message.includes('permission denied')) {
-          errorMessage = 'Zugriff verweigert: Sie haben keine Berechtigung, dieses Video zu löschen.';
-        } else {
-          errorMessage = `Fehler beim Löschen des Videos: ${error.message}`;
-        }
-        
-        setErrorDetails({
-          title: 'Video-Löschung fehlgeschlagen',
-          message: errorMessage,
-          details: error.message
-        });
-        setShowErrorModal(true);
-        return;
-      }
-
-      // Realtime subscription will handle the deletion automatically
-      // No need to manually update state here
       setShowDeleteModal(false);
       setVideoToDelete(null);
+      
+      addToast({
+        type: 'success',
+        title: 'Video gelöscht',
+        message: `"${videoToDelete.name || videoToDelete.title || 'Video'}" wurde erfolgreich gelöscht`
+      });
     } catch (error) {
       console.error('Error deleting video:', error);
-      setErrorDetails({
+      addToast({
+        type: 'error',
         title: 'Video-Löschung fehlgeschlagen',
-        message: 'Fehler beim Löschen des Videos. Bitte versuchen Sie es erneut.',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
       });
-      setShowErrorModal(true);
     }
   };
 
@@ -803,8 +436,9 @@ export default function VideosPage() {
     if (!searchTerm.trim()) return true; // Show all videos if search is empty
     
     const searchLower = searchTerm.toLowerCase();
+    const videoName = video.name || video.title || '';
     const matches = (
-      video.name.toLowerCase().includes(searchLower) ||
+      videoName.toLowerCase().includes(searchLower) ||
       video.status.toLowerCase().includes(searchLower) ||
       (video.responsible_person && video.responsible_person.toLowerCase().includes(searchLower)) ||
       (video.description && video.description.toLowerCase().includes(searchLower)) ||
@@ -813,7 +447,7 @@ export default function VideosPage() {
     
     // Debug log
     if (searchTerm.trim()) {
-      console.log(`Search: "${searchTerm}" -> Video: "${video.name}" -> Match: ${matches}`);
+      console.log(`Search: "${searchTerm}" -> Video: "${videoName}" -> Match: ${matches}`);
     }
     
     return matches;
@@ -1116,7 +750,7 @@ export default function VideosPage() {
 
             {filteredVideos.length === 0 ? (
             <div className="text-center py-12">
-              <Video className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
+              <VideoIcon className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-white mb-2">
                 {searchTerm ? 'Keine Videos gefunden' : 'Noch keine Videos'}
               </h3>
@@ -1202,13 +836,27 @@ export default function VideosPage() {
                         </td>
 
                         {/* Veröffentlichungsdatum */}
-                        <td className="py-4 px-4 text-neutral-300 text-sm">
-                          {formatDate(video.publication_date)}
+                        <td className="py-4 px-4">
+                          <EditableDate
+                            value={video.publication_date}
+                            videoId={video.id}
+                            onSave={handleFieldSave}
+                            editable={permissions.canEditVideos}
+                            placeholder="Datum wählen"
+                          />
                         </td>
 
                         {/* Verantwortlichkeit */}
-                        <td className="py-4 px-4 text-neutral-300 text-sm">
-                          {video.responsible_person || '-'}
+                        <td className="py-4 px-4">
+                          <EditableCell
+                            value={video.responsible_person}
+                            videoId={video.id}
+                            field="responsible_person"
+                            onSave={handleFieldSave}
+                            editable={permissions.canEditVideos}
+                            type="text"
+                            placeholder="Person hinzufügen"
+                          />
                         </td>
 
                         {/* Speicherort */}
@@ -1231,24 +879,27 @@ export default function VideosPage() {
                         </td>
 
                         {/* Inspiration Quelle */}
-                        <td className="py-4 px-4 text-neutral-300 text-sm">
-                          {video.inspiration_source ? (
-                            <a 
-                              href={video.inspiration_source} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 underline"
-                            >
-                              Link
-                            </a>
-                          ) : '-'}
+                        <td className="py-4 px-4">
+                          <EditableCell
+                            value={video.inspiration_source}
+                            videoId={video.id}
+                            field="inspiration_source"
+                            onSave={handleFieldSave}
+                            editable={permissions.canEditVideos}
+                            type="url"
+                            placeholder="URL hinzufügen"
+                          />
                         </td>
 
                         {/* Beschreibung */}
-                        <td className="py-4 px-4 text-neutral-300 text-sm max-w-xs">
-                          <div className="truncate" title={video.description || ''}>
-                            {video.description || '-'}
-                          </div>
+                        <td className="py-4 px-4 max-w-xs">
+                          <EditableDescription
+                            value={video.description}
+                            videoId={video.id}
+                            onSave={handleFieldSave}
+                            editable={permissions.canEditVideos}
+                            placeholder="Beschreibung hinzufügen"
+                          />
                         </td>
 
                         {/* Aktionen */}
@@ -1401,15 +1052,25 @@ export default function VideosPage() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <label className="block text-xs font-medium text-neutral-400 mb-1">Veröffentlichung</label>
-                          <p className="text-neutral-300">
-                            {formatDate(video.publication_date)}
-                          </p>
+                          <EditableDate
+                            value={video.publication_date}
+                            videoId={video.id}
+                            onSave={handleFieldSave}
+                            editable={permissions.canEditVideos}
+                            placeholder="Datum wählen"
+                          />
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-neutral-400 mb-1">Verantwortlich</label>
-                          <p className="text-neutral-300 truncate" title={video.responsible_person || ''}>
-                            {video.responsible_person || '-'}
-                          </p>
+                          <EditableCell
+                            value={video.responsible_person}
+                            videoId={video.id}
+                            field="responsible_person"
+                            onSave={handleFieldSave}
+                            editable={permissions.canEditVideos}
+                            type="text"
+                            placeholder="Person"
+                          />
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-neutral-400 mb-1">Speicherort</label>
@@ -1435,29 +1096,30 @@ export default function VideosPage() {
                       </div>
 
                       {/* Inspiration und Beschreibung */}
-                      {(video.inspiration_source || video.description) && (
-                        <div className="space-y-3 pt-2 border-t border-neutral-700">
-                          {video.inspiration_source && (
-                            <div>
-                              <label className="block text-xs font-medium text-neutral-400 mb-1">Inspiration</label>
-                              <a 
-                                href={video.inspiration_source} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-blue-400 hover:text-blue-300 underline text-sm truncate block"
-                              >
-                                Link
-                              </a>
-                            </div>
-                          )}
-                          {video.description && (
-                            <div>
-                              <label className="block text-xs font-medium text-neutral-400 mb-1">Beschreibung</label>
-                              <p className="text-neutral-300 text-sm leading-relaxed">{video.description}</p>
-                            </div>
-                          )}
+                      <div className="space-y-3 pt-2 border-t border-neutral-700">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-400 mb-1">Inspiration</label>
+                          <EditableCell
+                            value={video.inspiration_source}
+                            videoId={video.id}
+                            field="inspiration_source"
+                            onSave={handleFieldSave}
+                            editable={permissions.canEditVideos}
+                            type="url"
+                            placeholder="URL hinzufügen"
+                          />
                         </div>
-                      )}
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-400 mb-1">Beschreibung</label>
+                          <EditableDescription
+                            value={video.description}
+                            videoId={video.id}
+                            onSave={handleFieldSave}
+                            editable={permissions.canEditVideos}
+                            placeholder="Beschreibung hinzufügen"
+                          />
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -1767,6 +1429,9 @@ export default function VideosPage() {
         message={errorDetails.message}
         details={errorDetails.details}
       />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
 }

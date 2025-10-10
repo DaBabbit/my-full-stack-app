@@ -4,14 +4,20 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useParams } from 'next/navigation';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
+import { useSharedWorkspaceVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
+import { useRealtimeWorkspaceVideos } from '@/hooks/useRealtimeVideos';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import ErrorModal from '@/components/ErrorModal';
+import EditableCell from '@/components/EditableCell';
+import EditableDescription from '@/components/EditableDescription';
+import EditableDate from '@/components/EditableDate';
+import { ToastContainer, ToastProps } from '@/components/Toast';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
-  Video,
+  Video as VideoIcon,
   Settings,
   Menu,
   X,
@@ -34,26 +40,6 @@ import {
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
 
-interface Video {
-  id: string;
-  name: string;
-  status: string;
-  storage_location?: string;
-  created_at: string;
-  publication_date?: string;
-  responsible_person?: string;
-  inspiration_source?: string;
-  description?: string;
-  last_updated?: string;
-  updated_at?: string;
-  duration?: number;
-  file_size?: number;
-  format?: string;
-  thumbnail_url?: string;
-  workspace_owner_id?: string;
-  created_by?: string;
-}
-
 interface WorkspacePermissions {
   can_view: boolean;
   can_create: boolean;
@@ -69,8 +55,19 @@ export default function SharedWorkspacePage() {
   
   const { sharedWorkspaces, isLoading: workspacesLoading } = useSharedWorkspaces();
   
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // React Query Hooks
+  const { data: videos = [], isLoading, error } = useSharedWorkspaceVideosQuery(ownerId);
+  const { 
+    updateWorkspaceVideo, 
+    updateWorkspaceVideoAsync,
+    isUpdatingWorkspaceVideo,
+    deleteWorkspaceVideo,
+    isDeletingWorkspaceVideo 
+  } = useVideoMutations();
+  
+  // Setup Realtime
+  useRealtimeWorkspaceVideos(ownerId);
+  // UI States
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,6 +76,7 @@ export default function SharedWorkspacePage() {
   const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorDetails, setErrorDetails] = useState<{ title: string; message: string; details: string }>({ title: '', message: '', details: '' });
+  const [toasts, setToasts] = useState<ToastProps[]>([]);
   
   const [workspaceOwnerName, setWorkspaceOwnerName] = useState<string>('');
   const [permissions, setPermissions] = useState<WorkspacePermissions>({
@@ -87,6 +85,16 @@ export default function SharedWorkspacePage() {
     can_edit: false,
     can_delete: false
   });
+
+  // Toast helpers
+  const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts(prev => [...prev, { ...toast, id, onClose: removeToast }]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   // Check authentication
   useEffect(() => {
@@ -109,128 +117,51 @@ export default function SharedWorkspacePage() {
     }
   }, [workspacesLoading, sharedWorkspaces, ownerId, router]);
 
-  // Fetch videos from shared workspace
-  const fetchVideos = async () => {
-    if (!user?.id || !ownerId) return;
+  // Handler für Inline-Editing - Generischer Save Handler
+  const handleFieldSave = async (videoId: string, field: string, value: string) => {
+    if (!permissions.can_edit) {
+      addToast({
+        type: 'error',
+        title: 'Keine Berechtigung',
+        message: 'Sie haben keine Berechtigung, dieses Video zu bearbeiten'
+      });
+      return;
+    }
 
     try {
-      setIsLoading(true);
-      const { supabase } = await import('@/utils/supabase');
-
-      console.log('[SharedWorkspace] Fetching videos for workspace:', ownerId);
-
-      const { data: videos, error } = await supabase
-        .from('videos')
-        .select(`
-          id,
-          title,
-          status,
-          publication_date,
-          responsible_person,
-          storage_location,
-          inspiration_source,
-          description,
-          created_at,
-          last_updated,
-          updated_at,
-          duration,
-          file_size,
-          format,
-          thumbnail_url,
-          workspace_owner_id,
-          created_by
-        `)
-        .eq('workspace_owner_id', ownerId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('[SharedWorkspace] Error fetching videos:', error);
-        setErrorDetails({
-          title: 'Fehler beim Laden der Videos',
-          message: 'Die Videos konnten nicht geladen werden.',
-          details: error.message
-        });
-        setShowErrorModal(true);
-        return;
-      }
-
-      const transformedVideos = (videos || []).map(video => ({
-        id: video.id,
-        name: video.title,
-        status: video.status,
-        storage_location: video.storage_location,
-        created_at: video.created_at,
-        publication_date: video.publication_date,
-        responsible_person: video.responsible_person,
-        inspiration_source: video.inspiration_source,
-        description: video.description,
-        last_updated: video.last_updated,
-        updated_at: video.updated_at,
-        duration: video.duration,
-        file_size: video.file_size,
-        format: video.format,
-        thumbnail_url: video.thumbnail_url,
-        workspace_owner_id: video.workspace_owner_id,
-        created_by: video.created_by
-      }));
-
-      setVideos(transformedVideos);
-      console.log('[SharedWorkspace] Loaded', transformedVideos.length, 'videos');
+      await updateWorkspaceVideoAsync({
+        id: videoId,
+        updates: {
+          [field]: value || null
+        },
+        ownerId
+      });
+      
+      addToast({
+        type: 'success',
+        title: 'Gespeichert',
+        message: 'Änderung wurde erfolgreich gespeichert',
+        duration: 2000
+      });
     } catch (error) {
-      console.error('[SharedWorkspace] Error:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Error saving field:', error);
+      addToast({
+        type: 'error',
+        title: 'Fehler beim Speichern',
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      });
     }
   };
 
-  useEffect(() => {
-    if (ownerId && permissions.can_view) {
-      fetchVideos();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId, permissions.can_view]);
-
-  // Real-time subscription
-  useEffect(() => {
-    if (!ownerId || !permissions.can_view) return;
-
-    const setupRealtime = async () => {
-      const { supabase } = await import('@/utils/supabase');
-      
-      const channel = supabase
-        .channel(`workspace_${ownerId}_videos`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'videos',
-            filter: `workspace_owner_id=eq.${ownerId}`
-          },
-          (payload) => {
-            console.log('[SharedWorkspace] Realtime update:', payload.eventType);
-            fetchVideos();
-          }
-        )
-        .subscribe();
-
-      return channel;
-    };
-
-    const channelPromise = setupRealtime();
-
-    return () => {
-      channelPromise.then(channel => channel.unsubscribe());
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId, permissions.can_view]);
-
   // Filter videos by search term
-  const filteredVideos = videos.filter(video =>
-    video.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    video.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    video.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredVideos = videos.filter(video => {
+    const videoName = video.name || video.title || '';
+    return (
+      videoName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      video.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      video.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -245,7 +176,7 @@ export default function SharedWorkspacePage() {
       case 'Hochgeladen':
         return { icon: Rocket, color: 'text-green-400' };
       default:
-        return { icon: Video, color: 'text-neutral-400' };
+        return { icon: VideoIcon, color: 'text-neutral-400' };
     }
   };
 
@@ -256,31 +187,39 @@ export default function SharedWorkspacePage() {
 
   const handleUpdateStatus = async (videoId: string, newStatus: string) => {
     if (!permissions.can_edit) {
-      alert('Sie haben keine Berechtigung, Videos zu bearbeiten');
+      addToast({
+        type: 'error',
+        title: 'Keine Berechtigung',
+        message: 'Sie haben keine Berechtigung, Videos zu bearbeiten'
+      });
       return;
     }
 
     try {
-      const { supabase } = await import('@/utils/supabase');
-      const { error } = await supabase
-        .from('videos')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', videoId);
-
-      if (error) throw error;
-
-      setVideos(prevVideos =>
-        prevVideos.map(v => v.id === videoId ? { ...v, status: newStatus } : v)
-      );
+      updateWorkspaceVideo({
+        id: videoId,
+        updates: { status: newStatus },
+        ownerId
+      });
+      
+      console.log('Status erfolgreich aktualisiert!');
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Fehler beim Aktualisieren des Status');
+      addToast({
+        type: 'error',
+        title: 'Status-Update fehlgeschlagen',
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      });
     }
   };
 
   const handleDeleteVideo = (video: Video) => {
     if (!permissions.can_delete) {
-      alert('Sie haben keine Berechtigung, Videos zu löschen');
+      addToast({
+        type: 'error',
+        title: 'Keine Berechtigung',
+        message: 'Sie haben keine Berechtigung, Videos zu löschen'
+      });
       return;
     }
     setVideoToDelete(video);
@@ -291,27 +230,30 @@ export default function SharedWorkspacePage() {
     if (!videoToDelete || !permissions.can_delete) return;
 
     try {
-      const { supabase } = await import('@/utils/supabase');
-      const { error } = await supabase
-        .from('videos')
-        .delete()
-        .eq('id', videoToDelete.id);
-
-      if (error) throw error;
-
-      setVideos(prevVideos => prevVideos.filter(v => v.id !== videoToDelete.id));
+      deleteWorkspaceVideo({ id: videoToDelete.id, ownerId });
+      
       setShowDeleteModal(false);
       setVideoToDelete(null);
+      
+      addToast({
+        type: 'success',
+        title: 'Video gelöscht',
+        message: `"${videoToDelete.name || videoToDelete.title || 'Video'}" wurde erfolgreich gelöscht`
+      });
     } catch (error) {
       console.error('Error deleting video:', error);
-      alert('Fehler beim Löschen des Videos');
+      addToast({
+        type: 'error',
+        title: 'Video-Löschung fehlgeschlagen',
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      });
     }
   };
 
   // Dynamic sidebar items
   const sidebarItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', active: false },
-    { name: 'Videos', icon: Video, href: '/dashboard/videos', active: false },
+    { name: 'Videos', icon: VideoIcon, href: '/dashboard/videos', active: false },
     ...sharedWorkspaces.map(workspace => {
       // Format owner name: prioritize firstname + lastname, fallback to email first part
       let displayName = workspace.owner_name;
@@ -642,7 +584,7 @@ export default function SharedWorkspacePage() {
 
               {filteredVideos.length === 0 ? (
                 <div className="text-center py-12">
-                  <Video className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
+                  <VideoIcon className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-white mb-2">
                     {searchTerm ? 'Keine Videos gefunden' : 'Noch keine Videos'}
                   </h3>
@@ -710,13 +652,27 @@ export default function SharedWorkspacePage() {
                               </td>
 
                               {/* Publication Date */}
-                              <td className="py-4 px-4 text-neutral-300 text-sm">
-                                {formatDate(video.publication_date)}
+                              <td className="py-4 px-4">
+                                <EditableDate
+                                  value={video.publication_date}
+                                  videoId={video.id}
+                                  onSave={handleFieldSave}
+                                  editable={permissions.can_edit}
+                                  placeholder="Datum wählen"
+                                />
                               </td>
 
                               {/* Responsible Person */}
-                              <td className="py-4 px-4 text-neutral-300 text-sm">
-                                {video.responsible_person || '-'}
+                              <td className="py-4 px-4">
+                                <EditableCell
+                                  value={video.responsible_person}
+                                  videoId={video.id}
+                                  field="responsible_person"
+                                  onSave={handleFieldSave}
+                                  editable={permissions.can_edit}
+                                  type="text"
+                                  placeholder="Person hinzufügen"
+                                />
                               </td>
 
                               {/* Storage Location */}
@@ -739,10 +695,14 @@ export default function SharedWorkspacePage() {
                               </td>
 
                               {/* Description */}
-                              <td className="py-4 px-4 text-neutral-300 text-sm max-w-xs">
-                                <div className="truncate" title={video.description || ''}>
-                                  {video.description || '-'}
-                                </div>
+                              <td className="py-4 px-4 max-w-xs">
+                                <EditableDescription
+                                  value={video.description}
+                                  videoId={video.id}
+                                  onSave={handleFieldSave}
+                                  editable={permissions.can_edit}
+                                  placeholder="Beschreibung hinzufügen"
+                                />
                               </td>
 
                               {/* Actions */}
@@ -839,31 +799,45 @@ export default function SharedWorkspacePage() {
                           </div>
 
                           {/* Other Details */}
-                          <div className="space-y-2 text-sm">
-                            {video.publication_date && (
-                              <div className="flex justify-between">
-                                <span className="text-neutral-400">Veröffentlichung:</span>
-                                <span className="text-white">{formatDate(video.publication_date)}</span>
-                              </div>
-                            )}
-                            {video.responsible_person && (
-                              <div className="flex justify-between">
-                                <span className="text-neutral-400">Verantwortlich:</span>
-                                <span className="text-white">{video.responsible_person}</span>
-                              </div>
-                            )}
+                          <div className="space-y-3 text-sm">
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-400 mb-1">Veröffentlichung</label>
+                              <EditableDate
+                                value={video.publication_date}
+                                videoId={video.id}
+                                onSave={handleFieldSave}
+                                editable={permissions.can_edit}
+                                placeholder="Datum wählen"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-400 mb-1">Verantwortlich</label>
+                              <EditableCell
+                                value={video.responsible_person}
+                                videoId={video.id}
+                                field="responsible_person"
+                                onSave={handleFieldSave}
+                                editable={permissions.can_edit}
+                                type="text"
+                                placeholder="Person"
+                              />
+                            </div>
                             {video.updated_at && (
                               <div className="flex justify-between">
                                 <span className="text-neutral-400">Aktualisiert:</span>
                                 <span className="text-white">{formatDate(video.updated_at)}</span>
                               </div>
                             )}
-                            {video.description && (
-                              <div>
-                                <span className="text-neutral-400">Beschreibung:</span>
-                                <p className="text-white mt-1">{video.description}</p>
-                              </div>
-                            )}
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-400 mb-1">Beschreibung</label>
+                              <EditableDescription
+                                value={video.description}
+                                videoId={video.id}
+                                onSave={handleFieldSave}
+                                editable={permissions.can_edit}
+                                placeholder="Beschreibung hinzufügen"
+                              />
+                            </div>
                           </div>
                         </div>
                       );
@@ -901,6 +875,9 @@ export default function SharedWorkspacePage() {
           details={errorDetails.details}
         />
       )}
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
 }

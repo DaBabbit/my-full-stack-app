@@ -113,7 +113,7 @@ export function useSubscription() {
 
   // Realtime Subscription Setup - optimiert mit React Query
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     const channel = supabase
       .channel(`subscription_updates_${user.id}`)
@@ -138,7 +138,7 @@ export function useSubscription() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, supabase, queryClient]);
+  }, [user?.id]); // queryClient & supabase NICHT in Dependencies - sie sind stabil
 
   // Deaktiviert: Stripe Sync läuft in Endlosschleife bei Fehlern
   // useEffect(() => {

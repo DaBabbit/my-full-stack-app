@@ -18,7 +18,7 @@ export function useRealtimeVideos(userId?: string) {
 
     // Subscribe to all video changes
     const channel = supabase
-      .channel('videos_realtime')
+      .channel(`videos_realtime_${userId}`) // Unique channel name per user
       .on(
         'postgres_changes',
         {
@@ -42,7 +42,7 @@ export function useRealtimeVideos(userId?: string) {
       console.log('[useRealtimeVideos] Unsubscribing from realtime');
       channel.unsubscribe();
     };
-  }, [userId, queryClient]);
+  }, [userId]); // queryClient NICHT in Dependencies - es ist stabil
 }
 
 /**
@@ -81,6 +81,6 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
       console.log('[useRealtimeWorkspaceVideos] Unsubscribing from workspace realtime');
       channel.unsubscribe();
     };
-  }, [ownerId, queryClient]);
+  }, [ownerId]); // queryClient NICHT in Dependencies - es ist stabil
 }
 

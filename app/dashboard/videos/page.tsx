@@ -7,7 +7,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
-import { useWindowFocusRefetch } from '@/hooks/useWindowFocus';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
@@ -78,9 +77,6 @@ export default function VideosPage() {
   
   // Setup Realtime
   useRealtimeVideos(user?.id);
-  
-  // Expliziter Window Focus Refetch als Backup
-  useWindowFocusRefetch(['videos', 'own', user?.id || '']);
   
   // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch
   const showSkeleton = isLoading && !videos.length;

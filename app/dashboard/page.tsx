@@ -8,7 +8,7 @@ import DashboardSkeleton from '@/components/DashboardSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
-import { useVideosQuery, type Video } from '@/hooks/useVideosQuery';
+import { useVideosQuery } from '@/hooks/useVideosQuery';
 import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
 import { motion } from 'framer-motion';
 import { 

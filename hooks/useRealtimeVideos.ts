@@ -27,7 +27,7 @@ export function useRealtimeVideos(userId?: string) {
           table: 'videos',
           filter: `user_id=eq.${userId}` // Nur eigene Videos
         },
-        (payload) => {
+        (payload: any) => {
           console.log('[useRealtimeVideos] Video update received:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id);
           
           // WICHTIG: 500ms Delay um sicherzustellen dass Supabase die Änderung committed hat
@@ -74,7 +74,7 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
           table: 'videos',
           filter: `workspace_owner_id=eq.${ownerId}`
         },
-        (payload) => {
+        (payload: any) => {
           console.log('[useRealtimeWorkspaceVideos] Workspace video update received:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id);
           
           // WICHTIG: 500ms Delay um sicherzustellen dass Supabase die Änderung committed hat

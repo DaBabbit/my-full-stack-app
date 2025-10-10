@@ -38,7 +38,7 @@ export default function EditableCell({
   const [localValue, setLocalValue] = useState(value || '');
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Update local value wenn external value sich ändert
   useEffect(() => {

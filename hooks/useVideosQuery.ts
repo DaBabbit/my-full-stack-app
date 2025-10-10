@@ -44,15 +44,17 @@ interface VideoUpdate {
 /**
  * Hook für das Fetching der eigenen Videos des Users
  */
-export function useVideosQuery() {
+export function useVideosQuery(userId?: string) {
   return useQuery({
-    queryKey: ['videos', 'own'],
+    queryKey: ['videos', 'own', userId],
     queryFn: async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
       if (!currentUser) {
         throw new Error('Nicht authentifiziert');
       }
+
+      console.log('[useVideosQuery] Fetching videos for user:', currentUser.id);
 
       const { data, error } = await supabase
         .from('videos')
@@ -90,10 +92,15 @@ export function useVideosQuery() {
         name: video.title,
       }));
 
+      console.log('[useVideosQuery] Loaded', transformedVideos.length, 'videos');
       return transformedVideos;
     },
-    staleTime: 1000 * 60 * 2, // 2 Minuten
-    gcTime: 1000 * 60 * 10, // 10 Minuten
+    enabled: !!userId, // Nur ausführen wenn User vorhanden
+    staleTime: 0, // Immer als stale betrachten für sofortiges Refetch
+    gcTime: 1000 * 60 * 10, // 10 Minuten Cache
+    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus
+    refetchOnMount: true, // Refetch beim Mount
+    refetchOnReconnect: true, // Refetch bei Reconnect
   });
 }
 
@@ -113,6 +120,8 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
       if (!currentUser) {
         throw new Error('Nicht authentifiziert');
       }
+
+      console.log('[useSharedWorkspaceVideosQuery] Fetching videos for workspace:', ownerId);
 
       const { data, error } = await supabase
         .from('videos')
@@ -149,11 +158,15 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
         name: video.title,
       }));
 
+      console.log('[useSharedWorkspaceVideosQuery] Loaded', transformedVideos.length, 'videos');
       return transformedVideos;
     },
     enabled: !!ownerId, // Nur ausführen wenn ownerId vorhanden ist
-    staleTime: 1000 * 60 * 2,
-    gcTime: 1000 * 60 * 10,
+    staleTime: 0, // Immer als stale betrachten für sofortiges Refetch
+    gcTime: 1000 * 60 * 10, // 10 Minuten Cache
+    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus
+    refetchOnMount: true, // Refetch beim Mount
+    refetchOnReconnect: true, // Refetch bei Reconnect
   });
 }
 

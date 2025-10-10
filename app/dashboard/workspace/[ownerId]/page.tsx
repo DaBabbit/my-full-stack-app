@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useSharedWorkspaceVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeWorkspaceVideos } from '@/hooks/useRealtimeVideos';
+import { useWindowFocusRefetch } from '@/hooks/useWindowFocus';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
@@ -55,8 +56,13 @@ export default function SharedWorkspacePage() {
   
   const { sharedWorkspaces, isLoading: workspacesLoading } = useSharedWorkspaces();
   
-  // React Query Hooks
-  const { data: videos = [], isLoading } = useSharedWorkspaceVideosQuery(ownerId);
+  // React Query Hooks - isLoading nur beim ersten Load, nicht bei Background Refetch
+  const { 
+    data: videos = [], 
+    isLoading,
+    isFetching,
+    dataUpdatedAt 
+  } = useSharedWorkspaceVideosQuery(ownerId);
   const { 
     updateWorkspaceVideo, 
     updateWorkspaceVideoAsync,
@@ -65,6 +71,12 @@ export default function SharedWorkspacePage() {
   
   // Setup Realtime
   useRealtimeWorkspaceVideos(ownerId);
+  
+  // Expliziter Window Focus Refetch als Backup
+  useWindowFocusRefetch([['videos', 'workspace', ownerId || '']]);
+  
+  // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch
+  const showSkeleton = isLoading && !videos.length;
   // UI States
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -572,12 +584,21 @@ export default function SharedWorkspacePage() {
           </div>
 
           {/* Videos Table */}
-          {isLoading ? (
+          {showSkeleton ? (
             <VideoTableSkeleton />
           ) : (
             <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-neutral-700">
+              <div className="px-6 py-4 border-b border-neutral-700 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">Alle Videos ({filteredVideos.length})</h3>
+                {isFetching && !isLoading && (
+                  <div className="flex items-center text-neutral-400 text-sm">
+                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Aktualisiere...
+                  </div>
+                )}
               </div>
 
               {filteredVideos.length === 0 ? (

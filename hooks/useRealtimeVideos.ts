@@ -14,30 +14,14 @@ export function useRealtimeVideos(userId?: string) {
   useEffect(() => {
     if (!userId) return;
 
-    console.log('[useRealtimeVideos] 🔥 REALTIME DEAKTIVIERT - Verwende Polling statt WebSocket');
+    console.log('[useRealtimeVideos] 🔥 POLLING KOMPLETT DEAKTIVIERT - Nur Tab-Focus-Refetch verwenden');
     
-    // 🚨 TEMPORÄR DEAKTIVIERT: Realtime verursacht Verbindungsprobleme
-    // Stattdessen verwenden wir Polling + Tab-Focus-Refetch
-    // 
-    // const channel = supabase
-    //   .channel(`videos_realtime_${userId}`)
-    //   .on('postgres_changes', { ... }, callback)
-    //   .subscribe();
-
-    // Polling als Alternative: Alle 30 Sekunden im Hintergrund refetchen
-    const interval = setInterval(() => {
-      if (!document.hidden) { // Nur wenn Tab aktiv
-        console.log('[useRealtimeVideos] Polling: Refetching videos...');
-        queryClient.refetchQueries({ 
-          queryKey: ['videos'],
-          type: 'active'
-        });
-      }
-    }, 30000); // 30 Sekunden
-
+    // 🚨 POLLING DEAKTIVIERT: Verhindert Race Conditions mit Mutations!
+    // Tab-Focus-Refetch + staleTime: 0 reichen aus für frische Daten
+    // Polling verursachte: Mutation speichert → Polling refetcht → Alte Daten überschreiben neue!
+    
     return () => {
-      console.log('[useRealtimeVideos] Cleaning up polling interval');
-      clearInterval(interval);
+      console.log('[useRealtimeVideos] No cleanup needed - no polling active');
     };
   }, [userId, queryClient]);
 }
@@ -51,22 +35,13 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
   useEffect(() => {
     if (!ownerId) return;
 
-    console.log('[useRealtimeWorkspaceVideos] 🔥 REALTIME DEAKTIVIERT - Verwende Polling für Workspace');
+    console.log('[useRealtimeWorkspaceVideos] 🔥 POLLING KOMPLETT DEAKTIVIERT - Nur Tab-Focus-Refetch verwenden');
     
-    // Polling als Alternative: Alle 30 Sekunden im Hintergrund refetchen
-    const interval = setInterval(() => {
-      if (!document.hidden) { // Nur wenn Tab aktiv
-        console.log('[useRealtimeWorkspaceVideos] Polling: Refetching workspace videos...');
-        queryClient.refetchQueries({ 
-          queryKey: ['videos', 'workspace', ownerId],
-          type: 'active'
-        });
-      }
-    }, 30000); // 30 Sekunden
-
+    // 🚨 POLLING DEAKTIVIERT: Verhindert Race Conditions mit Workspace-Mutations!
+    // Tab-Focus-Refetch + staleTime: 0 reichen aus für frische Workspace-Daten
+    
     return () => {
-      console.log('[useRealtimeWorkspaceVideos] Cleaning up workspace polling interval');
-      clearInterval(interval);
+      console.log('[useRealtimeWorkspaceVideos] No cleanup needed - no polling active');
     };
   }, [ownerId, queryClient]);
 }

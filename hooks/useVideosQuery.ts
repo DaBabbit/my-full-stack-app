@@ -308,8 +308,28 @@ export function useVideoMutations() {
       console.log('[updateVideoMutation] ✅ Successfully updated:', data);
       return data;
     },
-    // KEIN onMutate - keine Optimistic Updates mehr!
-    // onSuccess: Cache mit echten Daten aktualisieren
+    // 🔥 OPTIMISTIC UPDATE WIEDER AKTIVIERT - sofortige UI-Reaktion!
+    onMutate: async ({ id, updates }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['videos'] });
+
+      // Snapshot the previous value
+      const previousVideos = queryClient.getQueryData(['videos', 'own']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['videos', 'own'], (old: Video[] | undefined) => {
+        if (!old) return old;
+        return old.map(video => 
+          video.id === id 
+            ? { ...video, ...updates, name: video.title } 
+            : video
+        );
+      });
+
+      console.log('[updateVideoMutation] 🔥 Optimistic update applied');
+      return { previousVideos };
+    },
+    // onSuccess: Cache mit echten Daten aktualisieren (nur bei Success!)
     onSuccess: (data) => {
       console.log('[updateVideoMutation] ✅ onSuccess - Updating cache with real data');
       queryClient.setQueryData(['videos', 'own'], (old: Video[] | undefined) => {
@@ -321,11 +341,13 @@ export function useVideoMutations() {
         );
       });
     },
-    // Bei Fehler: Cache invalidieren für korrekten State
-    onError: (err) => {
+    // Bei Fehler: Rollback zu vorherigen Daten
+    onError: (err, variables, context) => {
       console.error('[updateVideoMutation] ❌ Error occurred:', err);
-      // Cache invalidieren um korrekten State zu bekommen
-      queryClient.invalidateQueries({ queryKey: ['videos', 'own'] });
+      if (context?.previousVideos) {
+        queryClient.setQueryData(['videos', 'own'], context.previousVideos);
+        console.log('[updateVideoMutation] 🔄 Rolled back to previous state');
+      }
     },
   });
 
@@ -393,8 +415,25 @@ export function useVideoMutations() {
       console.log('[updateWorkspaceVideoMutation] ✅ Successfully updated workspace video:', data);
       return data;
     },
-    // KEIN onMutate - keine Optimistic Updates mehr!
-    // onSuccess: Cache mit echten Daten aktualisieren
+    // 🔥 OPTIMISTIC UPDATE WIEDER AKTIVIERT - sofortige UI-Reaktion!
+    onMutate: async ({ id, updates, ownerId }) => {
+      await queryClient.cancelQueries({ queryKey: ['videos', 'workspace', ownerId] });
+
+      const previousVideos = queryClient.getQueryData(['videos', 'workspace', ownerId]);
+
+      queryClient.setQueryData(['videos', 'workspace', ownerId], (old: Video[] | undefined) => {
+        if (!old) return old;
+        return old.map(video => 
+          video.id === id 
+            ? { ...video, ...updates, name: video.title } 
+            : video
+        );
+      });
+
+      console.log('[updateWorkspaceVideoMutation] 🔥 Optimistic update applied');
+      return { previousVideos, ownerId };
+    },
+    // onSuccess: Cache mit echten Daten aktualisieren (nur bei Success!)
     onSuccess: (data, variables) => {
       console.log('[updateWorkspaceVideoMutation] ✅ onSuccess - Updating workspace cache with real data');
       queryClient.setQueryData(['videos', 'workspace', variables.ownerId], (old: Video[] | undefined) => {
@@ -406,11 +445,13 @@ export function useVideoMutations() {
         );
       });
     },
-    // Bei Fehler: Cache invalidieren für korrekten State
-    onError: (err, variables) => {
+    // Bei Fehler: Rollback zu vorherigen Daten
+    onError: (err, variables, context) => {
       console.error('[updateWorkspaceVideoMutation] ❌ Error occurred:', err);
-      // Cache invalidieren um korrekten State zu bekommen
-      queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', variables.ownerId] });
+      if (context?.previousVideos && context?.ownerId) {
+        queryClient.setQueryData(['videos', 'workspace', context.ownerId], context.previousVideos);
+        console.log('[updateWorkspaceVideoMutation] 🔄 Rolled back to previous state');
+      }
     },
   });
 

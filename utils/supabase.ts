@@ -47,14 +47,7 @@ export const supabase = createClient(
     db: {
       schema: 'public'
     },
-    realtime: {
-      // 🔥 REALTIME-KONFIGURATION für Tab-Wechsel
-      params: {
-        eventsPerSecond: 10, // Rate limiting
-      },
-      // Automatische Reconnect-Strategie
-      heartbeatIntervalMs: 30000, // 30s Heartbeat
-      reconnectAfterMs: [1000, 2000, 5000, 10000], // Exponential backoff
-    }
+    // 🔥 REALTIME-KONFIGURATION für Tab-Wechsel (vereinfacht)
+    // Die detaillierte Konfiguration wird in den Hooks gemacht
   }
 ); 

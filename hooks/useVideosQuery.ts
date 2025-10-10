@@ -96,10 +96,10 @@ export function useVideosQuery(userId?: string) {
       return transformedVideos;
     },
     enabled: !!userId, // Nur ausführen wenn User vorhanden
-    staleTime: 0, // Immer als stale betrachten für sofortiges Refetch
+    staleTime: 1000 * 30, // 30 Sekunden - vernünftiger Wert für häufig geänderte Daten
     gcTime: 1000 * 60 * 10, // 10 Minuten Cache
-    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus
-    refetchOnMount: true, // Refetch beim Mount
+    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus (nur wenn stale)
+    refetchOnMount: true, // Refetch beim Mount (nur wenn stale)
     refetchOnReconnect: true, // Refetch bei Reconnect
   });
 }
@@ -162,10 +162,10 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
       return transformedVideos;
     },
     enabled: !!ownerId, // Nur ausführen wenn ownerId vorhanden ist
-    staleTime: 0, // Immer als stale betrachten für sofortiges Refetch
+    staleTime: 1000 * 30, // 30 Sekunden - vernünftiger Wert für häufig geänderte Daten
     gcTime: 1000 * 60 * 10, // 10 Minuten Cache
-    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus
-    refetchOnMount: true, // Refetch beim Mount
+    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus (nur wenn stale)
+    refetchOnMount: true, // Refetch beim Mount (nur wenn stale)
     refetchOnReconnect: true, // Refetch bei Reconnect
   });
 }

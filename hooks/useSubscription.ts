@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import debounce from 'lodash/debounce';
 
 export interface Subscription {
   id: string;
@@ -75,41 +74,10 @@ export function useSubscription() {
   }, [queryClient, user?.id]);
 
 
-  const MAX_SYNC_RETRIES = 3;
-  const [syncRetries, setSyncRetries] = useState(0);
-
-  const debouncedSyncWithStripe = useCallback(
-    debounce(async (subscriptionId: string) => {
-      if (syncRetries >= MAX_SYNC_RETRIES) {
-        console.log('Max sync retries reached');
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/stripe/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subscriptionId }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || 'Failed to sync with Stripe');
-        }
-        
-        await fetchSubscription();
-        setSyncRetries(0); // Reset retries on success
-      } catch (error) {
-        console.error('Error syncing with Stripe:', error);
-        setSyncRetries(prev => prev + 1);
-      }
-    }, 30000), // 30 second delay between calls
-    [fetchSubscription, syncRetries]
-  );
-
-  const syncWithStripe = useCallback((subscriptionId: string) => {
-    debouncedSyncWithStripe(subscriptionId);
-  }, [debouncedSyncWithStripe]);
+  // Stripe Sync komplett deaktiviert - verursacht 500 Errors
+  // const MAX_SYNC_RETRIES = 3;
+  // const [syncRetries, setSyncRetries] = useState(0);
+  // ... (Code entfernt)
 
   // Realtime Subscription Setup - optimiert mit React Query
   useEffect(() => {
@@ -140,28 +108,14 @@ export function useSubscription() {
     };
   }, [user?.id]); // queryClient & supabase NICHT in Dependencies - sie sind stabil
 
-  // Deaktiviert: Stripe Sync läuft in Endlosschleife bei Fehlern
-  // useEffect(() => {
-  //   let timeoutId: NodeJS.Timeout;
-  //   
-  //   if (subscription?.stripe_subscription_id) {
-  //     // Add a delay before first sync
-  //     timeoutId = setTimeout(() => {
-  //       syncWithStripe(subscription.stripe_subscription_id);
-  //     }, 1000);
-  //   }
-  //
-  //   return () => {
-  //     if (timeoutId) clearTimeout(timeoutId);
-  //   };
-  // }, [syncWithStripe, subscription?.stripe_subscription_id]);
-
   return {
     subscription,
     currentSubscription,
     isLoading: loading,
     error: error?.message || null,
-    syncWithStripe,
+    syncWithStripe: () => {
+      console.log('[useSubscription] syncWithStripe is disabled');
+    }, // Deaktiviert - verursacht 500 Errors
     fetchSubscription // Expose fetch function for manual refresh
   };
 } 

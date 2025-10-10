@@ -8,10 +8,12 @@ import DashboardSkeleton from '@/components/DashboardSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
+import { useVideosQuery, type Video } from '@/hooks/useVideosQuery';
+import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
-  Video, 
+  Video as VideoIcon, 
   Settings,
   Plus,
   Menu,
@@ -35,24 +37,6 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 
-interface Video {
-  id: string;
-  name: string;
-  status: string;
-  storage_location?: string;
-  created_at: string;
-  publication_date?: string;
-  responsible_person?: string;
-  inspiration_source?: string;
-  description?: string;
-  last_updated?: string;
-  updated_at?: string;
-  duration?: number;
-  file_size?: number;
-  format?: string;
-  thumbnail_url?: string;
-}
-
 const sidebarBottomItems = [
   {
     name: 'Settings',
@@ -68,6 +52,12 @@ export default function Dashboard() {
   const permissions = usePermissions();
   const { sharedWorkspaces } = useSharedWorkspaces();
   
+  // React Query für Videos
+  const { data: videos = [], isLoading } = useVideosQuery(user?.id);
+  
+  // Setup Realtime
+  useRealtimeVideos(user?.id);
+  
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [
     {
@@ -78,7 +68,7 @@ export default function Dashboard() {
     },
     {
       name: 'Videos',
-      icon: Video,
+      icon: VideoIcon,
       href: '/dashboard/videos',
       active: false
     },
@@ -98,8 +88,7 @@ export default function Dashboard() {
       };
     })
   ];
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -119,7 +108,7 @@ export default function Dashboard() {
       case 'Hochgeladen':
         return { icon: Rocket, color: 'text-green-400' };
       default:
-        return { icon: Video, color: 'text-neutral-400' };
+        return { icon: VideoIcon, color: 'text-neutral-400' };
     }
   };
 
@@ -128,157 +117,6 @@ export default function Dashboard() {
       router.push('/login');
       return;
     }
-
-    fetchVideos();
-    
-    // Set up Supabase Realtime subscription for videos
-    const setupRealtimeSubscription = async () => {
-      const { supabase } = await import('@/utils/supabase');
-      
-      // Subscribe to changes in the videos table
-      const channel = supabase
-        .channel('dashboard_videos_realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-            schema: 'public',
-            table: 'videos',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            console.log('Dashboard realtime update received:', payload);
-            
-            if (payload.eventType === 'INSERT') {
-              // New video was created
-              const newVideo = payload.new as {
-                id: string;
-                title: string;
-                status: string;
-                storage_location?: string;
-                created_at: string;
-                publication_date?: string;
-                responsible_person?: string;
-                inspiration_source?: string;
-                description?: string;
-                last_updated?: string;
-                updated_at?: string;
-                duration?: number;
-                file_size?: number;
-                format?: string;
-                thumbnail_url?: string;
-              };
-              const transformedNewVideo = {
-                id: newVideo.id,
-                name: newVideo.title,
-                status: newVideo.status,
-                storage_location: newVideo.storage_location,
-                created_at: newVideo.created_at,
-                publication_date: newVideo.publication_date,
-                responsible_person: newVideo.responsible_person,
-                inspiration_source: newVideo.inspiration_source,
-                description: newVideo.description,
-                last_updated: newVideo.last_updated,
-                updated_at: newVideo.updated_at,
-                duration: newVideo.duration,
-                file_size: newVideo.file_size,
-                format: newVideo.format,
-                thumbnail_url: newVideo.thumbnail_url
-              };
-              
-              setVideos(prevVideos => {
-                // Check if video already exists
-                const exists = prevVideos.some(v => v.id === newVideo.id);
-                if (exists) return prevVideos;
-                return [transformedNewVideo, ...prevVideos];
-              });
-            } else if (payload.eventType === 'UPDATE') {
-              // Video was updated
-              const updatedVideo = payload.new as {
-                id: string;
-                title: string;
-                status: string;
-                storage_location?: string;
-                publication_date?: string;
-                responsible_person?: string;
-                inspiration_source?: string;
-                description?: string;
-                last_updated?: string;
-                updated_at?: string;
-                duration?: number;
-                file_size?: number;
-                format?: string;
-                thumbnail_url?: string;
-              };
-              setVideos(prevVideos =>
-                prevVideos.map(video =>
-                  video.id === updatedVideo.id
-                    ? {
-                        ...video,
-                        name: updatedVideo.title,
-                        status: updatedVideo.status,
-                        storage_location: updatedVideo.storage_location,
-                        publication_date: updatedVideo.publication_date,
-                        responsible_person: updatedVideo.responsible_person,
-                        inspiration_source: updatedVideo.inspiration_source,
-                        description: updatedVideo.description,
-                        last_updated: updatedVideo.last_updated,
-                        updated_at: updatedVideo.updated_at,
-                        duration: updatedVideo.duration,
-                        file_size: updatedVideo.file_size,
-                        format: updatedVideo.format,
-                        thumbnail_url: updatedVideo.thumbnail_url
-                      }
-                    : video
-                )
-              );
-            } else if (payload.eventType === 'DELETE') {
-              // Video was deleted
-              const deletedVideo = payload.old as { id: string };
-              setVideos(prevVideos =>
-                prevVideos.filter(video => video.id !== deletedVideo.id)
-              );
-            }
-          }
-        )
-        .subscribe((status) => {
-          console.log('Dashboard realtime subscription status:', status);
-        });
-      
-      return channel;
-    };
-    
-    let channelPromise = setupRealtimeSubscription();
-    
-    // Handle tab visibility changes - reconnect Realtime and refresh data
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Dashboard tab became visible, reconnecting and refreshing data...');
-        
-        // Refresh data when tab becomes visible
-        await fetchVideos();
-        
-        // Unsubscribe old channel and create new one to ensure fresh connection
-        const oldChannel = await channelPromise;
-        await oldChannel.unsubscribe();
-        console.log('Old channel unsubscribed, creating new subscription...');
-        
-        // Create new subscription
-        const newChannel = await setupRealtimeSubscription();
-        channelPromise = Promise.resolve(newChannel);
-      } else {
-        console.log('Dashboard tab hidden, pausing realtime...');
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      channelPromise.then(channel => {
-        channel.unsubscribe();
-      });
-    };
   }, [user, router]);
 
   // Handle mobile detection and resize
@@ -305,65 +143,6 @@ export default function Dashboard() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [userDropdownOpen]);
-
-  const fetchVideos = async () => {
-    try {
-      // Import supabase client
-      const { supabase } = await import('@/utils/supabase');
-      
-      // Fetch videos directly from Supabase
-      const { data: videos, error } = await supabase
-        .from('videos')
-        .select(`
-          id,
-          title,
-          status,
-          publication_date,
-          responsible_person,
-          storage_location,
-          inspiration_source,
-          description,
-          created_at,
-          last_updated,
-          updated_at,
-          duration,
-          file_size,
-          format,
-          thumbnail_url
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching videos:', error);
-        return;
-      }
-
-      // Transform data to match interface
-      const transformedVideos = videos?.map(video => ({
-        id: video.id,
-        name: video.title,
-        status: video.status,
-        storage_location: video.storage_location,
-        created_at: video.created_at,
-        publication_date: video.publication_date,
-        responsible_person: video.responsible_person,
-        inspiration_source: video.inspiration_source,
-        description: video.description,
-        last_updated: video.last_updated,
-        updated_at: video.updated_at,
-        duration: video.duration,
-        file_size: video.file_size,
-        format: video.format,
-        thumbnail_url: video.thumbnail_url
-      })) || [];
-
-      setVideos(transformedVideos);
-    } catch (error) {
-      console.error('Error fetching videos:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const getVideoStats = () => {
     const total = videos.length;
@@ -690,7 +469,7 @@ export default function Dashboard() {
               onClick={() => router.push('/dashboard/videos')}
               className="flex items-center p-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
             >
-              <Video className="w-6 h-6 mr-3" />
+              <VideoIcon className="w-6 h-6 mr-3" />
               <span>Alle Videos anzeigen</span>
             </button>
 
@@ -733,7 +512,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <Video className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
+              <VideoIcon className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
               <p className="text-neutral-400 mb-4">Noch keine Videos erstellt</p>
               <button
                 onClick={() => router.push('/dashboard/videos')}

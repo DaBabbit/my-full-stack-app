@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useSharedWorkspaceVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeWorkspaceVideos } from '@/hooks/useRealtimeVideos';
+import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
@@ -69,6 +70,9 @@ export default function SharedWorkspacePage() {
   
   // Setup Realtime
   useRealtimeWorkspaceVideos(ownerId);
+  
+  // 🔥 Force refetch bei Tab-Fokus (zusätzliche Absicherung)
+  useTabFocusRefetch();
   
   // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch
   const showSkeleton = isLoading && !videos.length;

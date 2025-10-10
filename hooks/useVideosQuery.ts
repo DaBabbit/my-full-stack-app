@@ -96,11 +96,13 @@ export function useVideosQuery(userId?: string) {
       return transformedVideos;
     },
     enabled: !!userId, // Nur ausführen wenn User vorhanden
-    staleTime: 1000 * 30, // 30 Sekunden - vernünftiger Wert für häufig geänderte Daten
-    gcTime: 1000 * 60 * 10, // 10 Minuten Cache
-    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus (nur wenn stale)
-    refetchOnMount: true, // Refetch beim Mount (nur wenn stale)
+    staleTime: 0, // 🔥 IMMER als stale betrachten → garantiert Refetch bei Tab-Fokus!
+    gcTime: 1000 * 60 * 10, // 10 Minuten Cache für Background
+    refetchOnWindowFocus: true, // IMMER refetch bei Tab-Fokus (wegen staleTime: 0)
+    refetchOnMount: true, // IMMER refetch beim Mount
     refetchOnReconnect: true, // Refetch bei Reconnect
+    retry: 3, // 3 Versuche bei Fehler
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });
 }
 
@@ -162,11 +164,13 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
       return transformedVideos;
     },
     enabled: !!ownerId, // Nur ausführen wenn ownerId vorhanden ist
-    staleTime: 1000 * 30, // 30 Sekunden - vernünftiger Wert für häufig geänderte Daten
+    staleTime: 0, // 🔥 IMMER als stale betrachten → garantiert Refetch bei Tab-Fokus!
     gcTime: 1000 * 60 * 10, // 10 Minuten Cache
-    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus (nur wenn stale)
-    refetchOnMount: true, // Refetch beim Mount (nur wenn stale)
+    refetchOnWindowFocus: true, // IMMER refetch bei Tab-Fokus (wegen staleTime: 0)
+    refetchOnMount: true, // IMMER refetch beim Mount
     refetchOnReconnect: true, // Refetch bei Reconnect
+    retry: 3, // 3 Versuche bei Fehler
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });
 }
 

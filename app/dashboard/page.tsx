@@ -10,6 +10,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useVideosQuery } from '@/hooks/useVideosQuery';
 import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
+import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -57,6 +58,9 @@ export default function Dashboard() {
   
   // Setup Realtime
   useRealtimeVideos(user?.id);
+  
+  // 🔥 Force refetch bei Tab-Fokus (zusätzliche Absicherung)
+  useTabFocusRefetch();
   
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [

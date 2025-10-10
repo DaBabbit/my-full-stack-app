@@ -7,6 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
+import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
@@ -77,6 +78,9 @@ export default function VideosPage() {
   
   // Setup Realtime
   useRealtimeVideos(user?.id);
+  
+  // 🔥 Force refetch bei Tab-Fokus (zusätzliche Absicherung)
+  useTabFocusRefetch();
   
   // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch
   const showSkeleton = isLoading && !videos.length;

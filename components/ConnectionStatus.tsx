@@ -75,7 +75,7 @@ export function ConnectionStatus() {
     checkSupabaseConnection();
 
     // Listen to auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       console.log('[ConnectionStatus] Auth state changed:', event);
       
       if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {

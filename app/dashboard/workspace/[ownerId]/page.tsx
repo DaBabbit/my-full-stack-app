@@ -205,10 +205,14 @@ export default function SharedWorkspacePage() {
         console.log('[SharedWorkspacePage] Workspace members:', data);
         
         // Transform data: user is returned as array, take first element
-        const transformedMembers = (data || []).map((member: any) => ({
-          id: member.id,
+        const transformedMembers = (data || []).map((member) => ({
+          id: member.id as string,
           user: Array.isArray(member.user) && member.user.length > 0 
-            ? member.user[0] 
+            ? {
+                email: member.user[0].email as string,
+                firstname: member.user[0].firstname as string | undefined,
+                lastname: member.user[0].lastname as string | undefined,
+              }
             : undefined
         }));
         

@@ -103,6 +103,7 @@ export function useVideosQuery(userId?: string) {
     refetchOnReconnect: true, // Refetch bei Reconnect
     retry: 2, // 2 Versuche bei Fehler
     retryDelay: 1000, // 1 Sekunde Delay
+    networkMode: 'online', // Nur wenn online, verhindert hängende Queries
   });
 }
 
@@ -164,13 +165,14 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
       return transformedVideos;
     },
     enabled: !!ownerId, // Nur ausführen wenn ownerId vorhanden ist
-    staleTime: 0, // 🔥 IMMER als stale betrachten → garantiert Refetch bei Tab-Fokus!
+    staleTime: 1000 * 60 * 2, // 2 Minuten - Best Practice für Chrome/Safari
     gcTime: 1000 * 60 * 10, // 10 Minuten Cache
-    refetchOnWindowFocus: true, // IMMER refetch bei Tab-Fokus (wegen staleTime: 0)
-    refetchOnMount: true, // IMMER refetch beim Mount
+    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus (nur wenn stale)
+    refetchOnMount: false, // Nur refetch wenn stale
     refetchOnReconnect: true, // Refetch bei Reconnect
-    retry: 3, // 3 Versuche bei Fehler
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    retry: 2, // 2 Versuche bei Fehler
+    retryDelay: 1000, // 1 Sekunde Delay
+    networkMode: 'online', // Nur wenn online, verhindert hängende Queries
   });
 }
 
@@ -312,24 +314,26 @@ export function useVideoMutations() {
     onSuccess: (data) => {
       console.log('[updateVideoMutation] ✅ Success! Supabase confirmed update:', data);
       
-      // Cache mit echten Server-Daten updaten
-      queryClient.setQueryData(['videos', 'own'], (old: Video[] | undefined) => {
-        if (!old) {
-          console.log('[updateVideoMutation] ⚠️ No cache found');
-          return old;
+      // Cache mit echten Server-Daten updaten - mit korrektem Query Key!
+      // Query Key muss mit useVideosQuery übereinstimmen: ['videos', 'own', userId]
+      queryClient.setQueriesData(
+        { queryKey: ['videos', 'own'], exact: false },
+        (old: Video[] | undefined) => {
+          if (!old) {
+            console.log('[updateVideoMutation] ⚠️ No cache found for query');
+            return old;
+          }
+          
+          const updated = old.map(video => 
+            video.id === data.id 
+              ? { ...data, name: data.title } // Echte Server-Daten
+              : video
+          );
+          
+          console.log('[updateVideoMutation] 📦 Cache updated with real server data');
+          return updated;
         }
-        
-        const updated = old.map(video => 
-          video.id === data.id 
-            ? { ...data, name: data.title } // Echte Server-Daten
-            : video
-        );
-        
-        console.log('[updateVideoMutation] 📦 Cache updated with real server data');
-        return updated;
-      });
-      
-      // KEIN invalidateQueries - Cache-Update reicht, vermeidet unnötige Refetches
+      );
     },
     // Bei Fehler: Nur loggen, kein Rollback nötig (keine Optimistic Updates)
     onError: (err) => {
@@ -405,7 +409,7 @@ export function useVideoMutations() {
     onSuccess: (data, variables) => {
       console.log('[updateWorkspaceVideoMutation] ✅ Success! Supabase confirmed update:', data);
       
-      // Cache mit echten Server-Daten updaten
+      // Cache mit echten Server-Daten updaten - korrekter Query Key!
       queryClient.setQueryData(['videos', 'workspace', variables.ownerId], (old: Video[] | undefined) => {
         if (!old) {
           console.log('[updateWorkspaceVideoMutation] ⚠️ No cache found');
@@ -421,8 +425,6 @@ export function useVideoMutations() {
         console.log('[updateWorkspaceVideoMutation] 📦 Workspace cache updated with real server data');
         return updated;
       });
-      
-      // KEIN invalidateQueries - Cache-Update reicht
     },
     // Bei Fehler: Nur loggen
     onError: (err) => {

@@ -203,7 +203,16 @@ export default function SharedWorkspacePage() {
         }
         
         console.log('[SharedWorkspacePage] Workspace members:', data);
-        setWorkspaceMembers(data || []);
+        
+        // Transform data: user is returned as array, take first element
+        const transformedMembers = (data || []).map((member: any) => ({
+          id: member.id,
+          user: Array.isArray(member.user) && member.user.length > 0 
+            ? member.user[0] 
+            : undefined
+        }));
+        
+        setWorkspaceMembers(transformedMembers);
       } catch (err) {
         console.error('[SharedWorkspacePage] Error in fetchWorkspaceMembers:', err);
       }

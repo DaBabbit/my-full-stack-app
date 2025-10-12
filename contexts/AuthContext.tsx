@@ -105,29 +105,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await checkSubscription(currentUser.id);
         }
         
-        // 🔥 VERBESSERTE AUTH-STATE-SYNCHRONISATION zwischen Tabs
+        // 🔥 DEADLOCK-FIX: onAuthStateChange mit setTimeout (non-blocking)
+        // Siehe: https://github.com/supabase/supabase/pull/19902/files
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, newSession) => {
+          (event, newSession) => {
             if (!mounted) return;
             
             console.log('[AuthContext] Auth state change:', event, newSession?.user?.id);
             
-            const newUser = newSession?.user ?? null;
-            setSession(newSession);
-            setUser(newUser);
-            
-            if (newUser) {
-              await checkSubscription(newUser.id);
-            } else {
-              setIsSubscriber(false);
-            }
-            
-            // 🔥 EXPLIZITE TAB-SYNCHRONISATION bei Auth-Änderungen
-            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-              console.log('[AuthContext] 🔄 Auth event detected, triggering tab sync...');
-              // Trigger visibility change event für andere Tabs
-              window.dispatchEvent(new Event('visibilitychange'));
-            }
+            // ⚡ KRITISCH: setTimeout(0) verhindert Deadlocks bei Tab-Wechsel
+            setTimeout(() => {
+              if (!mounted) return;
+              
+              const newUser = newSession?.user ?? null;
+              setSession(newSession);
+              setUser(newUser);
+              
+              // Non-blocking: Subscription-Check ohne await
+              if (newUser) {
+                checkSubscription(newUser.id).catch((err) => {
+                  console.error('[AuthContext] ❌ Subscription check failed:', err);
+                });
+              } else {
+                setIsSubscriber(false);
+              }
+              
+              // 🔥 EXPLIZITE TAB-SYNCHRONISATION bei Auth-Änderungen
+              if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+                console.log('[AuthContext] 🔄 Auth event detected, triggering tab sync...');
+                // Trigger visibility change event für andere Tabs
+                window.dispatchEvent(new Event('visibilitychange'));
+              }
+            }, 0);
           }
         );
 

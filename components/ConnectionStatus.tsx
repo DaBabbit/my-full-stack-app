@@ -77,19 +77,22 @@ export function ConnectionStatus() {
     // Initial check
     checkSupabaseConnection();
 
-    // Listen to auth state changes
+    // Listen to auth state changes - DEADLOCK-FIX mit setTimeout
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       console.log('[ConnectionStatus] Auth state changed:', event);
       
-      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-        checkSupabaseConnection();
-      }
-      
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('[ConnectionStatus] 🔄 Token refreshed successfully');
-        setIsSupabaseConnected(true);
-        setShowWarning(false);
-      }
+      // ⚡ KRITISCH: setTimeout(0) verhindert Deadlocks
+      setTimeout(() => {
+        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          checkSupabaseConnection();
+        }
+        
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[ConnectionStatus] 🔄 Token refreshed successfully');
+          setIsSupabaseConnected(true);
+          setShowWarning(false);
+        }
+      }, 0);
     });
 
     // Check on tab visibility change

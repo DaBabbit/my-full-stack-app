@@ -38,13 +38,20 @@ export default function EditableDescription({
 
   // Update local value wenn external value sich ändert
   useEffect(() => {
-    if (!isFocused && value !== localValue) {
+    if (!isFocused) {
       setLocalValue(value || '');
-      if (contentRef.current) {
+      if (contentRef.current && contentRef.current.textContent !== (value || '')) {
         contentRef.current.textContent = value || '';
       }
     }
-  }, [value, isFocused, localValue]);
+  }, [value, isFocused]);
+
+  // Initial value setzen beim Mount
+  useEffect(() => {
+    if (contentRef.current && !contentRef.current.textContent) {
+      contentRef.current.textContent = value || '';
+    }
+  }, []);
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     const newValue = e.currentTarget.textContent || '';
@@ -151,6 +158,7 @@ export default function EditableDescription({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         suppressContentEditableWarning
+        dir="ltr"
         className={`
           min-h-[44px] max-h-32 overflow-y-auto
           px-3 py-2 rounded-lg 
@@ -167,7 +175,7 @@ export default function EditableDescription({
         aria-multiline="true"
         tabIndex={0}
       >
-        {localValue}
+        {/* Kein {localValue} hier - wird über textContent gesetzt! */}
       </div>
       {(isSaving || isLoading) && (
         <div className="absolute right-2 top-2">

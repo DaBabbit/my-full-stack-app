@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
+import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import { useVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
 import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
@@ -17,6 +18,9 @@ import ErrorModal from '@/components/ErrorModal';
 import EditableCell from '@/components/EditableCell';
 import EditableDescription from '@/components/EditableDescription';
 import EditableDate from '@/components/EditableDate';
+import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
+import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
+import ResponsiblePersonDropdownSimple from '@/components/ResponsiblePersonDropdownSimple';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -62,6 +66,7 @@ export default function VideosPage() {
   const router = useRouter();
   const permissions = usePermissions();
   const { sharedWorkspaces } = useSharedWorkspaces();
+  const { members: workspaceMembers } = useWorkspaceMembers();
   
   // React Query Hooks - isLoading nur beim ersten Load, nicht bei Background Refetch
   const { 
@@ -84,6 +89,13 @@ export default function VideosPage() {
   
   // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch
   const showSkeleton = isLoading && !videos.length;
+  
+  // Workspace Owner Info (current user is the owner)
+  const workspaceOwner = user ? {
+    firstname: user.user_metadata?.firstname || '',
+    lastname: user.user_metadata?.lastname || '',
+    email: user.email || ''
+  } : undefined;
   
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [
@@ -866,14 +878,15 @@ export default function VideosPage() {
 
                         {/* Verantwortlichkeit */}
                         <td className="py-4 px-4">
-                          <EditableCell
+                          <EditableResponsiblePerson
                             value={video.responsible_person}
                             videoId={video.id}
-                            field="responsible_person"
-                            onSave={handleFieldSave}
+                            onSave={async (videoId, field, value) => {
+                              await handleFieldSave(videoId, field, value);
+                            }}
                             editable={permissions.canEditVideos}
-                            type="text"
-                            placeholder="Person hinzufügen"
+                            workspaceOwner={workspaceOwner}
+                            workspaceMembers={workspaceMembers}
                           />
                         </td>
 
@@ -1080,14 +1093,10 @@ export default function VideosPage() {
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-neutral-400 mb-1">Verantwortlich</label>
-                          <EditableCell
-                            value={video.responsible_person}
-                            videoId={video.id}
-                            field="responsible_person"
-                            onSave={handleFieldSave}
-                            editable={permissions.canEditVideos}
-                            type="text"
-                            placeholder="Person"
+                          <ResponsiblePersonAvatar 
+                            responsiblePerson={video.responsible_person} 
+                            size="sm" 
+                            showFullName={true}
                           />
                         </div>
                         <div>
@@ -1219,12 +1228,11 @@ export default function VideosPage() {
                   <label className="block text-sm font-medium text-neutral-300 mb-2">
                     Verantwortliche Person
                   </label>
-                  <input
-                    type="text"
+                  <ResponsiblePersonDropdownSimple
                     value={newVideo.responsible_person}
-                    onChange={(e) => setNewVideo({ ...newVideo, responsible_person: e.target.value })}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                    placeholder="z.B. Max Mustermann"
+                    onChange={(value) => setNewVideo({ ...newVideo, responsible_person: value })}
+                    workspaceOwner={workspaceOwner}
+                    workspaceMembers={workspaceMembers}
                   />
                 </div>
 
@@ -1349,12 +1357,11 @@ export default function VideosPage() {
                   <label className="block text-sm font-medium text-neutral-300 mb-2">
                     Verantwortliche Person
                   </label>
-                  <input
-                    type="text"
+                  <ResponsiblePersonDropdownSimple
                     value={editingVideo.responsible_person || ''}
-                    onChange={(e) => setEditingVideo({ ...editingVideo, responsible_person: e.target.value })}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                    placeholder="z.B. Max Mustermann"
+                    onChange={(value) => setEditingVideo({ ...editingVideo, responsible_person: value })}
+                    workspaceOwner={workspaceOwner}
+                    workspaceMembers={workspaceMembers}
                   />
                 </div>
 

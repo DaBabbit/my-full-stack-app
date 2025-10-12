@@ -8,7 +8,7 @@ import { supabase } from '@/utils/supabase';
  * Verhindert "Invalid Refresh Token" Fehler bei Inaktivität
  */
 export function useAuthRefresh() {
-  const refreshTimeoutRef = useRef<NodeJS.Timeout>();
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const lastRefreshRef = useRef<number>(Date.now());
 
   useEffect(() => {

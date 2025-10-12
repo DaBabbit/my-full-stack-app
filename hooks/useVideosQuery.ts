@@ -329,16 +329,26 @@ export function useVideoMutations() {
       console.log('[updateVideoMutation] 🔥 Optimistic update applied');
       return { previousVideos };
     },
-    // onSuccess: Cache mit echten Daten aktualisieren (nur bei Success!)
+    // onSuccess: Cache mit echten Daten aktualisieren UND invalidieren für UI-Update!
     onSuccess: (data) => {
-      console.log('[updateVideoMutation] ✅ onSuccess - Updating cache with real data');
+      console.log('[updateVideoMutation] ✅ onSuccess - Updating cache with real data:', data);
+      
+      // 1. Cache direkt updaten
       queryClient.setQueryData(['videos', 'own'], (old: Video[] | undefined) => {
         if (!old) return old;
-        return old.map(video => 
+        const updated = old.map(video => 
           video.id === data.id 
             ? { ...data, name: data.title } // Use real server data
             : video
         );
+        console.log('[updateVideoMutation] 📦 Cache updated:', updated);
+        return updated;
+      });
+      
+      // 2. Invalidieren um UI-Refresh zu erzwingen (ohne Refetch wenn Daten fresh)
+      queryClient.invalidateQueries({ 
+        queryKey: ['videos', 'own'],
+        refetchType: 'none' // Nur als stale markieren, nicht refetchen
       });
     },
     // Bei Fehler: Rollback zu vorherigen Daten
@@ -433,16 +443,26 @@ export function useVideoMutations() {
       console.log('[updateWorkspaceVideoMutation] 🔥 Optimistic update applied');
       return { previousVideos, ownerId };
     },
-    // onSuccess: Cache mit echten Daten aktualisieren (nur bei Success!)
+    // onSuccess: Cache mit echten Daten aktualisieren UND invalidieren für UI-Update!
     onSuccess: (data, variables) => {
-      console.log('[updateWorkspaceVideoMutation] ✅ onSuccess - Updating workspace cache with real data');
+      console.log('[updateWorkspaceVideoMutation] ✅ onSuccess - Updating workspace cache with real data:', data);
+      
+      // 1. Cache direkt updaten
       queryClient.setQueryData(['videos', 'workspace', variables.ownerId], (old: Video[] | undefined) => {
         if (!old) return old;
-        return old.map(video => 
+        const updated = old.map(video => 
           video.id === data.id 
             ? { ...data, name: data.title } // Use real server data
             : video
         );
+        console.log('[updateWorkspaceVideoMutation] 📦 Workspace cache updated:', updated);
+        return updated;
+      });
+      
+      // 2. Invalidieren um UI-Refresh zu erzwingen
+      queryClient.invalidateQueries({ 
+        queryKey: ['videos', 'workspace', variables.ownerId],
+        refetchType: 'none' // Nur als stale markieren, nicht refetchen
       });
     },
     // Bei Fehler: Rollback zu vorherigen Daten

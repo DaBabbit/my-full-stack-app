@@ -9,6 +9,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState } from 'react';
+import { AppProviders } from '@/components/AppProviders';
 // import { PostHogProvider } from '@/contexts/PostHogContext';
 // import { PostHogErrorBoundary } from '@/components/PostHogErrorBoundary';
 
@@ -40,11 +41,13 @@ export default function RootLayout({
         <QueryClientProvider client={queryClient}>
           {/* <PostHogErrorBoundary>
             <PostHogProvider> */}
-              <AuthProvider>   
+              <AuthProvider>
+                <AppProviders>
                   <ProtectedRoute>
                     <TopBar />    
                     <main>{children}</main>
                   </ProtectedRoute>
+                </AppProviders>
               </AuthProvider>
             {/* </PostHogProvider>
           </PostHogErrorBoundary> */}

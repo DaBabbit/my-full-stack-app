@@ -117,7 +117,7 @@ export default function ResponsiblePersonDropdownSimple({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-full min-w-[200px] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute z-50 mt-2 w-auto min-w-full max-w-[400px] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden">
           <div className="py-1 max-h-64 overflow-y-auto">
             {options.map((option) => {
               const isSelected = option.name === value;
@@ -129,16 +129,20 @@ export default function ResponsiblePersonDropdownSimple({
                   className={`
                     w-full px-3 py-2 flex items-center justify-between gap-2
                     hover:bg-neutral-800 transition-colors
+                    whitespace-nowrap
                     ${isSelected ? 'bg-neutral-800/50' : ''}
                   `}
                 >
-                  <ResponsiblePersonAvatar 
-                    responsiblePerson={option.name} 
-                    size="sm" 
-                    showFullName={true}
-                  />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ResponsiblePersonAvatar 
+                      responsiblePerson={option.name} 
+                      size="sm" 
+                      showFullName={false}
+                    />
+                    <span className="text-neutral-200 text-sm truncate">{option.name}</span>
+                  </div>
                   {isSelected && (
-                    <Check className="w-4 h-4 text-green-400" />
+                    <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
                   )}
                 </button>
               );

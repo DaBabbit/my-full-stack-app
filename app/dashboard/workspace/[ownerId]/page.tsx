@@ -14,6 +14,8 @@ import ErrorModal from '@/components/ErrorModal';
 import EditableCell from '@/components/EditableCell';
 import EditableDescription from '@/components/EditableDescription';
 import EditableDate from '@/components/EditableDate';
+import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
+import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import { motion } from 'framer-motion';
 import {
@@ -88,6 +90,7 @@ export default function SharedWorkspacePage() {
   const [toasts, setToasts] = useState<ToastProps[]>([]);
   
   const [workspaceOwnerName, setWorkspaceOwnerName] = useState<string>('');
+  const [workspaceOwnerInfo, setWorkspaceOwnerInfo] = useState<{ firstname: string; lastname: string; email: string } | undefined>(undefined);
   const [permissions, setPermissions] = useState<WorkspacePermissions>({
     can_view: false,
     can_create: false,
@@ -114,16 +117,58 @@ export default function SharedWorkspacePage() {
 
   // Get workspace info and permissions
   useEffect(() => {
-    if (!workspacesLoading && sharedWorkspaces.length > 0) {
-      const workspace = sharedWorkspaces.find(w => w.workspace_owner_id === ownerId);
-      if (workspace) {
-        setWorkspaceOwnerName(workspace.owner_name);
-        setPermissions(workspace.permissions);
-      } else {
-        // User doesn't have access to this workspace
-        router.push('/dashboard');
+    const fetchOwnerInfo = async () => {
+      if (!workspacesLoading && sharedWorkspaces.length > 0) {
+        const workspace = sharedWorkspaces.find(w => w.workspace_owner_id === ownerId);
+        if (workspace) {
+          setWorkspaceOwnerName(workspace.owner_name);
+          setPermissions(workspace.permissions);
+          
+          // Fetch owner user_metadata for firstname/lastname
+          const { supabase } = await import('@/utils/supabase');
+          try {
+            // Try to get owner details via RPC
+            const { data: ownerData, error } = await supabase
+              .rpc('get_workspace_owner_details', { owner_ids: [ownerId] });
+            
+            if (!error && ownerData && ownerData.length > 0) {
+              const owner = ownerData[0];
+              setWorkspaceOwnerInfo({
+                firstname: owner.firstname || '',
+                lastname: owner.lastname || '',
+                email: owner.email || workspace.owner_email
+              });
+            } else {
+              // Fallback: Parse owner_name into firstname/lastname
+              const nameParts = workspace.owner_name.split(' ');
+              if (nameParts.length > 1) {
+                setWorkspaceOwnerInfo({
+                  firstname: nameParts[0],
+                  lastname: nameParts.slice(1).join(' '),
+                  email: workspace.owner_email
+                });
+              }
+            }
+          } catch (err) {
+            console.error('[SharedWorkspacePage] Error fetching owner info:', err);
+            // Use parsed name as fallback
+            const nameParts = workspace.owner_name.split(' ');
+            if (nameParts.length > 1) {
+              setWorkspaceOwnerInfo({
+                firstname: nameParts[0],
+                lastname: nameParts.slice(1).join(' '),
+                email: workspace.owner_email
+              });
+            }
+          }
+        } else {
+          // User doesn't have access to this workspace
+          router.push('/dashboard');
+        }
       }
-    }
+    };
+    
+    fetchOwnerInfo();
   }, [workspacesLoading, sharedWorkspaces, ownerId, router]);
 
   // Handler für Inline-Editing - Generischer Save Handler
@@ -682,14 +727,15 @@ export default function SharedWorkspacePage() {
 
                               {/* Responsible Person */}
                               <td className="py-4 px-4">
-                                <EditableCell
+                                <EditableResponsiblePerson
                                   value={video.responsible_person}
                                   videoId={video.id}
-                                  field="responsible_person"
-                                  onSave={handleFieldSave}
+                                  onSave={async (videoId, field, value) => {
+                                    await handleFieldSave(videoId, field, value);
+                                  }}
                                   editable={permissions.can_edit}
-                                  type="text"
-                                  placeholder="Person hinzufügen"
+                                  workspaceOwner={workspaceOwnerInfo}
+                                  workspaceMembers={[]}
                                 />
                               </td>
 
@@ -830,14 +876,10 @@ export default function SharedWorkspacePage() {
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-neutral-400 mb-1">Verantwortlich</label>
-                              <EditableCell
-                                value={video.responsible_person}
-                                videoId={video.id}
-                                field="responsible_person"
-                                onSave={handleFieldSave}
-                                editable={permissions.can_edit}
-                                type="text"
-                                placeholder="Person"
+                              <ResponsiblePersonAvatar 
+                                responsiblePerson={video.responsible_person} 
+                                size="sm" 
+                                showFullName={true}
                               />
                             </div>
                             {video.updated_at && (

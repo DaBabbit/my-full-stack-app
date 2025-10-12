@@ -40,23 +40,23 @@ export default function ResponsiblePersonAvatar({
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  // Farbe basierend auf Namen generieren (konsistente Farbe pro Name)
-  const getColorFromName = (name: string) => {
-    const colors = [
-      'bg-blue-500',
-      'bg-green-500',
-      'bg-purple-500',
-      'bg-pink-500',
-      'bg-orange-500',
-      'bg-teal-500',
-      'bg-indigo-500',
-      'bg-rose-500',
+  // Graustufen für Profilbilder (schwarz-weiß, nicht bunt)
+  const getGrayscaleFromName = (name: string) => {
+    const grayscales = [
+      'bg-neutral-600',
+      'bg-neutral-700',
+      'bg-neutral-500',
+      'bg-neutral-800',
+      'bg-gray-600',
+      'bg-gray-700',
+      'bg-gray-500',
+      'bg-slate-600',
     ];
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
       hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    return colors[Math.abs(hash) % colors.length];
+    return grayscales[Math.abs(hash) % grayscales.length];
   };
 
   if (!responsiblePerson) {
@@ -89,14 +89,24 @@ export default function ResponsiblePersonAvatar({
 
   // User Avatar mit Initialen
   const initials = getInitials(responsiblePerson);
-  const colorClass = getColorFromName(responsiblePerson);
+  const grayscaleClass = getGrayscaleFromName(responsiblePerson);
+  
+  // Display Name: Nur Nachname wenn Vor- und Nachname vorhanden
+  const getDisplayName = (name: string) => {
+    const parts = name.trim().split(' ').filter(Boolean);
+    if (parts.length > 1) {
+      // Wenn mehrere Namen, nur den letzten (Nachname) anzeigen
+      return parts[parts.length - 1];
+    }
+    return name; // Sonst ganzen Namen
+  };
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div className={`${sizeClasses[size]} rounded-full ${colorClass} flex items-center justify-center text-white font-semibold`}>
+      <div className={`${sizeClasses[size]} rounded-full ${grayscaleClass} flex items-center justify-center text-white font-semibold`}>
         {initials}
       </div>
-      {showFullName && <span className="text-neutral-200 text-sm">{responsiblePerson}</span>}
+      {showFullName && <span className="text-neutral-200 text-sm">{getDisplayName(responsiblePerson)}</span>}
     </div>
   );
 }

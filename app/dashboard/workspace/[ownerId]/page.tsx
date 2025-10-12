@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useParams } from 'next/navigation';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
+import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import { useSharedWorkspaceVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeWorkspaceVideos } from '@/hooks/useRealtimeVideos';
 import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
@@ -90,6 +91,7 @@ export default function SharedWorkspacePage() {
   
   const [workspaceOwnerName, setWorkspaceOwnerName] = useState<string>('');
   const [workspaceOwnerInfo, setWorkspaceOwnerInfo] = useState<{ firstname: string; lastname: string; email: string } | undefined>(undefined);
+  const [workspaceMembers, setWorkspaceMembers] = useState<Array<{ id: string; user?: { firstname?: string; lastname?: string; email: string } }>>([]);
   const [permissions, setPermissions] = useState<WorkspacePermissions>({
     can_view: false,
     can_create: false,
@@ -169,6 +171,47 @@ export default function SharedWorkspacePage() {
     
     fetchOwnerInfo();
   }, [workspacesLoading, sharedWorkspaces, ownerId, router]);
+
+  // Fetch workspace members for the shared workspace
+  useEffect(() => {
+    const fetchWorkspaceMembers = async () => {
+      if (!ownerId) return;
+      
+      const { supabase } = await import('@/utils/supabase');
+      try {
+        console.log('[SharedWorkspacePage] Fetching workspace members for owner:', ownerId);
+        
+        // Fetch all active members of this workspace (including owner and collaborators)
+        const { data, error } = await supabase
+          .from('workspace_members')
+          .select(`
+            id,
+            user_id,
+            role,
+            user:user_id (
+              email,
+              firstname,
+              lastname
+            )
+          `)
+          .eq('workspace_owner_id', ownerId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('[SharedWorkspacePage] Error fetching workspace members:', error);
+          return;
+        }
+        
+        console.log('[SharedWorkspacePage] Workspace members:', data);
+        setWorkspaceMembers(data || []);
+      } catch (err) {
+        console.error('[SharedWorkspacePage] Error in fetchWorkspaceMembers:', err);
+      }
+    };
+    
+    fetchWorkspaceMembers();
+  }, [ownerId]);
 
   // Handler für Inline-Editing - Generischer Save Handler
   const handleFieldSave = async (videoId: string, field: string, value: string) => {
@@ -734,7 +777,7 @@ export default function SharedWorkspacePage() {
                                   }}
                                   editable={permissions.can_edit}
                                   workspaceOwner={workspaceOwnerInfo}
-                                  workspaceMembers={[]}
+                                  workspaceMembers={workspaceMembers}
                                 />
                               </td>
 

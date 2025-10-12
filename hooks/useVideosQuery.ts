@@ -229,6 +229,7 @@ export function useVideoMutations() {
         .insert([
           {
             user_id: currentUser.id,
+            workspace_owner_id: currentUser.id, // ✅ SET workspace_owner_id = user_id für eigene Videos
             title: newVideo.title,
             status: newVideo.status,
             publication_date: newVideo.publication_date || null,

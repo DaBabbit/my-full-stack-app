@@ -65,7 +65,7 @@ export default function ResponsiblePersonAvatar({
         <div className={`${sizeClasses[size]} rounded-full bg-neutral-700 flex items-center justify-center text-neutral-400 font-medium`}>
           ?
         </div>
-        {showFullName && <span className="text-neutral-500 text-sm">Nicht zugewiesen</span>}
+        <span className="text-neutral-500 text-sm">Nicht zugeteilt</span>
       </div>
     );
   }
@@ -106,7 +106,7 @@ export default function ResponsiblePersonAvatar({
       <div className={`${sizeClasses[size]} rounded-full ${grayscaleClass} flex items-center justify-center text-white font-semibold`}>
         {initials}
       </div>
-      {showFullName && <span className="text-neutral-200 text-sm">{getDisplayName(responsiblePerson)}</span>}
+      <span className="text-neutral-200 text-sm">{getDisplayName(responsiblePerson)}</span>
     </div>
   );
 }

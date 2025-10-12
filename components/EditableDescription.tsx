@@ -51,6 +51,7 @@ export default function EditableDescription({
     if (contentRef.current && !contentRef.current.textContent) {
       contentRef.current.textContent = value || '';
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {

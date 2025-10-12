@@ -11,7 +11,6 @@ import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import ErrorModal from '@/components/ErrorModal';
-import EditableCell from '@/components/EditableCell';
 import EditableDescription from '@/components/EditableDescription';
 import EditableDate from '@/components/EditableDate';
 import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';

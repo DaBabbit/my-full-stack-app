@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useParams } from 'next/navigation';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
-import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import { useSharedWorkspaceVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeWorkspaceVideos } from '@/hooks/useRealtimeVideos';
 import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';

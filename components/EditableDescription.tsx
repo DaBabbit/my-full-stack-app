@@ -52,13 +52,24 @@ export default function EditableDescription({
 
     // Debounced auto-save
     clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
+    timeoutRef.current = setTimeout(async () => {
       if (newValue !== (value || '')) {
         setIsSaving(true);
-        onSave(videoId, 'description', newValue);
-        setTimeout(() => {
+        console.log('[EditableDescription] 💾 Saving description:', newValue.substring(0, 50) + '...');
+        
+        try {
+          await onSave(videoId, 'description', newValue);
+          console.log('[EditableDescription] ✅ Save successful');
+        } catch (error) {
+          console.error('[EditableDescription] ❌ Save failed:', error);
+          // Revert on error
+          setLocalValue(value || '');
+          if (contentRef.current) {
+            contentRef.current.textContent = value || '';
+          }
+        } finally {
           setIsSaving(false);
-        }, 500);
+        }
       }
     }, 1000);
   };
@@ -71,7 +82,7 @@ export default function EditableDescription({
     }
   };
 
-  const handleBlur = () => {
+  const handleBlur = async () => {
     setIsFocused(false);
     clearTimeout(timeoutRef.current);
     
@@ -79,10 +90,21 @@ export default function EditableDescription({
     const currentValue = contentRef.current?.textContent || '';
     if (currentValue !== (value || '')) {
       setIsSaving(true);
-      onSave(videoId, 'description', currentValue);
-      setTimeout(() => {
+      console.log('[EditableDescription] 💾 Saving on blur:', currentValue.substring(0, 50) + '...');
+      
+      try {
+        await onSave(videoId, 'description', currentValue);
+        console.log('[EditableDescription] ✅ Save on blur successful');
+      } catch (error) {
+        console.error('[EditableDescription] ❌ Save on blur failed:', error);
+        // Revert on error
+        setLocalValue(value || '');
+        if (contentRef.current) {
+          contentRef.current.textContent = value || '';
+        }
+      } finally {
         setIsSaving(false);
-      }, 500);
+      }
     }
   };
 

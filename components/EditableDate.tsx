@@ -67,10 +67,13 @@ export default function EditableDate({
   const handleSave = async () => {
     if (localValue !== (value || '')) {
       setIsSaving(true);
+      console.log('[EditableDate] 💾 Saving date:', localValue);
+      
       try {
         await onSave(videoId, 'publication_date', localValue);
+        console.log('[EditableDate] ✅ Save successful');
       } catch (error) {
-        console.error('Error saving date:', error);
+        console.error('[EditableDate] ❌ Save failed:', error);
         // Revert on error
         setLocalValue(value || '');
       } finally {

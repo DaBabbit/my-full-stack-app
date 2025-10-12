@@ -14,14 +14,39 @@ export function useRealtimeVideos(userId?: string) {
   useEffect(() => {
     if (!userId) return;
 
-    console.log('[useRealtimeVideos] 🔥 POLLING KOMPLETT DEAKTIVIERT - Nur Tab-Focus-Refetch verwenden');
+    console.log('[useRealtimeVideos] 📡 Setting up Realtime subscription for user:', userId);
     
-    // 🚨 POLLING DEAKTIVIERT: Verhindert Race Conditions mit Mutations!
-    // Tab-Focus-Refetch + staleTime: 0 reichen aus für frische Daten
-    // Polling verursachte: Mutation speichert → Polling refetcht → Alte Daten überschreiben neue!
+    // Echtes Supabase Realtime (kein Polling!)
+    const channel = supabase
+      .channel(`videos_realtime_${userId}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'videos', 
+          filter: `user_id=eq.${userId}` // Server-side filter
+        },
+        (payload: any) => {
+          console.log('[useRealtimeVideos] 📡 Realtime event received:', payload.eventType);
+          console.log('[useRealtimeVideos] 📦 Payload:', payload.new || payload.old);
+          
+          // Nur Cache invalidieren, NICHT refetchen (React Query macht das automatisch)
+          queryClient.invalidateQueries({ 
+            queryKey: ['videos', 'own'],
+            refetchType: 'none' // Wichtig: Kein sofortiger Refetch
+          });
+          
+          console.log('[useRealtimeVideos] ✅ Cache invalidated - React Query will refetch when needed');
+        }
+      )
+      .subscribe((status) => {
+        console.log('[useRealtimeVideos] 🔌 Connection status:', status);
+      });
     
     return () => {
-      console.log('[useRealtimeVideos] No cleanup needed - no polling active');
+      console.log('[useRealtimeVideos] 🧹 Cleaning up Realtime subscription');
+      supabase.removeChannel(channel);
     };
   }, [userId, queryClient]);
 }
@@ -35,13 +60,39 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
   useEffect(() => {
     if (!ownerId) return;
 
-    console.log('[useRealtimeWorkspaceVideos] 🔥 POLLING KOMPLETT DEAKTIVIERT - Nur Tab-Focus-Refetch verwenden');
+    console.log('[useRealtimeWorkspaceVideos] 📡 Setting up Realtime subscription for workspace:', ownerId);
     
-    // 🚨 POLLING DEAKTIVIERT: Verhindert Race Conditions mit Workspace-Mutations!
-    // Tab-Focus-Refetch + staleTime: 0 reichen aus für frische Workspace-Daten
+    // Echtes Supabase Realtime für Workspace
+    const channel = supabase
+      .channel(`workspace_videos_realtime_${ownerId}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'videos', 
+          filter: `user_id=eq.${ownerId}` // Filter für Workspace Owner
+        },
+        (payload: any) => {
+          console.log('[useRealtimeWorkspaceVideos] 📡 Realtime event received:', payload.eventType);
+          console.log('[useRealtimeWorkspaceVideos] 📦 Payload:', payload.new || payload.old);
+          
+          // Cache invalidieren
+          queryClient.invalidateQueries({ 
+            queryKey: ['videos', 'workspace', ownerId],
+            refetchType: 'none'
+          });
+          
+          console.log('[useRealtimeWorkspaceVideos] ✅ Workspace cache invalidated');
+        }
+      )
+      .subscribe((status) => {
+        console.log('[useRealtimeWorkspaceVideos] 🔌 Connection status:', status);
+      });
     
     return () => {
-      console.log('[useRealtimeWorkspaceVideos] No cleanup needed - no polling active');
+      console.log('[useRealtimeWorkspaceVideos] 🧹 Cleaning up workspace Realtime subscription');
+      supabase.removeChannel(channel);
     };
   }, [ownerId, queryClient]);
 }

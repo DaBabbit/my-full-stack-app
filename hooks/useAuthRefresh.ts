@@ -15,15 +15,18 @@ export function useAuthRefresh() {
     const refreshSession = async () => {
       const now = Date.now();
       const timeSinceLastRefresh = now - lastRefreshRef.current;
+      const minutesSinceRefresh = Math.floor(timeSinceLastRefresh / 60000);
       
-      // Nur refreshen wenn mehr als 5 Minuten seit letztem Refresh
-      if (timeSinceLastRefresh < 5 * 60 * 1000) {
-        console.log('[useAuthRefresh] ⏭️ Skip refresh - too soon since last refresh');
+      console.log(`[useAuthRefresh] ⏰ Last refresh was ${minutesSinceRefresh} minutes ago`);
+      
+      // Nur refreshen wenn mehr als 10 Minuten seit letztem Refresh (weniger aggressive)
+      if (timeSinceLastRefresh < 10 * 60 * 1000) {
+        console.log('[useAuthRefresh] ⏭️ Skipping refresh - too recent');
         return;
       }
 
       try {
-        console.log('[useAuthRefresh] 🔄 Refreshing session...');
+        console.log('[useAuthRefresh] 🔄 Refreshing session now...');
         const { data, error } = await supabase.auth.refreshSession();
         
         if (error) {
@@ -44,7 +47,10 @@ export function useAuthRefresh() {
         }
         
         if (data?.session) {
-          console.log('[useAuthRefresh] ✅ Session refreshed successfully');
+          const expiresAt = data.session.expires_at 
+            ? new Date(data.session.expires_at * 1000).toLocaleTimeString() 
+            : 'unknown';
+          console.log(`[useAuthRefresh] ✅ Session refreshed - valid until ${expiresAt}`);
           lastRefreshRef.current = now;
         }
       } catch (err) {
@@ -56,10 +62,11 @@ export function useAuthRefresh() {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         const inactiveDuration = Date.now() - lastRefreshRef.current;
-        console.log(`[useAuthRefresh] 👁️ Tab visible - inactive for ${Math.round(inactiveDuration / 1000)}s`);
+        const inactiveMinutes = Math.floor(inactiveDuration / 60000);
+        console.log(`[useAuthRefresh] 👁️ Tab visible - inactive for ${inactiveMinutes} minutes`);
         
-        // Wenn mehr als 5 Minuten inaktiv: Sofort refreshen
-        if (inactiveDuration > 5 * 60 * 1000) {
+        // Wenn mehr als 10 Minuten inaktiv: Sofort refreshen
+        if (inactiveDuration > 10 * 60 * 1000) {
           refreshSession();
         }
       }
@@ -68,22 +75,23 @@ export function useAuthRefresh() {
     // Refresh bei Window-Focus
     const handleFocus = () => {
       const inactiveDuration = Date.now() - lastRefreshRef.current;
-      console.log(`[useAuthRefresh] 🪟 Window focused - inactive for ${Math.round(inactiveDuration / 1000)}s`);
+      const inactiveMinutes = Math.floor(inactiveDuration / 60000);
+      console.log(`[useAuthRefresh] 🪟 Window focused - inactive for ${inactiveMinutes} minutes`);
       
-      // Wenn mehr als 5 Minuten inaktiv: Sofort refreshen
-      if (inactiveDuration > 5 * 60 * 1000) {
+      // Wenn mehr als 10 Minuten inaktiv: Sofort refreshen
+      if (inactiveDuration > 10 * 60 * 1000) {
         refreshSession();
       }
     };
 
-    // Periodischer Refresh alle 10 Minuten (wenn aktiv)
+    // Periodischer Refresh alle 15 Minuten (wenn aktiv) - weniger aggressive
     const scheduleNextRefresh = () => {
       refreshTimeoutRef.current = setTimeout(() => {
         if (!document.hidden) {
           refreshSession();
         }
         scheduleNextRefresh(); // Nächsten Refresh planen
-      }, 10 * 60 * 1000); // 10 Minuten
+      }, 15 * 60 * 1000); // 15 Minuten
     };
 
     // Event Listeners

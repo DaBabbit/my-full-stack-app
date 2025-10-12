@@ -58,16 +58,16 @@ export default function EditableCell({
   const handleSave = async () => {
     if (localValue !== (value || '')) {
       setIsSaving(true);
+      console.log('[EditableCell] 💾 Saving field:', field, 'with value:', localValue);
+      
       try {
-        console.log('[EditableCell] 🔄 Attempting to save:', field, localValue);
         await onSave(videoId, field, localValue);
-        console.log('[EditableCell] ✅ Successfully saved:', field, localValue);
+        console.log('[EditableCell] ✅ Save successful');
+        // Toast wird im Parent (page.tsx) angezeigt
       } catch (error) {
-        console.error('[EditableCell] ❌ Error saving:', error);
+        console.error('[EditableCell] ❌ Save failed:', error);
         // Revert on error
         setLocalValue(value || '');
-        // Throw error weiter für Toast-Notification
-        throw error;
       } finally {
         setIsSaving(false);
       }
@@ -158,7 +158,9 @@ export default function EditableCell({
         onChange={handleChange}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
-        className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all min-h-[44px]"
+        className={`w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all min-h-[44px] ${
+          (isSaving || isLoading) ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
         placeholder={placeholder}
         disabled={isSaving || isLoading}
       />

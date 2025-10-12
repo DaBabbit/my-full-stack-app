@@ -28,19 +28,21 @@ export function ConnectionStatus() {
 
     // Supabase Connection Check
     const checkSupabaseConnection = async () => {
+      console.log('[ConnectionStatus] 🔍 Checking connection...');
+      
       try {
         // Check if session exists
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.error('[ConnectionStatus] ❌ Session error:', sessionError);
+          console.error('[ConnectionStatus] ❌ Connection LOST - Session error:', sessionError.message);
           setIsSupabaseConnected(false);
           setShowWarning(true);
           return;
         }
 
         if (!session) {
-          console.warn('[ConnectionStatus] ⚠️ No session found');
+          console.warn('[ConnectionStatus] ❌ Connection LOST - No session');
           setIsSupabaseConnected(false);
           setShowWarning(true);
           return;
@@ -53,23 +55,24 @@ export function ConnectionStatus() {
           .limit(1);
 
         if (dbError) {
-          console.error('[ConnectionStatus] ❌ DB connection error:', dbError);
+          console.error('[ConnectionStatus] ❌ Connection LOST - DB error:', dbError.message);
           setIsSupabaseConnected(false);
           setShowWarning(true);
         } else {
-          console.log('[ConnectionStatus] ✅ Supabase connection OK');
+          console.log('[ConnectionStatus] ✅ Connection OK - Session valid, DB reachable');
           setIsSupabaseConnected(true);
           setShowWarning(false);
         }
       } catch (err) {
-        console.error('[ConnectionStatus] ❌ Connection check failed:', err);
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        console.error('[ConnectionStatus] ❌ Connection check failed:', errorMsg);
         setIsSupabaseConnected(false);
         setShowWarning(true);
       }
     };
 
-    // Check connection every 10 seconds
-    const interval = setInterval(checkSupabaseConnection, 10000);
+    // Check connection every 30 seconds (weniger aggressive für Chrome/Safari)
+    const interval = setInterval(checkSupabaseConnection, 30000);
     
     // Initial check
     checkSupabaseConnection();
@@ -109,17 +112,17 @@ export function ConnectionStatus() {
   }, []);
 
   const handleReconnect = async () => {
-    console.log('[ConnectionStatus] 🔄 Manual reconnect triggered');
+    console.log('[ConnectionStatus] 🔄 Reconnecting...');
     
     // Try to refresh the session
     const { error } = await supabase.auth.refreshSession();
     
     if (error) {
-      console.error('[ConnectionStatus] ❌ Session refresh failed:', error);
+      console.error('[ConnectionStatus] ❌ Reconnect failed:', error.message);
       // Redirect to login if refresh fails
-      window.location.href = '/login';
+      window.location.href = '/login?reason=connection_lost';
     } else {
-      console.log('[ConnectionStatus] ✅ Session refreshed successfully');
+      console.log('[ConnectionStatus] ✅ Reconnected successfully');
       setIsSupabaseConnected(true);
       setShowWarning(false);
       // Reload the page to refetch all data

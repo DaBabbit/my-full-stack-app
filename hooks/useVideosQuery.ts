@@ -92,17 +92,17 @@ export function useVideosQuery(userId?: string) {
         name: video.title,
       }));
 
-      console.log('[useVideosQuery] Loaded', transformedVideos.length, 'videos');
+      console.log('[useVideosQuery] ✅ Loaded', transformedVideos.length, 'videos from', data ? 'server' : 'cache');
       return transformedVideos;
     },
     enabled: !!userId, // Nur ausführen wenn User vorhanden
-    staleTime: 0, // 🔥 IMMER als stale betrachten → garantiert Refetch bei Tab-Fokus!
-    gcTime: 1000 * 60 * 10, // 10 Minuten Cache für Background
-    refetchOnWindowFocus: true, // IMMER refetch bei Tab-Fokus (wegen staleTime: 0)
-    refetchOnMount: true, // IMMER refetch beim Mount
+    staleTime: 1000 * 60 * 2, // 2 Minuten - Best Practice für Chrome/Safari
+    gcTime: 1000 * 60 * 10, // 10 Minuten Cache
+    refetchOnWindowFocus: true, // Refetch bei Tab-Fokus (nur wenn stale)
+    refetchOnMount: false, // Nur refetch wenn stale
     refetchOnReconnect: true, // Refetch bei Reconnect
-    retry: 3, // 3 Versuche bei Fehler
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    retry: 2, // 2 Versuche bei Fehler
+    retryDelay: 1000, // 1 Sekunde Delay
   });
 }
 
@@ -308,56 +308,32 @@ export function useVideoMutations() {
       console.log('[updateVideoMutation] ✅ Successfully updated:', data);
       return data;
     },
-    // 🔥 OPTIMISTIC UPDATE WIEDER AKTIVIERT - sofortige UI-Reaktion!
-    onMutate: async ({ id, updates }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['videos'] });
-
-      // Snapshot the previous value
-      const previousVideos = queryClient.getQueryData(['videos', 'own']);
-
-      // Optimistically update to the new value
-      queryClient.setQueryData(['videos', 'own'], (old: Video[] | undefined) => {
-        if (!old) return old;
-        return old.map(video => 
-          video.id === id 
-            ? { ...video, ...updates, name: video.title } 
-            : video
-        );
-      });
-
-      console.log('[updateVideoMutation] 🔥 Optimistic update applied');
-      return { previousVideos };
-    },
-    // onSuccess: Cache mit echten Daten aktualisieren UND invalidieren für UI-Update!
+    // Server-First: KEINE Optimistic Updates, nur echte Server-Bestätigung
     onSuccess: (data) => {
-      console.log('[updateVideoMutation] ✅ onSuccess - Updating cache with real data:', data);
+      console.log('[updateVideoMutation] ✅ Success! Supabase confirmed update:', data);
       
-      // 1. Cache direkt updaten
+      // Cache mit echten Server-Daten updaten
       queryClient.setQueryData(['videos', 'own'], (old: Video[] | undefined) => {
-        if (!old) return old;
+        if (!old) {
+          console.log('[updateVideoMutation] ⚠️ No cache found');
+          return old;
+        }
+        
         const updated = old.map(video => 
           video.id === data.id 
-            ? { ...data, name: data.title } // Use real server data
+            ? { ...data, name: data.title } // Echte Server-Daten
             : video
         );
-        console.log('[updateVideoMutation] 📦 Cache updated:', updated);
+        
+        console.log('[updateVideoMutation] 📦 Cache updated with real server data');
         return updated;
       });
       
-      // 2. Invalidieren um UI-Refresh zu erzwingen (ohne Refetch wenn Daten fresh)
-      queryClient.invalidateQueries({ 
-        queryKey: ['videos', 'own'],
-        refetchType: 'none' // Nur als stale markieren, nicht refetchen
-      });
+      // KEIN invalidateQueries - Cache-Update reicht, vermeidet unnötige Refetches
     },
-    // Bei Fehler: Rollback zu vorherigen Daten
-    onError: (err, variables, context) => {
-      console.error('[updateVideoMutation] ❌ Error occurred:', err);
-      if (context?.previousVideos) {
-        queryClient.setQueryData(['videos', 'own'], context.previousVideos);
-        console.log('[updateVideoMutation] 🔄 Rolled back to previous state');
-      }
+    // Bei Fehler: Nur loggen, kein Rollback nötig (keine Optimistic Updates)
+    onError: (err) => {
+      console.error('[updateVideoMutation] ❌ Failed:', err.message || err);
     },
   });
 
@@ -425,53 +401,32 @@ export function useVideoMutations() {
       console.log('[updateWorkspaceVideoMutation] ✅ Successfully updated workspace video:', data);
       return data;
     },
-    // 🔥 OPTIMISTIC UPDATE WIEDER AKTIVIERT - sofortige UI-Reaktion!
-    onMutate: async ({ id, updates, ownerId }) => {
-      await queryClient.cancelQueries({ queryKey: ['videos', 'workspace', ownerId] });
-
-      const previousVideos = queryClient.getQueryData(['videos', 'workspace', ownerId]);
-
-      queryClient.setQueryData(['videos', 'workspace', ownerId], (old: Video[] | undefined) => {
-        if (!old) return old;
-        return old.map(video => 
-          video.id === id 
-            ? { ...video, ...updates, name: video.title } 
-            : video
-        );
-      });
-
-      console.log('[updateWorkspaceVideoMutation] 🔥 Optimistic update applied');
-      return { previousVideos, ownerId };
-    },
-    // onSuccess: Cache mit echten Daten aktualisieren UND invalidieren für UI-Update!
+    // Server-First: KEINE Optimistic Updates, nur echte Server-Bestätigung
     onSuccess: (data, variables) => {
-      console.log('[updateWorkspaceVideoMutation] ✅ onSuccess - Updating workspace cache with real data:', data);
+      console.log('[updateWorkspaceVideoMutation] ✅ Success! Supabase confirmed update:', data);
       
-      // 1. Cache direkt updaten
+      // Cache mit echten Server-Daten updaten
       queryClient.setQueryData(['videos', 'workspace', variables.ownerId], (old: Video[] | undefined) => {
-        if (!old) return old;
+        if (!old) {
+          console.log('[updateWorkspaceVideoMutation] ⚠️ No cache found');
+          return old;
+        }
+        
         const updated = old.map(video => 
           video.id === data.id 
-            ? { ...data, name: data.title } // Use real server data
+            ? { ...data, name: data.title } // Echte Server-Daten
             : video
         );
-        console.log('[updateWorkspaceVideoMutation] 📦 Workspace cache updated:', updated);
+        
+        console.log('[updateWorkspaceVideoMutation] 📦 Workspace cache updated with real server data');
         return updated;
       });
       
-      // 2. Invalidieren um UI-Refresh zu erzwingen
-      queryClient.invalidateQueries({ 
-        queryKey: ['videos', 'workspace', variables.ownerId],
-        refetchType: 'none' // Nur als stale markieren, nicht refetchen
-      });
+      // KEIN invalidateQueries - Cache-Update reicht
     },
-    // Bei Fehler: Rollback zu vorherigen Daten
-    onError: (err, variables, context) => {
-      console.error('[updateWorkspaceVideoMutation] ❌ Error occurred:', err);
-      if (context?.previousVideos && context?.ownerId) {
-        queryClient.setQueryData(['videos', 'workspace', context.ownerId], context.previousVideos);
-        console.log('[updateWorkspaceVideoMutation] 🔄 Rolled back to previous state');
-      }
+    // Bei Fehler: Nur loggen
+    onError: (err) => {
+      console.error('[updateWorkspaceVideoMutation] ❌ Failed:', err.message || err);
     },
   });
 

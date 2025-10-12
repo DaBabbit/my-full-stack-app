@@ -117,11 +117,19 @@ export function ConnectionStatus() {
       }, 0);
     });
 
-    // Check on tab visibility change
+    // Check on tab visibility change - MIT GUARD!
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('[ConnectionStatus] 👁️ Tab visible - checking connection...');
-        checkSupabaseConnection();
+        const now = Date.now();
+        const timeSinceLastCheck = now - lastCheckTimeRef.current;
+        
+        // Nur checken wenn letzter Check > 5 Sekunden her
+        if (timeSinceLastCheck >= 5000) {
+          console.log('[ConnectionStatus] 👁️ Tab visible - checking connection...');
+          checkSupabaseConnection();
+        } else {
+          console.log(`[ConnectionStatus] ⏭️ Tab visible but skipping check - too recent (${Math.floor(timeSinceLastCheck / 1000)}s ago)`);
+        }
       }
     };
 

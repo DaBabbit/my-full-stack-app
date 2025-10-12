@@ -148,13 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               } else {
                 setIsSubscriber(false);
               }
-              
-              // 🔥 EXPLIZITE TAB-SYNCHRONISATION bei Auth-Änderungen
-              if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-                console.log('[AuthContext] 🔄 Auth event detected, triggering tab sync...');
-                // Trigger visibility change event für andere Tabs
-                window.dispatchEvent(new Event('visibilitychange'));
-              }
             }, 0);
           }
         );

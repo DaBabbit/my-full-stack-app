@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/utils/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -8,6 +8,10 @@ export function ConnectionStatus() {
   const [isOnline, setIsOnline] = useState(true);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(true);
   const [showWarning, setShowWarning] = useState(false);
+  
+  // 🔥 REQUEST GUARD: Verhindert parallele checkSupabaseConnection Calls
+  const isCheckingRef = useRef(false);
+  const lastCheckTimeRef = useRef(0);
 
   useEffect(() => {
     // Browser Online/Offline Status
@@ -28,6 +32,22 @@ export function ConnectionStatus() {
 
     // Supabase Connection Check
     const checkSupabaseConnection = async () => {
+      // GUARD 1: Verhindere parallele Requests
+      if (isCheckingRef.current) {
+        console.log('[ConnectionStatus] ⏭️ Skipping connection check - already in progress');
+        return;
+      }
+
+      // GUARD 2: Debounce - mindestens 5 Sekunden zwischen Checks
+      const now = Date.now();
+      const timeSinceLastCheck = now - lastCheckTimeRef.current;
+      if (timeSinceLastCheck < 5000) {
+        console.log(`[ConnectionStatus] ⏭️ Skipping connection check - too recent (${Math.floor(timeSinceLastCheck / 1000)}s ago)`);
+        return;
+      }
+
+      isCheckingRef.current = true;
+      lastCheckTimeRef.current = now;
       console.log('[ConnectionStatus] 🔍 Checking connection...');
       
       try {
@@ -68,6 +88,8 @@ export function ConnectionStatus() {
         console.error('[ConnectionStatus] ❌ Connection check failed:', errorMsg);
         setIsSupabaseConnected(false);
         setShowWarning(true);
+      } finally {
+        isCheckingRef.current = false;
       }
     };
 

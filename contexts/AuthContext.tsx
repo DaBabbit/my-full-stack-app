@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/utils/supabase';
 import { 
   Session, 
@@ -46,10 +46,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubscriber, setIsSubscriber] = useState(false);
   
-
+  // 🔥 REQUEST GUARD: Verhindert parallele checkSubscription Calls
+  const isCheckingSubscriptionRef = useRef<boolean>(false);
+  const lastCheckTimeRef = useRef<number>(0);
 
   const checkSubscription = useCallback(async (userId: string) => {
+    // GUARD 1: Verhindere parallele Requests
+    if (isCheckingSubscriptionRef.current) {
+      console.log('[AuthContext] ⏭️ Skipping subscription check - already in progress');
+      return;
+    }
+
+    // GUARD 2: Debounce - mindestens 2 Sekunden zwischen Checks
+    const now = Date.now();
+    const timeSinceLastCheck = now - lastCheckTimeRef.current;
+    if (timeSinceLastCheck < 2000) {
+      console.log(`[AuthContext] ⏭️ Skipping subscription check - too recent (${Math.floor(timeSinceLastCheck / 1000)}s ago)`);
+      return;
+    }
+
+    isCheckingSubscriptionRef.current = true;
+    lastCheckTimeRef.current = now;
+    
     try {
+      console.log('[AuthContext] 🔍 Checking subscription for user:', userId);
       const { data, error } = await supabase
         .from('subscriptions')
         .select('*')
@@ -59,23 +79,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
       
       if (error) {
-        console.error('Subscription check error:', error);
+        console.error('[AuthContext] ❌ Subscription check error:', error);
         setIsSubscriber(false);
         return;
       }
 
-      // console.log("AuthContext - subscription data: ", data)
-
       const isValid = data && 
         ['active', 'trialing'].includes(data.status) && 
         new Date(data.current_period_end) > new Date();
-      // console.log("AuthContext -  isValid: ", data)
 
       setIsSubscriber(!!isValid);
-      console.log("AuthContext -  set isSubscriber: ", !!isValid) // 🔥 FIX: Neuen Wert loggen, nicht alten!
+      console.log('[AuthContext] ✅ Subscription check complete - isSubscriber:', !!isValid);
     } catch (error) {
-      console.error('Subscription check error:', error);
+      console.error('[AuthContext] ❌ Subscription check failed:', error);
       setIsSubscriber(false);
+    } finally {
+      isCheckingSubscriptionRef.current = false;
     }
   }, []);
 

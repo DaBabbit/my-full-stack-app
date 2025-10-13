@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Loader2, Lightbulb, Clock, Scissors, Check, Rocket } from 'lucide-react';
+import { X, Search, Lightbulb, Clock, Scissors, Check, Rocket } from 'lucide-react';
 import { type Video } from '@/hooks/useVideosQuery';
 import EditableCell from './EditableCell';
 import EditableDescription from './EditableDescription';
@@ -76,7 +76,7 @@ export default function StatusFilterModal({
 }: StatusFilterModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
-  const { members: workspaceMembers, isLoading: membersLoading } = useWorkspaceMembers(user?.id || '');
+  const { members: workspaceMembers } = useWorkspaceMembers(user?.id || '');
 
   // Filtere Videos nach Status und Suchbegriff
   const filteredVideos = useMemo(() => {

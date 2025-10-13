@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lightbulb, Clock, Scissors, Check, Rocket } from 'lucide-react';
 

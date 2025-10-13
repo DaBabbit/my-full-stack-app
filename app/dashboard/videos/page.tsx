@@ -141,6 +141,7 @@ export default function VideosPage() {
   const [errorDetails] = useState({ title: '', message: '', details: '' });
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>(''); // Status filter
   const [isMobile, setIsMobile] = useState(false);
   const [toasts, setToasts] = useState<ToastProps[]>([]);
   const [newVideo, setNewVideo] = useState({
@@ -452,8 +453,14 @@ export default function VideosPage() {
     }
   };
 
-  // Filter videos based on search term
+  // Filter videos based on search term and status filter
   const filteredVideos = videos.filter(video => {
+    // Status filter
+    if (statusFilter && video.status !== statusFilter) {
+      return false;
+    }
+    
+    // Search filter
     if (!searchTerm.trim()) return true; // Show all videos if search is empty
     
     const searchLower = searchTerm.toLowerCase();
@@ -521,7 +528,7 @@ export default function VideosPage() {
             </div>
 
             {/* Search Bar */}
-            <div className="hidden md:block md:ml-8">
+            <div className="hidden md:flex md:ml-8 md:items-center md:gap-3">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-5 w-5 text-neutral-400" />
@@ -534,6 +541,20 @@ export default function VideosPage() {
                   placeholder="Videos suchen..."
                 />
               </div>
+              
+              {/* Status Filter */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-48 p-2.5 placeholder-neutral-400"
+              >
+                <option value="">Alle Status</option>
+                <option value="Idee">Idee</option>
+                <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
+                <option value="In Bearbeitung (Schnitt)">In Bearbeitung</option>
+                <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
+                <option value="Hochgeladen">Hochgeladen</option>
+              </select>
             </div>
           </div>
 
@@ -743,8 +764,8 @@ export default function VideosPage() {
             </p>
           </div>
           
-          {/* Mobile Search Bar */}
-          <div className="md:hidden mt-4">
+          {/* Mobile Search Bar & Filter */}
+          <div className="md:hidden mt-4 space-y-3">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-neutral-400" />
@@ -757,6 +778,20 @@ export default function VideosPage() {
                 placeholder="Videos suchen..."
               />
             </div>
+            
+            {/* Status Filter Mobile */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl focus:ring-white focus:border-white block w-full p-3 placeholder-neutral-400"
+            >
+              <option value="">Alle Status</option>
+              <option value="Idee">Idee</option>
+              <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
+              <option value="In Bearbeitung (Schnitt)">In Bearbeitung</option>
+              <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
+              <option value="Hochgeladen">Hochgeladen</option>
+            </select>
           </div>
         </div>
 

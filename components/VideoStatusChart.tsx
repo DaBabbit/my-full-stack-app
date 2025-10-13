@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lightbulb, Clock, Scissors, Check, Rocket } from 'lucide-react';
 
@@ -9,9 +10,10 @@ interface Video {
 
 interface VideoStatusChartProps {
   videos: Video[];
+  onStatusClick?: (status: string) => void;
 }
 
-export default function VideoStatusChart({ videos }: VideoStatusChartProps) {
+export default function VideoStatusChart({ videos, onStatusClick }: VideoStatusChartProps) {
   // Status-Konfiguration mit Icons, Farben und Labels
   const statusConfig = [
     {
@@ -72,21 +74,29 @@ export default function VideoStatusChart({ videos }: VideoStatusChartProps) {
     count: videos.filter(v => v.status === config.status).length
   }));
 
-  // Finde Maximum für Skalierung
-  const maxCount = Math.max(...statusCounts.map(s => s.count), 1);
+  // Berechne dynamische Breite basierend auf absoluter Anzahl
+  // Min: 15%, Max: 100%, Skalierung: 1 Video = 15%, jedes weitere +8.5%
+  const calculateWidth = (count: number) => {
+    if (count === 0) return 10; // Sehr klein für leere
+    const baseWidth = 15;
+    const increment = 8.5;
+    const calculatedWidth = baseWidth + (count - 1) * increment;
+    return Math.min(calculatedWidth, 100); // Max 100%
+  };
 
   return (
     <div className="bg-neutral-900/50 backdrop-blur-md border border-neutral-700 rounded-3xl p-6">
       {/* Header - kompakter */}
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-white">Video-Status Übersicht</h2>
+        <p className="text-xs text-neutral-500 mt-1">Klicke auf einen Status zum Filtern</p>
       </div>
 
       {/* Chart - minimalistisch */}
       <div className="space-y-2">
         {statusCounts.map((status, index) => {
           const StatusIcon = status.icon;
-          const widthPercentage = maxCount > 0 ? (status.count / maxCount) * 100 : 0;
+          const widthPercentage = calculateWidth(status.count);
 
           return (
             <motion.div
@@ -97,28 +107,35 @@ export default function VideoStatusChart({ videos }: VideoStatusChartProps) {
               className="relative"
             >
               {/* Bar mit allem drin */}
-              <div className={`
-                relative h-12 rounded-xl overflow-hidden
-                border ${status.borderColor}
-                ${status.bgColor} backdrop-blur-sm
-                ${status.hoverColor}
-                transition-all duration-300 ease-out
-                cursor-pointer
-                group
-              `}>
+              <button
+                onClick={() => status.count > 0 && onStatusClick?.(status.status)}
+                disabled={status.count === 0}
+                className={`
+                  relative h-12 rounded-xl overflow-hidden w-full
+                  border ${status.borderColor}
+                  ${status.bgColor} backdrop-blur-sm
+                  ${status.count > 0 ? status.hoverColor : ''}
+                  transition-all duration-300 ease-out
+                  ${status.count > 0 ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}
+                  group
+                  text-left
+                `}
+              >
                 {/* Animated width bar - transparent mit leichtem Schimmer */}
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${widthPercentage}%` }}
                   transition={{ duration: 0.8, delay: index * 0.08, ease: 'easeOut' }}
                   className={`
-                    absolute inset-0 
+                    absolute inset-y-0 left-0
                     ${status.bgColor}
                     border-r ${status.borderColor}
                   `}
                 >
                   {/* Schimmer-Effekt beim Hover */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {status.count > 0 && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  )}
                 </motion.div>
                 
                 {/* Content - Icon, Label, Count */}
@@ -136,7 +153,7 @@ export default function VideoStatusChart({ videos }: VideoStatusChartProps) {
                     {status.count}
                   </span>
                 </div>
-              </div>
+              </button>
             </motion.div>
           );
         })}

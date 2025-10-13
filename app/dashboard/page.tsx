@@ -7,9 +7,10 @@ import SubscriptionWarning from '@/components/SubscriptionWarning';
 import DashboardSkeleton from '@/components/DashboardSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import VideoStatusChart from '@/components/VideoStatusChart';
+import StatusFilterModal from '@/components/StatusFilterModal';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
-import { useVideosQuery } from '@/hooks/useVideosQuery';
+import { useVideosQuery, useVideoMutations } from '@/hooks/useVideosQuery';
 import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
 import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
 import { motion } from 'framer-motion';
@@ -90,6 +91,11 @@ export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  
+  // Video mutations
+  const { updateVideo, deleteVideo } = useVideoMutations();
 
 
   useEffect(() => {
@@ -351,7 +357,13 @@ export default function Dashboard() {
 
             {/* Video Status Chart */}
             <div className="mb-8">
-              <VideoStatusChart videos={videos} />
+              <VideoStatusChart 
+                videos={videos}
+                onStatusClick={(status) => {
+                  setSelectedStatus(status);
+                  setFilterModalOpen(true);
+                }}
+              />
             </div>
 
         {/* Quick Actions */}
@@ -432,6 +444,22 @@ export default function Dashboard() {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Status Filter Modal */}
+      <StatusFilterModal
+        isOpen={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        status={selectedStatus}
+        videos={videos}
+        onFieldSave={async (videoId, field, value) => {
+          updateVideo({ id: videoId, updates: { [field]: value } });
+        }}
+        onDelete={async (videoId) => {
+          deleteVideo(videoId);
+        }}
+        canEdit={permissions.canEditVideos}
+        canDelete={permissions.canDeleteVideos}
+      />
     </div>
   );
 }

@@ -23,11 +23,11 @@ interface StatusFilterModalProps {
 }
 
 const statusOptions = [
-  'Idee',
-  'Warten auf Aufnahme',
-  'In Bearbeitung (Schnitt)',
-  'Schnitt abgeschlossen',
-  'Hochgeladen'
+  { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+  { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+  { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung', icon: Scissors, iconColor: 'text-purple-400' },
+  { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+  { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
 ];
 
 const getStatusIcon = (status: string) => {

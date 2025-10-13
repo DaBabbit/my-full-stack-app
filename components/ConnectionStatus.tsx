@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { supabase } from '@/utils/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
+import { WifiOff } from 'lucide-react';
 
 export function ConnectionStatus() {
+  const pathname = usePathname();
   const [isOnline, setIsOnline] = useState(true);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(true);
   const [showWarning, setShowWarning] = useState(false);
@@ -163,47 +166,60 @@ export function ConnectionStatus() {
     }
   };
 
-  const shouldShow = !isOnline || !isSupabaseConnected || showWarning;
+  // ✅ Nur in Dashboard, Videos und Workspace-Seiten anzeigen
+  const allowedPages = ['/dashboard', '/dashboard/videos', '/dashboard/workspace'];
+  const isAllowedPage = allowedPages.some(page => pathname?.startsWith(page));
+  
+  const shouldShow = isAllowedPage && (!isOnline || !isSupabaseConnected || showWarning);
 
   return (
     <AnimatePresence>
       {shouldShow && (
         <motion.div
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -100, opacity: 0 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="fixed top-0 left-0 right-0 z-[9999] bg-gradient-to-r from-red-500/95 to-orange-500/95 backdrop-blur-md border-b border-red-400/20 shadow-2xl"
+          initial={{ y: -20, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: -20, opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          className="fixed top-20 right-4 z-[9999] max-w-md"
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {/* Animated pulse icon */}
+          <div className="bg-gradient-to-br from-neutral-900/95 to-neutral-800/95 backdrop-blur-xl border border-red-500/30 rounded-2xl shadow-2xl p-4">
+            <div className="flex items-start gap-3">
+              {/* Icon */}
+              <div className="flex-shrink-0 mt-0.5">
                 <div className="relative">
-                  <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                  <div className="absolute inset-0 w-3 h-3 bg-white rounded-full animate-ping"></div>
-                </div>
-                
-                <div>
-                  <p className="text-white font-semibold text-sm">
-                    {!isOnline 
-                      ? '⚠️ Keine Internetverbindung' 
-                      : '⚠️ Verbindung zu Supabase unterbrochen'}
-                  </p>
-                  <p className="text-white/80 text-xs mt-0.5">
-                    {!isOnline 
-                      ? 'Bitte überprüfe deine Internetverbindung' 
-                      : 'Änderungen können nicht gespeichert werden'}
-                  </p>
+                  <WifiOff className="w-6 h-6 text-red-400" />
+                  <div className="absolute inset-0 w-6 h-6 animate-ping">
+                    <WifiOff className="w-6 h-6 text-red-400 opacity-30" />
+                  </div>
                 </div>
               </div>
               
-              <button
-                onClick={handleReconnect}
-                className="px-4 py-2 bg-white text-red-600 rounded-lg font-medium text-sm hover:bg-red-50 transition-colors duration-200 shadow-lg"
-              >
-                🔄 Neu verbinden
-              </button>
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-semibold text-sm mb-1">
+                  Verbindungsfehler
+                </p>
+                <p className="text-neutral-300 text-xs leading-relaxed mb-3">
+                  Bitte Seite neu laden
+                </p>
+                
+                {/* Button */}
+                <button
+                  onClick={handleReconnect}
+                  className="w-full px-3 py-2 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-lg font-medium text-xs transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  🔄 Seite neu laden
+                </button>
+              </div>
+            </div>
+            
+            {/* Log info */}
+            <div className="mt-3 pt-3 border-t border-neutral-700/50">
+              <p className="text-neutral-500 text-[10px] leading-relaxed">
+                {!isOnline 
+                  ? 'Log: Browser offline - Keine Netzwerkverbindung' 
+                  : 'Log: Supabase-Verbindung unterbrochen - Session/DB-Fehler'}
+              </p>
             </div>
           </div>
         </motion.div>

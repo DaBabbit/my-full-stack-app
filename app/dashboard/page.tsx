@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import SubscriptionWarning from '@/components/SubscriptionWarning';
 import DashboardSkeleton from '@/components/DashboardSkeleton';
 import NotificationBell from '@/components/NotificationBell';
+import VideoStatusChart from '@/components/VideoStatusChart';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useVideosQuery } from '@/hooks/useVideosQuery';
@@ -20,19 +21,11 @@ import {
   Menu,
   X,
   User,
-  PlayCircle,
-  Clock,
-  CheckCircle,
-  TrendingUp,
   LogOut,
   CreditCard,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Lightbulb,
-  Scissors,
-  Check,
-  Rocket,
   Crown,
   Users
 } from 'lucide-react';
@@ -98,23 +91,6 @@ export default function Dashboard() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Status-Icons und Farben
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Idee':
-        return { icon: Lightbulb, color: 'text-gray-400' };
-      case 'Warten auf Aufnahme':
-        return { icon: Clock, color: 'text-red-400' };
-      case 'In Bearbeitung (Schnitt)':
-        return { icon: Scissors, color: 'text-purple-400' };
-      case 'Schnitt abgeschlossen':
-        return { icon: Check, color: 'text-blue-400' };
-      case 'Hochgeladen':
-        return { icon: Rocket, color: 'text-green-400' };
-      default:
-        return { icon: VideoIcon, color: 'text-neutral-400' };
-    }
-  };
 
   useEffect(() => {
     if (!user) {
@@ -148,16 +124,6 @@ export default function Dashboard() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [userDropdownOpen]);
 
-  const getVideoStats = () => {
-    const total = videos.length;
-    const inProduction = videos.filter(v => v.status === 'In Bearbeitung (Schnitt)').length;
-    const completed = videos.filter(v => v.status === 'Hochgeladen').length;
-    const ideas = videos.filter(v => v.status === 'Idee').length;
-
-    return { total, inProduction, completed, ideas };
-  };
-
-  const stats = getVideoStats();
 
   const handleSignOut = async () => {
     await signOut();
@@ -383,79 +349,10 @@ export default function Dashboard() {
               <SubscriptionWarning className="mt-6" />
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Videos */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-400 mb-1">Gesamt Videos</p>
-                <p className="text-3xl font-bold text-white">{stats.total}</p>
-              </div>
-              <div className="p-3 bg-neutral-800 rounded-lg">
-                <PlayCircle className="h-8 w-8 text-white" />
-              </div>
+            {/* Video Status Chart */}
+            <div className="mb-8">
+              <VideoStatusChart videos={videos} />
             </div>
-          </motion.div>
-
-          {/* In Production */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-400 mb-1">In Bearbeitung</p>
-                <p className="text-3xl font-bold text-white">{stats.inProduction}</p>
-              </div>
-              <div className="p-3 bg-neutral-800 rounded-lg">
-                <Clock className="h-8 w-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Completed */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-400 mb-1">Hochgeladen</p>
-                <p className="text-3xl font-bold text-white">{stats.completed}</p>
-              </div>
-              <div className="p-3 bg-neutral-800 rounded-lg">
-                <CheckCircle className="h-8 w-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Ideas */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800/50 transition-all duration-300"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-400 mb-1">Ideen</p>
-                <p className="text-3xl font-bold text-white">{stats.ideas}</p>
-              </div>
-              <div className="p-3 bg-neutral-800 rounded-lg">
-                <TrendingUp className="h-8 w-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-        </div>
 
         {/* Quick Actions */}
         <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 mb-8">

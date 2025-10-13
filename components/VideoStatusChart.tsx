@@ -17,40 +17,50 @@ export default function VideoStatusChart({ videos }: VideoStatusChartProps) {
     {
       status: 'Idee',
       icon: Lightbulb,
-      color: 'bg-gray-500',
-      borderColor: 'border-gray-500',
+      color: 'gray',
+      bgColor: 'bg-gray-500/20',
+      borderColor: 'border-gray-500/30',
+      hoverColor: 'hover:bg-gray-500/30',
       textColor: 'text-gray-400',
       label: 'Idee'
     },
     {
       status: 'Warten auf Aufnahme',
       icon: Clock,
-      color: 'bg-red-500',
-      borderColor: 'border-red-500',
+      color: 'red',
+      bgColor: 'bg-red-500/20',
+      borderColor: 'border-red-500/30',
+      hoverColor: 'hover:bg-red-500/30',
       textColor: 'text-red-400',
       label: 'Warten auf Aufnahme'
     },
     {
       status: 'In Bearbeitung (Schnitt)',
       icon: Scissors,
-      color: 'bg-purple-500',
-      borderColor: 'border-purple-500',
+      color: 'purple',
+      bgColor: 'bg-purple-500/20',
+      borderColor: 'border-purple-500/30',
+      hoverColor: 'hover:bg-purple-500/30',
       textColor: 'text-purple-400',
       label: 'In Bearbeitung'
     },
     {
       status: 'Schnitt abgeschlossen',
       icon: Check,
-      color: 'bg-blue-500',
-      borderColor: 'border-blue-500',
+      color: 'blue',
+      bgColor: 'bg-blue-500/20',
+      borderColor: 'border-blue-500/30',
+      hoverColor: 'hover:bg-blue-500/30',
       textColor: 'text-blue-400',
       label: 'Schnitt abgeschlossen'
     },
     {
       status: 'Hochgeladen',
       icon: Rocket,
-      color: 'bg-green-500',
-      borderColor: 'border-green-500',
+      color: 'green',
+      bgColor: 'bg-green-500/20',
+      borderColor: 'border-green-500/30',
+      hoverColor: 'hover:bg-green-500/30',
       textColor: 'text-green-400',
       label: 'Hochgeladen'
     }
@@ -66,15 +76,14 @@ export default function VideoStatusChart({ videos }: VideoStatusChartProps) {
   const maxCount = Math.max(...statusCounts.map(s => s.count), 1);
 
   return (
-    <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 border border-neutral-700 rounded-2xl p-6 shadow-xl">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-white mb-1">Video-Status Übersicht</h2>
-        <p className="text-sm text-neutral-400">Anzahl der Videos pro Status</p>
+    <div className="bg-neutral-900/50 backdrop-blur-md border border-neutral-700 rounded-3xl p-6">
+      {/* Header - kompakter */}
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-white">Video-Status Übersicht</h2>
       </div>
 
-      {/* Chart */}
-      <div className="space-y-4">
+      {/* Chart - minimalistisch */}
+      <div className="space-y-2">
         {statusCounts.map((status, index) => {
           const StatusIcon = status.icon;
           const widthPercentage = maxCount > 0 ? (status.count / maxCount) * 100 : 0;
@@ -84,56 +93,59 @@ export default function VideoStatusChart({ videos }: VideoStatusChartProps) {
               key={status.status}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
+              transition={{ delay: index * 0.08, duration: 0.4 }}
               className="relative"
             >
-              {/* Label + Icon */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 min-w-[180px]">
-                  <div className={`p-1.5 rounded-lg ${status.color}/10 border ${status.borderColor}/30`}>
-                    <StatusIcon className={`w-4 h-4 ${status.textColor}`} />
-                  </div>
-                  <span className="text-sm font-medium text-neutral-300 truncate">
-                    {status.label}
-                  </span>
-                </div>
-                
-                {/* Count */}
-                <span className="text-sm font-bold text-white ml-2">
-                  {status.count}
-                </span>
-              </div>
-
-              {/* Bar */}
-              <div className="relative h-8 bg-neutral-800/50 rounded-lg overflow-hidden border border-neutral-700/50">
+              {/* Bar mit allem drin */}
+              <div className={`
+                relative h-12 rounded-xl overflow-hidden
+                border ${status.borderColor}
+                ${status.bgColor} backdrop-blur-sm
+                ${status.hoverColor}
+                transition-all duration-300 ease-out
+                cursor-pointer
+                group
+              `}>
+                {/* Animated width bar - transparent mit leichtem Schimmer */}
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${widthPercentage}%` }}
-                  transition={{ duration: 0.8, delay: index * 0.1, ease: 'easeOut' }}
-                  className={`h-full ${status.color}/80 relative`}
+                  transition={{ duration: 0.8, delay: index * 0.08, ease: 'easeOut' }}
+                  className={`
+                    absolute inset-0 
+                    ${status.bgColor}
+                    border-r ${status.borderColor}
+                  `}
                 >
-                  {/* Shine effect */}
-                  <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent`} />
+                  {/* Schimmer-Effekt beim Hover */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </motion.div>
                 
-                {/* Count inside bar (if wide enough) */}
-                {widthPercentage > 15 && (
-                  <div className="absolute inset-0 flex items-center px-3">
-                    <span className="text-xs font-bold text-white">
-                      {status.count} {status.count === 1 ? 'Video' : 'Videos'}
+                {/* Content - Icon, Label, Count */}
+                <div className="relative z-10 h-full flex items-center justify-between px-4">
+                  {/* Links: Icon + Label */}
+                  <div className="flex items-center gap-2">
+                    <StatusIcon className={`w-4 h-4 ${status.textColor}`} />
+                    <span className="text-sm font-medium text-neutral-200">
+                      {status.label}
                     </span>
                   </div>
-                )}
+                  
+                  {/* Rechts: Count */}
+                  <span className={`text-sm font-bold ${status.textColor}`}>
+                    {status.count}
+                  </span>
+                </div>
               </div>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Total */}
-      <div className="mt-6 pt-4 border-t border-neutral-700/50 flex items-center justify-between">
+      {/* Total - kompakter */}
+      <div className="mt-4 pt-3 border-t border-neutral-700/50 flex items-center justify-between">
         <span className="text-sm font-medium text-neutral-400">Gesamt</span>
-        <span className="text-lg font-bold text-white">{videos.length} Videos</span>
+        <span className="text-base font-bold text-white">{videos.length} Videos</span>
       </div>
     </div>
   );

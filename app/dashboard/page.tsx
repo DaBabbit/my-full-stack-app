@@ -390,14 +390,11 @@ export default function Dashboard() {
               {videos.length > 0 ? (
             <div className="space-y-4">
               {videos.slice(0, 5).map((video) => {
-                const statusInfo = getStatusIcon(video.status);
-                const StatusIcon = statusInfo.icon;
-                
                 return (
                   <div key={video.id} className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
                     <div className="flex items-center">
                       <div className="p-2 bg-neutral-700 rounded-lg mr-4">
-                        <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+                        <VideoIcon className="w-5 h-5 text-neutral-400" />
                       </div>
                       <div>
                         <h3 className="text-white font-medium">{video.name}</h3>

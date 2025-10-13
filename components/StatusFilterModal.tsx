@@ -76,7 +76,7 @@ export default function StatusFilterModal({
 }: StatusFilterModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
-  const { members: workspaceMembers } = useWorkspaceMembers(user?.id || '');
+  const { members: workspaceMembers } = useWorkspaceMembers();
 
   // Filtere Videos nach Status und Suchbegriff
   const filteredVideos = useMemo(() => {

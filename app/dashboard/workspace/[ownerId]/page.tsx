@@ -263,19 +263,36 @@ export default function SharedWorkspacePage() {
           return;
         }
         
-        console.log('[SharedWorkspacePage] Workspace members:', data);
+        console.log('[SharedWorkspacePage] 📊 Raw workspace members data:', data);
+        console.log('[SharedWorkspacePage] 📊 Data length:', data?.length);
         
-        // Transform data: user is returned as array, take first element
-        const transformedMembers = (data || []).map((member) => ({
-          id: member.id as string,
-          user: Array.isArray(member.user) && member.user.length > 0 
-            ? {
-                email: member.user[0].email as string,
-                firstname: member.user[0].firstname as string | undefined,
-                lastname: member.user[0].lastname as string | undefined,
-              }
-            : undefined
-        }));
+        // Transform data: user can be array or object depending on Supabase version
+        const transformedMembers = (data || []).map((member) => {
+          console.log('[SharedWorkspacePage] 🔍 Processing member:', member);
+          console.log('[SharedWorkspacePage] 🔍 Member user type:', typeof member.user, Array.isArray(member.user) ? 'is array' : 'is not array');
+          
+          // Handle both array and object formats
+          let userData;
+          if (Array.isArray(member.user) && member.user.length > 0) {
+            userData = member.user[0];
+          } else if (member.user && typeof member.user === 'object') {
+            userData = member.user;
+          }
+          
+          console.log('[SharedWorkspacePage] 🔍 Extracted user data:', userData);
+          
+          return {
+            id: member.id as string,
+            user: userData ? {
+              email: userData.email as string,
+              firstname: userData.firstname as string | undefined,
+              lastname: userData.lastname as string | undefined,
+            } : undefined
+          };
+        });
+        
+        console.log('[SharedWorkspacePage] ✅ Transformed members:', transformedMembers);
+        console.log('[SharedWorkspacePage] ✅ Members with valid user data:', transformedMembers.filter(m => m.user).length);
         
         setWorkspaceMembers(transformedMembers);
       } catch (err) {

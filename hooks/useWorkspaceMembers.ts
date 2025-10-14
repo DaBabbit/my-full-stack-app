@@ -51,7 +51,38 @@ export function useWorkspaceMembers() {
 
       if (fetchError) throw fetchError;
 
-      setMembers(data as WorkspaceMember[] || []);
+      console.log('[useWorkspaceMembers] 📊 Raw members data:', data);
+      console.log('[useWorkspaceMembers] 📊 Data length:', data?.length);
+
+      // Transform data: user can be array or object depending on Supabase version
+      const transformedMembers = (data || []).map((member: any) => {
+        console.log('[useWorkspaceMembers] 🔍 Processing member:', member);
+        console.log('[useWorkspaceMembers] 🔍 Member user type:', typeof member.user, Array.isArray(member.user) ? 'is array' : 'is not array');
+        
+        // Handle both array and object formats
+        let userData: { email: string; firstname?: string; lastname?: string } | undefined;
+        if (Array.isArray(member.user) && member.user.length > 0) {
+          userData = member.user[0] as { email: string; firstname?: string; lastname?: string };
+        } else if (member.user && typeof member.user === 'object' && !Array.isArray(member.user)) {
+          userData = member.user as { email: string; firstname?: string; lastname?: string };
+        }
+        
+        console.log('[useWorkspaceMembers] 🔍 Extracted user data:', userData);
+        
+        return {
+          ...member,
+          user: userData ? {
+            email: userData.email,
+            firstname: userData.firstname,
+            lastname: userData.lastname,
+          } : undefined
+        };
+      });
+
+      console.log('[useWorkspaceMembers] ✅ Transformed members:', transformedMembers);
+      console.log('[useWorkspaceMembers] ✅ Members with valid user data:', transformedMembers.filter((m: any) => m.user).length);
+
+      setMembers(transformedMembers as WorkspaceMember[]);
       setError(null);
     } catch (err) {
       console.error('Error fetching workspace members:', err);

@@ -34,50 +34,53 @@ export function useWorkspaceMembers() {
       setIsOwner(!!ownerCheck);
 
       // Fetch members where current user is the owner (including pending invitations)
-      // For pending invitations with NULL user_id, we won't have user data
-      const { data, error: fetchError } = await supabase
+      const { data: membersData, error: fetchError } = await supabase
         .from('workspace_members')
-        .select(`
-          *,
-          user:user_id (
-            email,
-            firstname,
-            lastname
-          )
-        `)
+        .select('*')
         .eq('workspace_owner_id', user.id)
         .in('status', ['active', 'pending'])
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
 
-      console.log('[useWorkspaceMembers] 📊 Raw members data:', data);
-      console.log('[useWorkspaceMembers] 📊 Data length:', data?.length);
+      console.log('[useWorkspaceMembers] 📊 Raw members data:', membersData);
+      console.log('[useWorkspaceMembers] 📊 Data length:', membersData?.length);
 
-      // Transform data: user can be array or object depending on Supabase version
-      const transformedMembers = (data || []).map((member: any) => {
+      // For each member, fetch user data manually using RPC or admin query
+      const transformedMembers = await Promise.all((membersData || []).map(async (member: any) => {
         console.log('[useWorkspaceMembers] 🔍 Processing member:', member);
-        console.log('[useWorkspaceMembers] 🔍 Member user type:', typeof member.user, Array.isArray(member.user) ? 'is array' : 'is not array');
         
-        // Handle both array and object formats
-        let userData: { email: string; firstname?: string; lastname?: string } | undefined;
-        if (Array.isArray(member.user) && member.user.length > 0) {
-          userData = member.user[0] as { email: string; firstname?: string; lastname?: string };
-        } else if (member.user && typeof member.user === 'object' && !Array.isArray(member.user)) {
-          userData = member.user as { email: string; firstname?: string; lastname?: string };
+        // Skip if no user_id (pending invitation)
+        if (!member.user_id) {
+          console.log('[useWorkspaceMembers] ⏭️ Skipping - no user_id');
+          return { ...member, user: undefined };
         }
         
-        console.log('[useWorkspaceMembers] 🔍 Extracted user data:', userData);
+        try {
+          // Try to get user details via RPC function
+          const { data: userDetails, error: userError } = await supabase
+            .rpc('get_workspace_owner_details', { owner_ids: [member.user_id] });
+          
+          console.log('[useWorkspaceMembers] 🔍 User details for', member.user_id, ':', userDetails);
+          
+          if (!userError && userDetails && userDetails.length > 0) {
+            const userData = userDetails[0];
+            return {
+              ...member,
+              user: {
+                email: userData.email,
+                firstname: userData.firstname || '',
+                lastname: userData.lastname || ''
+              }
+            };
+          }
+        } catch (err) {
+          console.error('[useWorkspaceMembers] ❌ Error fetching user details:', err);
+        }
         
-        return {
-          ...member,
-          user: userData ? {
-            email: userData.email,
-            firstname: userData.firstname,
-            lastname: userData.lastname,
-          } : undefined
-        };
-      });
+        // Fallback: return without user data
+        return { ...member, user: undefined };
+      }));
 
       console.log('[useWorkspaceMembers] ✅ Transformed members:', transformedMembers);
       console.log('[useWorkspaceMembers] ✅ Members with valid user data:', transformedMembers.filter((m: any) => m.user).length);

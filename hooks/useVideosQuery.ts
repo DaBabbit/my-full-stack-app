@@ -484,6 +484,120 @@ export function useVideoMutations() {
     },
   });
 
+  // Bulk Update Videos Mutation (für eigene Videos)
+  const bulkUpdateVideosMutation = useMutation({
+    mutationFn: async ({ 
+      videoIds, 
+      updates 
+    }: { 
+      videoIds: string[]; 
+      updates: Partial<VideoUpdate>;
+    }) => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        throw new Error('Benutzer nicht angemeldet');
+      }
+
+      console.log('[bulkUpdateVideosMutation] Updating', videoIds.length, 'videos with:', updates);
+
+      // Batch update mit Promise.all für parallele Updates
+      const updatePromises = videoIds.map(async (videoId) => {
+        const { data, error } = await supabase
+          .from('videos')
+          .update({
+            ...updates,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', videoId)
+          .eq('user_id', currentUser.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('[bulkUpdateVideosMutation] Error updating video', videoId, ':', error);
+          throw error;
+        }
+
+        return data;
+      });
+
+      const results = await Promise.all(updatePromises);
+      console.log('[bulkUpdateVideosMutation] Successfully updated', results.length, 'videos');
+      
+      return { 
+        updated: results, 
+        count: results.length 
+      };
+    },
+    onSuccess: (data) => {
+      console.log('[bulkUpdateVideosMutation] ✅ Bulk update successful');
+      // Invalidate cache to refetch all videos
+      queryClient.invalidateQueries({ queryKey: ['videos', 'own'] });
+    },
+    onError: (err) => {
+      console.error('[bulkUpdateVideosMutation] ❌ Bulk update failed:', err);
+    },
+  });
+
+  // Bulk Update Workspace Videos Mutation (für geteilte Workspaces)
+  const bulkUpdateWorkspaceVideosMutation = useMutation({
+    mutationFn: async ({ 
+      videoIds, 
+      updates, 
+      ownerId 
+    }: { 
+      videoIds: string[]; 
+      updates: Partial<VideoUpdate>;
+      ownerId: string;
+    }) => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        throw new Error('Benutzer nicht angemeldet');
+      }
+
+      console.log('[bulkUpdateWorkspaceVideosMutation] Updating', videoIds.length, 'workspace videos with:', updates);
+
+      // Batch update mit Promise.all für parallele Updates
+      const updatePromises = videoIds.map(async (videoId) => {
+        const { data, error } = await supabase
+          .from('videos')
+          .update({
+            ...updates,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', videoId)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('[bulkUpdateWorkspaceVideosMutation] Error updating video', videoId, ':', error);
+          throw error;
+        }
+
+        return data;
+      });
+
+      const results = await Promise.all(updatePromises);
+      console.log('[bulkUpdateWorkspaceVideosMutation] Successfully updated', results.length, 'workspace videos');
+      
+      return { 
+        updated: results, 
+        count: results.length,
+        ownerId 
+      };
+    },
+    onSuccess: (data) => {
+      console.log('[bulkUpdateWorkspaceVideosMutation] ✅ Bulk update successful');
+      // Invalidate cache to refetch workspace videos
+      queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', data.ownerId] });
+    },
+    onError: (err) => {
+      console.error('[bulkUpdateWorkspaceVideosMutation] ❌ Bulk update failed:', err);
+    },
+  });
+
   return {
     createVideo: createVideoMutation.mutate,
     createVideoAsync: createVideoMutation.mutateAsync,
@@ -504,6 +618,14 @@ export function useVideoMutations() {
     deleteWorkspaceVideo: deleteWorkspaceVideoMutation.mutate,
     deleteWorkspaceVideoAsync: deleteWorkspaceVideoMutation.mutateAsync,
     isDeletingWorkspaceVideo: deleteWorkspaceVideoMutation.isPending,
+    
+    bulkUpdateVideos: bulkUpdateVideosMutation.mutate,
+    bulkUpdateVideosAsync: bulkUpdateVideosMutation.mutateAsync,
+    isBulkUpdating: bulkUpdateVideosMutation.isPending,
+    
+    bulkUpdateWorkspaceVideos: bulkUpdateWorkspaceVideosMutation.mutate,
+    bulkUpdateWorkspaceVideosAsync: bulkUpdateWorkspaceVideosMutation.mutateAsync,
+    isBulkUpdatingWorkspace: bulkUpdateWorkspaceVideosMutation.isPending,
   };
 }
 

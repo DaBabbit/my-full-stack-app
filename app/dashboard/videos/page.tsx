@@ -22,6 +22,8 @@ import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
 import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
 import ResponsiblePersonDropdownSimple from '@/components/ResponsiblePersonDropdownSimple';
 import { ToastContainer, ToastProps } from '@/components/Toast';
+import BulkEditBar from '@/components/BulkEditBar';
+import BulkEditModal, { BulkUpdateData } from '@/components/BulkEditModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -46,7 +48,10 @@ import {
   Rocket,
   Trash2,
   Crown,
-  Users
+  Users,
+  Edit3,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
@@ -78,7 +83,9 @@ export default function VideosPage() {
     updateVideo, 
     updateVideoAsync,
     createVideo, 
-    deleteVideo
+    deleteVideo,
+    bulkUpdateVideosAsync,
+    isBulkUpdating
   } = useVideoMutations();
   
   // Setup Realtime
@@ -152,6 +159,11 @@ export default function VideosPage() {
     inspiration_source: '',
     description: ''
   });
+
+  // Bulk Edit States
+  const [isBulkEditMode, setIsBulkEditMode] = useState(false);
+  const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(new Set());
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
 
   // Toast helpers
   const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
@@ -453,6 +465,120 @@ export default function VideosPage() {
     }
   };
 
+  // Bulk Edit Handlers
+  const handleToggleBulkMode = () => {
+    setIsBulkEditMode(!isBulkEditMode);
+    if (isBulkEditMode) {
+      // Wenn Bulk Mode deaktiviert wird, alle Auswahlen löschen
+      setSelectedVideoIds(new Set());
+    }
+  };
+
+  const handleVideoSelection = (videoId: string, isSelected: boolean) => {
+    setSelectedVideoIds(prev => {
+      const newSet = new Set(prev);
+      if (isSelected) {
+        newSet.add(videoId);
+      } else {
+        newSet.delete(videoId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allVideoIds = new Set(filteredVideos.map(v => v.id));
+    setSelectedVideoIds(allVideoIds);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedVideoIds(new Set());
+  };
+
+  const handleBulkEditOpen = () => {
+    if (selectedVideoIds.size === 0) {
+      addToast({
+        type: 'error',
+        title: 'Keine Videos ausgewählt',
+        message: 'Bitte wählen Sie mindestens ein Video aus'
+      });
+      return;
+    }
+    setShowBulkEditModal(true);
+  };
+
+  const handleBulkEditSave = async (updates: BulkUpdateData) => {
+    const videoIdsArray = Array.from(selectedVideoIds);
+    
+    try {
+      // Nur aktivierte Felder in das Update aufnehmen
+      const fieldsToUpdate: Record<string, any> = {};
+      if (updates.enabledFields.status && updates.fields.status) {
+        fieldsToUpdate.status = updates.fields.status;
+      }
+      if (updates.enabledFields.description) {
+        fieldsToUpdate.description = updates.fields.description || null;
+      }
+      if (updates.enabledFields.publication_date) {
+        fieldsToUpdate.publication_date = updates.fields.publication_date || null;
+      }
+      if (updates.enabledFields.responsible_person) {
+        fieldsToUpdate.responsible_person = updates.fields.responsible_person || null;
+      }
+      if (updates.enabledFields.inspiration_source) {
+        fieldsToUpdate.inspiration_source = updates.fields.inspiration_source || null;
+      }
+
+      // Bulk Update ausführen
+      await bulkUpdateVideosAsync({
+        videoIds: videoIdsArray,
+        updates: fieldsToUpdate
+      });
+
+      // Success Toast mit bearbeiteten Eigenschaften
+      const editedFields = Object.keys(updates.enabledFields)
+        .filter(key => updates.enabledFields[key as keyof typeof updates.enabledFields])
+        .map(key => {
+          const labels: Record<string, string> = {
+            status: 'Status',
+            description: 'Beschreibung',
+            publication_date: 'Veröffentlichungsdatum',
+            responsible_person: 'Verantwortliche Person',
+            inspiration_source: 'Inspiration Quelle'
+          };
+          return labels[key] || key;
+        });
+
+      addToast({
+        type: 'success',
+        title: `${videoIdsArray.length} ${videoIdsArray.length === 1 ? 'Video' : 'Videos'} aktualisiert`,
+        message: `Bearbeitete Eigenschaften: ${editedFields.join(', ')}`,
+        duration: 4000
+      });
+
+      // Auswahl zurücksetzen und Bulk-Mode beenden
+      setSelectedVideoIds(new Set());
+      setIsBulkEditMode(false);
+      setShowBulkEditModal(false);
+    } catch (error) {
+      console.error('Bulk update error:', error);
+      addToast({
+        type: 'error',
+        title: 'Bulk-Update fehlgeschlagen',
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      });
+    }
+  };
+
+  const handleRowClick = (e: React.MouseEvent, videoId: string) => {
+    // Nur wenn Bulk-Edit-Mode aktiv ist UND Strg/Cmd gedrückt ist
+    if (isBulkEditMode && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      const isSelected = selectedVideoIds.has(videoId);
+      handleVideoSelection(videoId, !isSelected);
+    }
+  };
+
   // Filter videos based on search term and status filter
   const filteredVideos = videos.filter(video => {
     // Status filter
@@ -732,26 +858,43 @@ export default function VideosPage() {
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Videos</h1>
               <p className="text-neutral-400">Verwalte deine Video-Projekte und deren Status</p>
             </div>
-            <button
-              onClick={() => {
-                if (permissions.canCreateVideos) {
-                  setShowAddModal(true);
-                } else {
-                  setPermissionErrorAction('Video erstellen');
-                  setShowPermissionError(true);
-                }
-              }}
-              className={`px-4 md:px-6 py-3 rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 sm:flex-shrink-0 ${
-                permissions.canCreateVideos 
-                  ? 'bg-neutral-800 hover:bg-white hover:text-black text-white border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]'
-                  : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400 hover:text-neutral-300 border border-neutral-600 cursor-pointer'
-              }`}
-              title={!permissions.canCreateVideos ? 'Berechtigungen anzeigen' : ''}
-            >
-              <Plus className="h-5 w-5" />
-              <span className="hidden sm:inline">Neues Video</span>
-              <span className="sm:hidden">Video hinzufügen</span>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              {/* Mehrfachbearbeitung Button */}
+              <button
+                onClick={handleToggleBulkMode}
+                className={`px-4 md:px-6 py-3 rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 sm:flex-shrink-0 ${
+                  isBulkEditMode
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
+                    : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 hover:border-neutral-600'
+                }`}
+              >
+                {isBulkEditMode ? <CheckSquare className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
+                <span className="hidden sm:inline">{isBulkEditMode ? 'Bearbeitung aktiv' : 'Mehrfachbearbeitung'}</span>
+                <span className="sm:hidden">{isBulkEditMode ? 'Aktiv' : 'Mehrfach'}</span>
+              </button>
+              
+              {/* Neues Video Button */}
+              <button
+                onClick={() => {
+                  if (permissions.canCreateVideos) {
+                    setShowAddModal(true);
+                  } else {
+                    setPermissionErrorAction('Video erstellen');
+                    setShowPermissionError(true);
+                  }
+                }}
+                className={`px-4 md:px-6 py-3 rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 sm:flex-shrink-0 ${
+                  permissions.canCreateVideos 
+                    ? 'bg-neutral-800 hover:bg-white hover:text-black text-white border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+                    : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400 hover:text-neutral-300 border border-neutral-600 cursor-pointer'
+                }`}
+                title={!permissions.canCreateVideos ? 'Berechtigungen anzeigen' : ''}
+              >
+                <Plus className="h-5 w-5" />
+                <span className="hidden sm:inline">Neues Video</span>
+                <span className="sm:hidden">Video hinzufügen</span>
+              </button>
+            </div>
           </div>
           
           {/* Subscription Warning */}
@@ -840,6 +983,16 @@ export default function VideosPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-neutral-700">
+                      {isBulkEditMode && (
+                        <th className="text-left py-3 px-4 font-medium text-neutral-300 w-12">
+                          <input
+                            type="checkbox"
+                            checked={selectedVideoIds.size === filteredVideos.length && filteredVideos.length > 0}
+                            onChange={(e) => e.target.checked ? handleSelectAll() : handleDeselectAll()}
+                            className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-white focus:ring-white focus:ring-offset-0"
+                          />
+                        </th>
+                      )}
                       <th className="text-left py-3 px-4 font-medium text-neutral-300">Videotitel</th>
                       <th className="text-left py-3 px-4 font-medium text-neutral-300">Status</th>
                       <th className="text-left py-3 px-4 font-medium text-neutral-300">Veröffentlichung</th>
@@ -857,7 +1010,27 @@ export default function VideosPage() {
                     const StatusIcon = statusInfo.icon;
                     
                     return (
-                      <tr key={video.id} className="border-b border-neutral-800 hover:bg-neutral-800/30">
+                      <tr 
+                        key={video.id} 
+                        className={`border-b border-neutral-800 hover:bg-neutral-800/30 ${isBulkEditMode ? 'cursor-pointer' : ''}`}
+                        onClick={(e) => handleRowClick(e, video.id)}
+                      >
+                        {/* Checkbox Column (nur im Bulk-Edit-Mode) */}
+                        {isBulkEditMode && (
+                          <td className="py-4 px-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedVideoIds.has(video.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                handleVideoSelection(video.id, e.target.checked);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-white focus:ring-white focus:ring-offset-0"
+                            />
+                          </td>
+                        )}
+                        
                         {/* Videotitel mit Status-Icon */}
                         <td className="py-4 px-4">
                           <div className="flex items-center">
@@ -1488,6 +1661,30 @@ export default function VideosPage() {
         title={errorDetails.title}
         message={errorDetails.message}
         details={errorDetails.details}
+      />
+
+      {/* Bulk Edit Bar */}
+      <AnimatePresence>
+        {isBulkEditMode && selectedVideoIds.size > 0 && (
+          <BulkEditBar
+            selectedCount={selectedVideoIds.size}
+            totalCount={filteredVideos.length}
+            onSelectAll={handleSelectAll}
+            onDeselectAll={handleDeselectAll}
+            onBulkEdit={handleBulkEditOpen}
+            onCancel={handleToggleBulkMode}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Edit Modal */}
+      <BulkEditModal
+        isOpen={showBulkEditModal}
+        onClose={() => setShowBulkEditModal(false)}
+        onSave={handleBulkEditSave}
+        selectedCount={selectedVideoIds.size}
+        workspaceOwner={workspaceOwner}
+        workspaceMembers={workspaceMembers}
       />
 
       {/* Toast Notifications */}

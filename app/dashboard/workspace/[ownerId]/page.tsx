@@ -16,7 +16,7 @@ import EditableDate from '@/components/EditableDate';
 import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
 import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
 import { ToastContainer, ToastProps } from '@/components/Toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   Video as VideoIcon,

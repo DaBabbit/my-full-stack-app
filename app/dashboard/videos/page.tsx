@@ -549,6 +549,19 @@ export default function VideosPage() {
     }
   };
 
+  // ESC-Taste zum Aufheben der Bulk-Auswahl
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isBulkEditMode) {
+        setIsBulkEditMode(false);
+        setSelectedVideoIds(new Set());
+      }
+    };
+
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
+  }, [isBulkEditMode]);
+
   // Filter videos based on search term and status filter
   const filteredVideos = videos.filter(video => {
     // Status filter

@@ -7,6 +7,7 @@ import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useSharedWorkspaceVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeWorkspaceVideos } from '@/hooks/useRealtimeVideos';
 import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
+import { supabase } from '@/utils/supabase';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
@@ -78,6 +79,56 @@ export default function SharedWorkspacePage() {
   
   // 🔥 Force refetch bei Tab-Fokus (zusätzliche Absicherung)
   useTabFocusRefetch();
+
+  // Realtime Change Detection für externe Änderungen (mit Toast-Notification)
+  useEffect(() => {
+    if (!ownerId || !user) return;
+
+    let changesPending = false;
+
+    console.log('[SharedWorkspacePage] 📡 Setting up change detection for external updates');
+    
+    const channel = supabase
+      .channel(`workspace_changes_${ownerId}_${user.id}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'videos', 
+          filter: `user_id=eq.${ownerId}`
+        },
+        (payload: any) => {
+          console.log('[SharedWorkspacePage] 📡 Change detected:', payload.eventType);
+          
+          // Zeige Toast nur wenn noch keine Änderungen anstehen
+          if (!changesPending) {
+            changesPending = true;
+            
+            addToast({
+              type: 'warning',
+              title: 'Neue Änderungen verfügbar',
+              message: 'Ein Workspace-Mitglied hat Änderungen vorgenommen',
+              actionLabel: '→ Aktualisieren',
+              duration: 0, // Toast bleibt bis zum Click
+              onClick: () => {
+                console.log('[SharedWorkspacePage] 🔄 Refetching data after user click');
+                refetch();
+                changesPending = false;
+              }
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[SharedWorkspacePage] 🔌 Change detection status:', status);
+      });
+    
+    return () => {
+      console.log('[SharedWorkspacePage] 🧹 Cleaning up change detection');
+      supabase.removeChannel(channel);
+    };
+  }, [ownerId, user, refetch]);
   
   // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch
   const showSkeleton = isLoading && !videos.length;
@@ -465,6 +516,19 @@ export default function SharedWorkspacePage() {
       handleVideoSelection(videoId, !isSelected);
     }
   };
+
+  // ESC-Taste zum Aufheben der Bulk-Auswahl
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isBulkEditMode) {
+        setIsBulkEditMode(false);
+        setSelectedVideoIds(new Set());
+      }
+    };
+
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
+  }, [isBulkEditMode]);
 
   // Dynamic sidebar items
   const sidebarItems = [

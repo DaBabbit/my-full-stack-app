@@ -98,7 +98,8 @@ export default function EditableResponsiblePerson({
 
   // Add workspace owner
   if (workspaceOwner) {
-    const ownerName = `${workspaceOwner.firstname} ${workspaceOwner.lastname}`.trim();
+    // Nur hinzufügen wenn mindestens firstname ODER lastname vorhanden ist
+    const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
     if (ownerName) {
       options.push({
         id: 'owner',
@@ -111,14 +112,17 @@ export default function EditableResponsiblePerson({
 
   // Add workspace members
   workspaceMembers.forEach((member) => {
-    if (member.user?.firstname && member.user?.lastname) {
-      const memberName = `${member.user.firstname} ${member.user.lastname}`.trim();
-      options.push({
-        id: member.id,
-        name: memberName,
-        type: 'member',
-        email: member.user.email
-      });
+    // Nur hinzufügen wenn user-Daten vorhanden sind UND mindestens ein Name vorhanden ist
+    if (member.user && (member.user.firstname || member.user.lastname)) {
+      const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
+      if (memberName) {
+        options.push({
+          id: member.id,
+          name: memberName,
+          type: 'member',
+          email: member.user.email
+        });
+      }
     }
   });
 
@@ -208,9 +212,8 @@ export default function EditableResponsiblePerson({
                     <ResponsiblePersonAvatar 
                       responsiblePerson={option.name} 
                       size="sm" 
-                      showFullName={false}
+                      showFullName={true}
                     />
-                    <span className="text-neutral-200 text-sm truncate">{option.name}</span>
                   </div>
                   {isSelected && (
                     <Check className="w-4 h-4 text-green-400 flex-shrink-0" />

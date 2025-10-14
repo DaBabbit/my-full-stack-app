@@ -272,11 +272,11 @@ export default function SharedWorkspacePage() {
           console.log('[SharedWorkspacePage] 🔍 Member user type:', typeof member.user, Array.isArray(member.user) ? 'is array' : 'is not array');
           
           // Handle both array and object formats
-          let userData;
+          let userData: { email: string; firstname?: string; lastname?: string } | undefined;
           if (Array.isArray(member.user) && member.user.length > 0) {
-            userData = member.user[0];
-          } else if (member.user && typeof member.user === 'object') {
-            userData = member.user;
+            userData = member.user[0] as { email: string; firstname?: string; lastname?: string };
+          } else if (member.user && typeof member.user === 'object' && !Array.isArray(member.user)) {
+            userData = member.user as { email: string; firstname?: string; lastname?: string };
           }
           
           console.log('[SharedWorkspacePage] 🔍 Extracted user data:', userData);
@@ -284,9 +284,9 @@ export default function SharedWorkspacePage() {
           return {
             id: member.id as string,
             user: userData ? {
-              email: userData.email as string,
-              firstname: userData.firstname as string | undefined,
-              lastname: userData.lastname as string | undefined,
+              email: userData.email,
+              firstname: userData.firstname,
+              lastname: userData.lastname,
             } : undefined
           };
         });

@@ -98,8 +98,8 @@ export default function SharedWorkspacePage() {
           table: 'videos', 
           filter: `user_id=eq.${ownerId}`
         },
-        (payload: any) => {
-          console.log('[SharedWorkspacePage] 📡 Change detected:', payload.eventType);
+        (payload: unknown) => {
+          console.log('[SharedWorkspacePage] 📡 Change detected:', payload);
           
           // Zeige Toast nur wenn noch keine Änderungen anstehen
           if (!changesPending) {
@@ -128,6 +128,7 @@ export default function SharedWorkspacePage() {
       console.log('[SharedWorkspacePage] 🧹 Cleaning up change detection');
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId, user, refetch]);
   
   // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch

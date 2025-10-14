@@ -17,7 +17,6 @@ import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
 import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import BulkEditBar from '@/components/BulkEditBar';
-import BulkEditModal, { BulkUpdateData } from '@/components/BulkEditModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -106,7 +105,6 @@ export default function SharedWorkspacePage() {
   // Bulk Edit States
   const [isBulkEditMode, setIsBulkEditMode] = useState(false);
   const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(new Set());
-  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
 
   // Toast helpers
   const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
@@ -235,7 +233,7 @@ export default function SharedWorkspacePage() {
     fetchWorkspaceMembers();
   }, [ownerId]);
 
-  // Handler für Inline-Editing - Generischer Save Handler
+  // Handler für Inline-Editing - Generischer Save Handler mit Bulk-Support
   const handleFieldSave = async (videoId: string, field: string, value: string) => {
     if (!permissions.can_edit) {
       addToast({
@@ -246,21 +244,52 @@ export default function SharedWorkspacePage() {
       return;
     }
 
+    // Check if this video is selected and bulk mode is active
+    const shouldBulkUpdate = isBulkEditMode && selectedVideoIds.size > 0 && selectedVideoIds.has(videoId);
+    const videosToUpdate = shouldBulkUpdate ? Array.from(selectedVideoIds) : [videoId];
+
     try {
-      await updateWorkspaceVideoAsync({
-        id: videoId,
-        updates: {
-          [field]: value || null
-        },
-        ownerId
-      });
-      
-      addToast({
-        type: 'success',
-        title: 'Gespeichert',
-        message: 'Änderung wurde erfolgreich gespeichert',
-        duration: 2000
-      });
+      if (videosToUpdate.length > 1) {
+        // Bulk update
+        await bulkUpdateWorkspaceVideosAsync({
+          videoIds: videosToUpdate,
+          updates: {
+            [field]: value || null
+          },
+          ownerId
+        });
+        
+        const fieldLabels: Record<string, string> = {
+          status: 'Status',
+          description: 'Beschreibung',
+          publication_date: 'Veröffentlichungsdatum',
+          responsible_person: 'Verantwortliche Person',
+          inspiration_source: 'Inspiration Quelle'
+        };
+        
+        addToast({
+          type: 'success',
+          title: `${videosToUpdate.length} Videos aktualisiert`,
+          message: `${fieldLabels[field] || field} wurde geändert`,
+          duration: 3000
+        });
+      } else {
+        // Single update
+        await updateWorkspaceVideoAsync({
+          id: videoId,
+          updates: {
+            [field]: value || null
+          },
+          ownerId
+        });
+        
+        addToast({
+          type: 'success',
+          title: 'Gespeichert',
+          message: 'Änderung wurde erfolgreich gespeichert',
+          duration: 2000
+        });
+      }
     } catch (error) {
       console.error('Error saving field:', error);
       addToast({
@@ -313,14 +342,35 @@ export default function SharedWorkspacePage() {
       return;
     }
 
+    // Check if this video is selected and bulk mode is active
+    const shouldBulkUpdate = isBulkEditMode && selectedVideoIds.size > 0 && selectedVideoIds.has(videoId);
+    const videosToUpdate = shouldBulkUpdate ? Array.from(selectedVideoIds) : [videoId];
+
     try {
-      updateWorkspaceVideo({
-        id: videoId,
-        updates: { status: newStatus },
-        ownerId
-      });
-      
-      console.log('Status erfolgreich aktualisiert!');
+      if (videosToUpdate.length > 1) {
+        // Bulk update
+        await bulkUpdateWorkspaceVideosAsync({
+          videoIds: videosToUpdate,
+          updates: { status: newStatus },
+          ownerId
+        });
+        
+        addToast({
+          type: 'success',
+          title: `${videosToUpdate.length} Videos aktualisiert`,
+          message: `Status wurde auf "${newStatus}" geändert`,
+          duration: 3000
+        });
+      } else {
+        // Single update
+        updateWorkspaceVideo({
+          id: videoId,
+          updates: { status: newStatus },
+          ownerId
+        });
+        
+        console.log('Status erfolgreich aktualisiert!');
+      }
     } catch (error) {
       console.error('Error updating status:', error);
       addToast({
@@ -405,100 +455,6 @@ export default function SharedWorkspacePage() {
 
   const handleDeselectAll = () => {
     setSelectedVideoIds(new Set());
-  };
-
-  const handleBulkEditOpen = () => {
-    if (!permissions.can_edit) {
-      addToast({
-        type: 'error',
-        title: 'Keine Berechtigung',
-        message: 'Sie haben keine Berechtigung, Videos zu bearbeiten'
-      });
-      return;
-    }
-
-    if (selectedVideoIds.size === 0) {
-      addToast({
-        type: 'error',
-        title: 'Keine Videos ausgewählt',
-        message: 'Bitte wählen Sie mindestens ein Video aus'
-      });
-      return;
-    }
-    setShowBulkEditModal(true);
-  };
-
-  const handleBulkEditSave = async (updates: BulkUpdateData) => {
-    if (!permissions.can_edit) {
-      addToast({
-        type: 'error',
-        title: 'Keine Berechtigung',
-        message: 'Sie haben keine Berechtigung, Videos zu bearbeiten'
-      });
-      return;
-    }
-
-    const videoIdsArray = Array.from(selectedVideoIds);
-    
-    try {
-      // Nur aktivierte Felder in das Update aufnehmen
-      const fieldsToUpdate: Record<string, string | null> = {};
-      if (updates.enabledFields.status && updates.fields.status) {
-        fieldsToUpdate.status = updates.fields.status;
-      }
-      if (updates.enabledFields.description) {
-        fieldsToUpdate.description = updates.fields.description || null;
-      }
-      if (updates.enabledFields.publication_date) {
-        fieldsToUpdate.publication_date = updates.fields.publication_date || null;
-      }
-      if (updates.enabledFields.responsible_person) {
-        fieldsToUpdate.responsible_person = updates.fields.responsible_person || null;
-      }
-      if (updates.enabledFields.inspiration_source) {
-        fieldsToUpdate.inspiration_source = updates.fields.inspiration_source || null;
-      }
-
-      // Bulk Update ausführen
-      await bulkUpdateWorkspaceVideosAsync({
-        videoIds: videoIdsArray,
-        updates: fieldsToUpdate,
-        ownerId
-      });
-
-      // Success Toast mit bearbeiteten Eigenschaften
-      const editedFields = Object.keys(updates.enabledFields)
-        .filter(key => updates.enabledFields[key as keyof typeof updates.enabledFields])
-        .map(key => {
-          const labels: Record<string, string> = {
-            status: 'Status',
-            description: 'Beschreibung',
-            publication_date: 'Veröffentlichungsdatum',
-            responsible_person: 'Verantwortliche Person',
-            inspiration_source: 'Inspiration Quelle'
-          };
-          return labels[key] || key;
-        });
-
-      addToast({
-        type: 'success',
-        title: `${videoIdsArray.length} ${videoIdsArray.length === 1 ? 'Video' : 'Videos'} aktualisiert`,
-        message: `Bearbeitete Eigenschaften: ${editedFields.join(', ')}`,
-        duration: 4000
-      });
-
-      // Auswahl zurücksetzen und Bulk-Mode beenden
-      setSelectedVideoIds(new Set());
-      setIsBulkEditMode(false);
-      setShowBulkEditModal(false);
-    } catch (error) {
-      console.error('Bulk update error:', error);
-      addToast({
-        type: 'error',
-        title: 'Bulk-Update fehlgeschlagen',
-        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
-      });
-    }
   };
 
   const handleRowClick = (e: React.MouseEvent, videoId: string) => {
@@ -934,7 +890,7 @@ export default function SharedWorkspacePage() {
                                 type="checkbox"
                                 checked={selectedVideoIds.size === filteredVideos.length && filteredVideos.length > 0}
                                 onChange={(e) => e.target.checked ? handleSelectAll() : handleDeselectAll()}
-                                className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-white focus:ring-white focus:ring-offset-0"
+                                className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                               />
                             </th>
                           )}
@@ -956,7 +912,7 @@ export default function SharedWorkspacePage() {
                           return (
                             <tr 
                               key={video.id} 
-                              className={`border-b border-neutral-800 hover:bg-neutral-800/30 ${isBulkEditMode ? 'cursor-pointer' : ''}`}
+                              className={`border-b border-neutral-800 hover:bg-neutral-800/30 ${isBulkEditMode ? 'cursor-pointer' : ''} ${selectedVideoIds.has(video.id) ? 'border-l-4 border-l-blue-500 bg-blue-500/5' : ''} transition-all duration-200`}
                               onClick={(e) => handleRowClick(e, video.id)}
                             >
                               {/* Checkbox Column (nur im Bulk-Edit-Mode) */}
@@ -970,7 +926,7 @@ export default function SharedWorkspacePage() {
                                       handleVideoSelection(video.id, e.target.checked);
                                     }}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-white focus:ring-white focus:ring-offset-0"
+                                    className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                                   />
                                 </td>
                               )}
@@ -1237,21 +1193,10 @@ export default function SharedWorkspacePage() {
             totalCount={filteredVideos.length}
             onSelectAll={handleSelectAll}
             onDeselectAll={handleDeselectAll}
-            onBulkEdit={handleBulkEditOpen}
             onCancel={handleToggleBulkMode}
           />
         )}
       </AnimatePresence>
-
-      {/* Bulk Edit Modal */}
-      <BulkEditModal
-        isOpen={showBulkEditModal}
-        onClose={() => setShowBulkEditModal(false)}
-        onSave={handleBulkEditSave}
-        selectedCount={selectedVideoIds.size}
-        workspaceOwner={workspaceOwnerInfo}
-        workspaceMembers={workspaceMembers}
-      />
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onClose={removeToast} />

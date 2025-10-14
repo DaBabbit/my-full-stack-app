@@ -42,9 +42,11 @@ export default function EditableResponsiblePerson({
   workspaceMembers = []
 }: EditableResponsiblePersonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
   const [isSaving, setIsSaving] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value || '');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Update local value wenn external value sich ändert
   useEffect(() => {
@@ -65,6 +67,24 @@ export default function EditableResponsiblePerson({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  }, [isOpen]);
+
+  // Calculate optimal dropdown position when opening
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const buttonRect = dropdownRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      const dropdownHeight = 256; // max-h-64 = 256px
+
+      // If not enough space below but more space above, open upwards
+      if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+        setDropdownPosition('top');
+      } else {
+        setDropdownPosition('bottom');
+      }
+    }
   }, [isOpen]);
 
   // Build options list
@@ -164,7 +184,12 @@ export default function EditableResponsiblePerson({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-auto min-w-full max-w-[400px] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden">
+        <div 
+          ref={menuRef}
+          className={`absolute z-50 ${
+            dropdownPosition === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+          } w-auto min-w-full max-w-[400px] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden`}
+        >
           <div className="py-1 max-h-64 overflow-y-auto">
             {options.map((option) => {
               const isSelected = option.name === selectedValue;

@@ -30,7 +30,9 @@ export default function CustomDropdown({
   isLoading = false
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -43,6 +45,24 @@ export default function CustomDropdown({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Calculate optimal dropdown position when opening
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const buttonRect = dropdownRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      const dropdownHeight = 240; // max-h-60 = 240px
+
+      // If not enough space below but more space above, open upwards
+      if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+        setDropdownPosition('top');
+      } else {
+        setDropdownPosition('bottom');
+      }
+    }
+  }, [isOpen]);
 
   const selectedOption = options.find(option => option.value === value);
 
@@ -83,7 +103,12 @@ export default function CustomDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900/95 backdrop-blur-md border border-neutral-700 rounded-xl shadow-xl z-[9999] max-h-60 overflow-y-auto">
+        <div 
+          ref={menuRef}
+          className={`absolute left-0 right-0 ${
+            dropdownPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
+          } bg-neutral-900/95 backdrop-blur-md border border-neutral-700 rounded-xl shadow-xl z-[9999] max-h-60 overflow-y-auto`}
+        >
           {options.map((option) => (
             <button
               key={option.value}

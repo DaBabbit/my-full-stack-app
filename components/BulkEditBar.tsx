@@ -1,14 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Edit3, X, CheckSquare, Square } from 'lucide-react';
+import { X, CheckSquare, Square } from 'lucide-react';
 
 interface BulkEditBarProps {
   selectedCount: number;
   totalCount: number;
   onSelectAll: () => void;
   onDeselectAll: () => void;
-  onBulkEdit: () => void;
   onCancel: () => void;
 }
 
@@ -27,7 +26,6 @@ export default function BulkEditBar({
   totalCount,
   onSelectAll,
   onDeselectAll,
-  onBulkEdit,
   onCancel
 }: BulkEditBarProps) {
   const allSelected = selectedCount === totalCount && totalCount > 0;
@@ -69,16 +67,6 @@ export default function BulkEditBar({
                 <span>Alle auswählen</span>
               </>
             )}
-          </button>
-
-          {/* Bulk Edit Button */}
-          <button
-            onClick={onBulkEdit}
-            disabled={selectedCount === 0}
-            className="flex items-center gap-2 px-6 py-2 bg-white hover:bg-neutral-100 text-black rounded-lg font-medium transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:shadow-none"
-          >
-            <Edit3 className="w-4 h-4" />
-            <span>Bearbeiten</span>
           </button>
 
           {/* Cancel Button */}

@@ -41,8 +41,7 @@ import {
   Trash2,
   Users,
   Edit3,
-  CheckSquare,
-  Square
+  CheckSquare
 } from 'lucide-react';
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
@@ -72,8 +71,7 @@ export default function SharedWorkspacePage() {
     updateWorkspaceVideo, 
     updateWorkspaceVideoAsync,
     deleteWorkspaceVideo,
-    bulkUpdateWorkspaceVideosAsync,
-    isBulkUpdatingWorkspace
+    bulkUpdateWorkspaceVideosAsync
   } = useVideoMutations();
   
   // Setup Realtime
@@ -444,7 +442,7 @@ export default function SharedWorkspacePage() {
     
     try {
       // Nur aktivierte Felder in das Update aufnehmen
-      const fieldsToUpdate: Record<string, any> = {};
+      const fieldsToUpdate: Record<string, string | null> = {};
       if (updates.enabledFields.status && updates.fields.status) {
         fieldsToUpdate.status = updates.fields.status;
       }

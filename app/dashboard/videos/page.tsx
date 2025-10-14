@@ -689,8 +689,8 @@ export default function VideosPage() {
                   }`}
                   title={sidebarCollapsed ? item.name : ''}
                 >
-                  <item.icon className={`w-6 h-6 ${item.active ? 'text-black' : 'text-neutral-400'} transition-colors ${sidebarCollapsed ? 'mx-auto' : ''}`} />
-                  {!sidebarCollapsed && <span className="ml-3">{item.name}</span>}
+                  <item.icon className={`w-6 h-6 flex-shrink-0 ${item.active ? 'text-black' : 'text-neutral-400'} transition-colors ${sidebarCollapsed ? 'mx-auto' : ''}`} />
+                  {!sidebarCollapsed && <span className="ml-3 truncate" title={item.name}>{item.name}</span>}
                 </button>
               </li>
             ))}

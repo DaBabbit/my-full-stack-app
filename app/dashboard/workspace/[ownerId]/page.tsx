@@ -16,7 +16,7 @@ import EditableDate from '@/components/EditableDate';
 import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
 import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
 import { ToastContainer, ToastProps } from '@/components/Toast';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   Video as VideoIcon,
@@ -432,10 +432,10 @@ export default function SharedWorkspacePage() {
                   ? 'bg-white text-black font-medium' 
                   : 'text-neutral-400 hover:bg-neutral-800 hover:text-white'
               } ${sidebarCollapsed ? 'justify-center' : ''}`}
-              title={sidebarCollapsed ? item.name : ''}
+              title={item.name}
             >
-              <item.icon className={`w-5 h-5 ${sidebarCollapsed ? '' : 'flex-shrink-0'}`} />
-              {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
+              <item.icon className={`w-5 h-5 flex-shrink-0`} />
+              {!sidebarCollapsed && <span className="truncate" title={item.name}>{item.name}</span>}
             </button>
           ))}
         </nav>
@@ -536,82 +536,120 @@ export default function SharedWorkspacePage() {
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="flex-1 flex flex-col overflow-hidden"
       >
-        {/* Top Bar */}
-        <div className="bg-neutral-900/50 backdrop-blur-md border-b border-neutral-800 px-4 sm:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 hover:bg-neutral-800 rounded-lg transition-colors"
-            >
-              <Menu className="w-6 h-6 text-white" />
-            </button>
-            <h1 className="text-xl sm:text-2xl font-bold text-white">Workspace: {workspaceOwnerName || 'Lädt...'}</h1>
-          </div>
-
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Desktop Search */}
-            <div className="hidden md:block relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-neutral-400" />
-              </div>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl focus:ring-white focus:border-white block w-64 pl-10 p-3 placeholder-neutral-400"
-                placeholder="Videos suchen..."
-              />
-            </div>
-
-            {/* Notification Bell */}
-            <NotificationBell />
-
-            {/* User Dropdown */}
-            <div className="relative">
+        {/* Top Bar - Same structure as Videos page */}
+        <nav className="bg-black border-b border-neutral-800 px-4 py-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
               <button
-                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="flex items-center space-x-2 p-2 hover:bg-neutral-800 rounded-xl transition-colors"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 mr-2 text-white rounded-lg md:hidden hover:bg-neutral-800 transition-colors"
               >
-                <div className="bg-gradient-to-br from-neutral-700 to-neutral-900 rounded-full p-2">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
+              
+              <div className="flex items-center">
+                <Image
+                  src="/kosmamedia-logo.svg"
+                  alt="kosmamedia Logo"
+                  width={32}
+                  height={32}
+                  className="mr-3 filter invert"
+                />
+                <span className="text-xl font-semibold text-white">kosmamedia</span>
+              </div>
 
-              {userDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-neutral-900 border border-neutral-700 rounded-2xl shadow-xl z-50">
-                  <div className="p-3 border-b border-neutral-700">
-                    <p className="text-sm text-white font-medium">{user?.email}</p>
-                    <p className="text-xs text-neutral-400 mt-1">Mitarbeiter</p>
+              {/* Search Bar */}
+              <div className="hidden md:flex md:ml-8 md:items-center md:gap-3">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-neutral-400" />
                   </div>
-                  <div className="p-2">
-                    <button
-                      onClick={() => router.push('/profile')}
-                      className="w-full flex items-center space-x-2 px-3 py-2 text-neutral-400 hover:bg-neutral-800 rounded-xl transition-colors"
-                    >
-                      <User className="w-4 h-4" />
-                      <span>Profil</span>
-                    </button>
-                    <button
-                      onClick={() => router.push('/pay')}
-                      className="w-full flex items-center space-x-2 px-3 py-2 text-neutral-400 hover:bg-neutral-800 rounded-xl transition-colors"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      <span>Abonnement</span>
-                    </button>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full flex items-center space-x-2 px-3 py-2 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Abmelden</span>
-                    </button>
-                  </div>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-64 pl-10 p-2.5 placeholder-neutral-400"
+                    placeholder="Videos suchen..."
+                  />
                 </div>
-              )}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              {/* Notifications */}
+              <NotificationBell />
+
+              {/* User Menu */}
+              <div className="relative user-dropdown">
+                <button 
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  className="flex items-center space-x-2 text-white hover:bg-neutral-800 rounded-lg p-2 transition-colors"
+                >
+                  <div className="relative">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-black" />
+                    </div>
+                  </div>
+                  <span className="hidden md:block text-sm">{user.email}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Menu */}
+                {userDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute right-0 mt-2 w-56 bg-black/80 backdrop-blur-md rounded-xl border border-neutral-700 shadow-lg z-50"
+                  >
+                    <div className="py-2">
+                      <div className="px-4 py-3 border-b border-neutral-700">
+                        <p className="text-sm text-white font-medium">{user.email}</p>
+                        <p className="text-xs text-neutral-400 mt-1">Angemeldet</p>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          router.push('/profile');
+                        }}
+                        className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
+                      >
+                        <Settings className="w-4 h-4 mr-3 text-neutral-400" />
+                        Einstellungen
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          router.push('/profile');
+                        }}
+                        className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
+                      >
+                        <CreditCard className="w-4 h-4 mr-3 text-neutral-400" />
+                        Abonnement verwalten
+                      </button>
+                      
+                      <div className="border-t border-neutral-700 mt-2">
+                        <button
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            handleSignOut();
+                          }}
+                          className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4 mr-3 text-neutral-400" />
+                          Ausloggen
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </nav>
 
         {/* Content Area */}
         <div className="flex-1 overflow-auto p-4 sm:p-8">

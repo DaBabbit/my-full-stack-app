@@ -63,7 +63,8 @@ export default function ResponsiblePersonDropdownSimple({
 
   // Add workspace owner
   if (workspaceOwner) {
-    const ownerName = `${workspaceOwner.firstname} ${workspaceOwner.lastname}`.trim();
+    // Nur hinzufügen wenn mindestens firstname ODER lastname vorhanden ist
+    const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
     if (ownerName) {
       options.push({
         id: 'owner',
@@ -76,14 +77,17 @@ export default function ResponsiblePersonDropdownSimple({
 
   // Add workspace members
   workspaceMembers.forEach((member) => {
-    if (member.user?.firstname && member.user?.lastname) {
-      const memberName = `${member.user.firstname} ${member.user.lastname}`.trim();
-      options.push({
-        id: member.id,
-        name: memberName,
-        type: 'member',
-        email: member.user.email
-      });
+    // Nur hinzufügen wenn user-Daten vorhanden sind UND mindestens ein Name vorhanden ist
+    if (member.user && (member.user.firstname || member.user.lastname)) {
+      const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
+      if (memberName) {
+        options.push({
+          id: member.id,
+          name: memberName,
+          type: 'member',
+          email: member.user.email
+        });
+      }
     }
   });
 

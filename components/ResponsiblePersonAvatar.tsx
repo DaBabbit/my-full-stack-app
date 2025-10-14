@@ -82,7 +82,7 @@ export default function ResponsiblePersonAvatar({
             className="w-full h-full object-contain"
           />
         </div>
-        {showFullName && <span className="text-neutral-200 text-sm font-medium">Kosmamedia</span>}
+        {showFullName && <span className="text-neutral-200 text-sm font-medium">kosmamedia</span>}
       </div>
     );
   }
@@ -91,12 +91,12 @@ export default function ResponsiblePersonAvatar({
   const initials = getInitials(responsiblePerson);
   const grayscaleClass = getGrayscaleFromName(responsiblePerson);
   
-  // Display Name: Nur Nachname wenn Vor- und Nachname vorhanden
+  // Display Name: Vor- und Nachname (firstname + lastname)
   const getDisplayName = (name: string) => {
     const parts = name.trim().split(' ').filter(Boolean);
     if (parts.length > 1) {
-      // Wenn mehrere Namen, nur den letzten (Nachname) anzeigen
-      return parts[parts.length - 1];
+      // Wenn mehrere Namen: firstname + lastname
+      return `${parts[0]} ${parts[parts.length - 1]}`;
     }
     return name; // Sonst ganzen Namen
   };
@@ -106,7 +106,7 @@ export default function ResponsiblePersonAvatar({
       <div className={`${sizeClasses[size]} rounded-full ${grayscaleClass} flex items-center justify-center text-white font-semibold`}>
         {initials}
       </div>
-      <span className="text-neutral-200 text-sm">{getDisplayName(responsiblePerson)}</span>
+      {showFullName && <span className="text-neutral-200 text-sm">{getDisplayName(responsiblePerson)}</span>}
     </div>
   );
 }

@@ -12,7 +12,10 @@ import {
   CheckCircle, 
   Clock,
   ArrowLeft,
-  ExternalLink
+  ExternalLink,
+  AlertCircle,
+  XCircle,
+  Info
 } from 'lucide-react';
 import { supabase } from '@/utils/supabase';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -22,7 +25,7 @@ interface Invoice {
   number: string;
   amount: number;
   currency: string;
-  status: 'paid' | 'open' | 'void';
+  status: 'paid' | 'open' | 'void' | 'draft' | 'uncollectible' | 'past_due';
   created: number;
   period_start: number;
   period_end: number;
@@ -107,11 +110,17 @@ export default function InvoicesPage() {
       case 'paid':
         return <CheckCircle className="w-4 h-4 text-green-400" />;
       case 'open':
-        return <Clock className="w-4 h-4 text-yellow-400" />;
+        return <Clock className="w-4 h-4 text-blue-400" />;
+      case 'past_due':
+        return <AlertCircle className="w-4 h-4 text-yellow-400" />;
+      case 'draft':
+        return <FileText className="w-4 h-4 text-gray-400" />;
+      case 'uncollectible':
+        return <XCircle className="w-4 h-4 text-red-400" />;
       case 'void':
-        return <FileText className="w-4 h-4 text-gray-400" />;
+        return <XCircle className="w-4 h-4 text-gray-400" />;
       default:
-        return <FileText className="w-4 h-4 text-gray-400" />;
+        return <Info className="w-4 h-4 text-gray-400" />;
     }
   };
 
@@ -120,11 +129,36 @@ export default function InvoicesPage() {
       case 'paid':
         return 'Bezahlt';
       case 'open':
-        return 'Offen';
+        return 'In Bearbeitung';
+      case 'past_due':
+        return 'Ausstehend';
+      case 'draft':
+        return 'Entwurf';
+      case 'uncollectible':
+        return 'Nicht einziehbar';
       case 'void':
         return 'Storniert';
       default:
         return status;
+    }
+  };
+
+  const getStatusTooltip = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 'Die Rechnung wurde erfolgreich bezahlt.';
+      case 'open':
+        return 'Die Zahlung wird von deiner Bank bearbeitet. Dies kann bis zu 14 Tage dauern. Dein Abonnement ist aktiv und kann ohne Einschränkung genutzt werden.';
+      case 'past_due':
+        return 'Die Zahlung wird von deiner Bank bearbeitet. Dies kann bis zu 14 Tage dauern. Dein Abonnement ist aktiv und kann ohne Einschränkung genutzt werden.';
+      case 'draft':
+        return 'Diese Rechnung ist noch ein Entwurf und wurde noch nicht finalisiert.';
+      case 'uncollectible':
+        return 'Die Zahlung konnte nicht eingezogen werden. Bitte aktualisiere deine Zahlungsmethode.';
+      case 'void':
+        return 'Diese Rechnung wurde storniert.';
+      default:
+        return '';
     }
   };
 
@@ -241,11 +275,20 @@ export default function InvoicesPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center">
+                          <div className="flex items-center group relative">
                             {getStatusIcon(invoice.status)}
                             <span className="ml-2 text-sm text-neutral-300">
                               {getStatusText(invoice.status)}
                             </span>
+                            {/* Tooltip */}
+                            {getStatusTooltip(invoice.status) && (
+                              <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-neutral-800 text-white text-xs rounded-lg shadow-xl border border-neutral-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                <div className="flex items-start gap-2">
+                                  <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                                  <p className="leading-relaxed">{getStatusTooltip(invoice.status)}</p>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">

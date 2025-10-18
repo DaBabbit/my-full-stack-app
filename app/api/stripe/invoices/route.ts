@@ -43,19 +43,25 @@ export async function GET(request: NextRequest) {
     });
 
     // Format invoices for frontend
-    const formattedInvoices = invoices.data.map(invoice => ({
-      id: invoice.id,
-      number: invoice.number,
-      amount: invoice.amount_paid,
-      currency: invoice.currency,
-      status: invoice.status,
-      created: invoice.created,
-      period_start: invoice.period_start,
-      period_end: invoice.period_end,
-      invoice_pdf: invoice.invoice_pdf,
-      hosted_invoice_url: invoice.hosted_invoice_url,
-      description: invoice.description || `Rechnung ${invoice.number}`,
-    }));
+    const formattedInvoices = invoices.data.map(invoice => {
+      // Get subscription line item for correct period dates
+      const subscriptionLine = invoice.lines.data.find(line => line.type === 'subscription');
+      
+      return {
+        id: invoice.id,
+        number: invoice.number,
+        amount: invoice.total || invoice.amount_due, // Use total or amount_due instead of amount_paid
+        currency: invoice.currency,
+        status: invoice.status,
+        created: invoice.created,
+        // Use line item period for accurate billing dates
+        period_start: subscriptionLine?.period?.start || invoice.period_start,
+        period_end: subscriptionLine?.period?.end || invoice.period_end,
+        invoice_pdf: invoice.invoice_pdf,
+        hosted_invoice_url: invoice.hosted_invoice_url,
+        description: invoice.description || `Rechnung ${invoice.number}`,
+      };
+    });
 
     return NextResponse.json({ invoices: formattedInvoices });
 

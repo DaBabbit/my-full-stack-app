@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, FolderOpen, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
+import { X, Upload, FolderOpen, ExternalLink } from 'lucide-react';
 
 interface FileUploadModalProps {
   isOpen: boolean;
@@ -19,28 +19,6 @@ export function FileUploadModal({
   fileDropUrl,
   storageLocation
 }: FileUploadModalProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [iframeError, setIframeError] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    // Detect mobile devices
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsLoading(true);
-      setIframeError(false);
-    }
-  }, [isOpen]);
 
   // Close on ESC key
   useEffect(() => {
@@ -53,15 +31,6 @@ export function FileUploadModal({
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
-
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-  };
-
-  const handleIframeError = () => {
-    setIsLoading(false);
-    setIframeError(true);
-  };
 
   const openInNewWindow = () => {
     if (fileDropUrl) {

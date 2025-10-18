@@ -1010,6 +1010,7 @@ export default function VideosPage() {
                       <th className="text-left py-3 px-4 font-medium text-neutral-300">Status</th>
                       <th className="text-left py-3 px-4 font-medium text-neutral-300">Veröffentlichung</th>
                       <th className="text-left py-3 px-4 font-medium text-neutral-300">Verantwortlich</th>
+                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Datei hochladen</th>
                       <th className="text-left py-3 px-4 font-medium text-neutral-300">Speicherort</th>
                       <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktualisiert</th>
                       <th className="text-left py-3 px-4 font-medium text-neutral-300">Inspiration</th>
@@ -1111,18 +1112,42 @@ export default function VideosPage() {
                           />
                         </td>
 
-                        {/* Speicherort */}
-                        <td className="py-4 px-4 text-neutral-300 text-sm">
-                          {video.storage_location ? (
-                            <a 
-                              href={video.storage_location} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 underline"
+                        {/* Datei hochladen */}
+                        <td className="py-4 px-4">
+                          {video.file_drop_url ? (
+                            <button
+                              onClick={() => handleOpenUploadModal(video)}
+                              className="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
+                              title="Dateien hochladen"
                             >
-                              Link
+                              <Upload className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="p-2 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
+                              title="Upload-Ordner wird erstellt..."
+                            >
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </button>
+                          )}
+                        </td>
+
+                        {/* Speicherort */}
+                        <td className="py-4 px-4">
+                          {video.storage_location ? (
+                            <a
+                              href={video.storage_location}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
+                              title="Ordner durchsuchen"
+                            >
+                              <FolderOpen className="h-4 w-4" />
                             </a>
-                          ) : '-'}
+                          ) : (
+                            <span className="text-neutral-500 text-sm">-</span>
+                          )}
                         </td>
 
                         {/* Zuletzt aktualisiert */}
@@ -1157,43 +1182,6 @@ export default function VideosPage() {
                         {/* Aktionen */}
                         <td className="py-4 px-4">
                           <div className="flex items-center space-x-2">
-                            {/* Upload Button */}
-                            {video.file_drop_url ? (
-                              <button
-                                onClick={() => handleOpenUploadModal(video)}
-                                className="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
-                                title="Dateien hochladen"
-                              >
-                                <Upload className="h-4 w-4" />
-                              </button>
-                            ) : (
-                              <button
-                                disabled
-                                className="p-2 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
-                                title="Upload-Ordner wird erstellt..."
-                              >
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              </button>
-                            )}
-
-                            {/* Browse Folder Button */}
-                            {video.storage_location && (
-                              <a
-                                href={video.storage_location}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-2 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors"
-                                title="Ordner durchsuchen"
-                              >
-                                <FolderOpen className="h-4 w-4" />
-                              </a>
-                            )}
-
-                            {/* Divider */}
-                            {(video.file_drop_url || video.storage_location) && (
-                              <div className="h-6 w-px bg-neutral-700"></div>
-                            )}
-                            
                             <button
                               onClick={() => {
                                 if (canEditVideo(video)) {
@@ -1250,38 +1238,6 @@ export default function VideosPage() {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
-                          {/* Upload Button */}
-                          {video.file_drop_url ? (
-                            <button
-                              onClick={() => handleOpenUploadModal(video)}
-                              className="p-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20"
-                              title="Dateien hochladen"
-                            >
-                              <Upload className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <button
-                              disabled
-                              className="p-1.5 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
-                              title="Upload-Ordner wird erstellt..."
-                            >
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            </button>
-                          )}
-
-                          {/* Browse Folder Button */}
-                          {video.storage_location && (
-                            <a
-                              href={video.storage_location}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors"
-                              title="Ordner durchsuchen"
-                            >
-                              <FolderOpen className="h-4 w-4" />
-                            </a>
-                          )}
-                          
                           <button
                             onClick={() => {
                               if (canEditVideo(video)) {
@@ -1366,15 +1322,36 @@ export default function VideosPage() {
                           />
                         </div>
                         <div>
+                          <label className="block text-xs font-medium text-neutral-400 mb-1">Datei hochladen</label>
+                          {video.file_drop_url ? (
+                            <button
+                              onClick={() => handleOpenUploadModal(video)}
+                              className="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20"
+                              title="Dateien hochladen"
+                            >
+                              <Upload className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="p-2 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
+                              title="Upload-Ordner wird erstellt..."
+                            >
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </button>
+                          )}
+                        </div>
+                        <div>
                           <label className="block text-xs font-medium text-neutral-400 mb-1">Speicherort</label>
                           {video.storage_location ? (
-                            <a 
-                              href={video.storage_location} 
-                              target="_blank" 
+                            <a
+                              href={video.storage_location}
+                              target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 underline truncate block"
+                              className="p-2 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
+                              title="Ordner durchsuchen"
                             >
-                              Link
+                              <FolderOpen className="h-4 w-4" />
                             </a>
                           ) : (
                             <p className="text-neutral-300">-</p>

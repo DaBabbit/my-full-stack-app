@@ -35,9 +35,9 @@ export function usePermissions(): Permissions {
     }
 
     // Check if subscription is active and valid
+    // 'past_due' = Zahlung steht aus, aber Abo ist noch aktiv (Grace Period)
     const hasActiveSubscription = subscription && 
-      ['active', 'trialing'].includes(subscription.status) && 
-      new Date(subscription.current_period_end) > new Date();
+      ['active', 'trialing', 'past_due'].includes(subscription.status);
 
     const subscriptionStatus: 'active' | 'trialing' | 'expired' | 'none' = 
       !subscription ? 'none' :

@@ -18,8 +18,13 @@ export interface Subscription {
 
 const checkValidSubscription = (data: Subscription | null): boolean => {
   if (!data) return false;
-  return ['active', 'trialing'].includes(data.status) && 
-    new Date(data.current_period_end) > new Date();
+  
+  // Akzeptiere diese Statuses als "aktiv"
+  // 'past_due' = Zahlung steht aus, aber Abo ist noch aktiv (Grace Period)
+  const activeStatuses = ['active', 'trialing', 'past_due'];
+  
+  return activeStatuses.includes(data.status);
+  // Kein current_period_end Check - Stripe managed den Status
 };
 
 export function useSubscription() {

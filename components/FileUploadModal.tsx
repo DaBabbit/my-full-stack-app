@@ -75,7 +75,7 @@ export function FileUploadModal({
 
             <div className="flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mb-4">
-                <AlertCircle className="w-8 h-8 text-yellow-400" />
+                <Upload className="w-8 h-8 text-yellow-400" />
               </div>
               
               <h3 className="text-xl font-semibold text-white mb-2">

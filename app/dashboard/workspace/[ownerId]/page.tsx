@@ -409,6 +409,28 @@ export default function SharedWorkspacePage() {
     return new Date(dateString).toLocaleDateString('de-DE');
   };
 
+  const formatRelativeTime = (dateString?: string): string => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffMinutes < 1) return 'Gerade eben';
+      if (diffMinutes < 60) return `vor ${diffMinutes} Min.`;
+      if (diffHours < 24) return `vor ${diffHours} Std.`;
+      if (diffDays < 4) return `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+      
+      // Ab 4 Tagen: Datum anzeigen
+      return formatDate(dateString);
+    } catch {
+      return '-';
+    }
+  };
+
   const handleUpdateStatus = async (videoId: string, newStatus: string) => {
     if (!permissions.can_edit) {
       addToast({
@@ -1104,18 +1126,18 @@ export default function SharedWorkspacePage() {
                                   video.file_drop_url ? (
                                     <button
                                       onClick={() => handleOpenUploadModal(video)}
-                                      className="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
+                                      className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
                                       title="Dateien hochladen"
                                     >
-                                      <Upload className="h-4 w-4" />
+                                      <Upload className="h-5 w-5" />
                                     </button>
                                   ) : (
                                     <button
                                       disabled
-                                      className="p-2 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
+                                      className="p-3 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
                                       title="Upload-Ordner wird erstellt..."
                                     >
-                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      <Loader2 className="h-5 w-5 animate-spin" />
                                     </button>
                                   )
                                 )}
@@ -1128,10 +1150,10 @@ export default function SharedWorkspacePage() {
                                     href={video.storage_location}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-2 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
+                                    className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
                                     title="Ordner durchsuchen"
                                   >
-                                    <FolderOpen className="h-4 w-4" />
+                                    <FolderOpen className="h-5 w-5" />
                                   </a>
                                 ) : (
                                   <span className="text-neutral-500 text-sm">-</span>
@@ -1140,7 +1162,7 @@ export default function SharedWorkspacePage() {
 
                               {/* Updated Date */}
                               <td className="py-4 px-4 text-neutral-300 text-sm">
-                                {formatDate(video.updated_at)}
+                                {formatRelativeTime(video.updated_at)}
                               </td>
 
                               {/* Description */}
@@ -1252,18 +1274,18 @@ export default function SharedWorkspacePage() {
                                 video.file_drop_url ? (
                                   <button
                                     onClick={() => handleOpenUploadModal(video)}
-                                    className="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20"
+                                    className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20"
                                     title="Dateien hochladen"
                                   >
-                                    <Upload className="h-4 w-4" />
+                                    <Upload className="h-5 w-5" />
                                   </button>
                                 ) : (
                                   <button
                                     disabled
-                                    className="p-2 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
+                                    className="p-3 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
                                     title="Upload-Ordner wird erstellt..."
                                   >
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                   </button>
                                 )
                               )}
@@ -1275,10 +1297,10 @@ export default function SharedWorkspacePage() {
                                   href={video.storage_location}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-2 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
+                                  className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
                                   title="Ordner durchsuchen"
                                 >
-                                  <FolderOpen className="h-4 w-4" />
+                                  <FolderOpen className="h-5 w-5" />
                                 </a>
                               ) : (
                                 <p className="text-neutral-300">-</p>
@@ -1287,7 +1309,7 @@ export default function SharedWorkspacePage() {
                             {video.updated_at && (
                               <div className="flex justify-between">
                                 <span className="text-neutral-400">Aktualisiert:</span>
-                                <span className="text-white">{formatDate(video.updated_at)}</span>
+                                <span className="text-white">{formatRelativeTime(video.updated_at)}</span>
                               </div>
                             )}
                             <div>

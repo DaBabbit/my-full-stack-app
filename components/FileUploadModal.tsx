@@ -178,97 +178,55 @@ export function FileUploadModal({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 px-6 py-3 bg-neutral-800/50 border-b border-neutral-700">
-              {storageLocation && (
-                <button
-                  onClick={openStorageLocation}
-                  className="flex items-center gap-2 px-3 py-2 bg-neutral-700/50 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-lg transition-all"
-                >
-                  <FolderOpen className="w-4 h-4" />
-                  <span className="text-sm">Ordner durchsuchen</span>
-                </button>
-              )}
+            <div className="flex items-center justify-between gap-2 px-6 py-3 bg-neutral-800/50 border-b border-neutral-700">
+              <div className="flex items-center gap-2">
+                {storageLocation && (
+                  <button
+                    onClick={openStorageLocation}
+                    className="flex items-center gap-2 px-3 py-2 bg-neutral-700/50 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-lg transition-all"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    <span className="text-sm">Ordner durchsuchen</span>
+                  </button>
+                )}
+              </div>
 
-              {(isMobile || iframeError) && (
-                <button
-                  onClick={openInNewWindow}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span className="text-sm">In neuem Fenster öffnen</span>
-                </button>
-              )}
+              <button
+                onClick={openInNewWindow}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span className="text-sm">In neuem Fenster öffnen</span>
+              </button>
             </div>
 
             {/* Content */}
             <div className="relative" style={{ height: 'calc(90vh - 180px)', minHeight: '400px' }}>
-              {/* Loading State */}
-              {isLoading && !iframeError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-neutral-900">
-                  <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-3" />
-                    <p className="text-neutral-400">Lade Upload-Bereich...</p>
-                  </div>
+              {/* Main Upload Info */}
+              <div className="absolute inset-0 flex items-center justify-center bg-neutral-900">
+                <div className="text-center max-w-lg px-4">
+                  <Upload className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-3">
+                    Dateien hochladen
+                  </h3>
+                  <p className="text-neutral-400 mb-2">
+                    Nextcloud File Drop kann nicht direkt hier angezeigt werden.
+                  </p>
+                  <p className="text-neutral-500 text-sm mb-6">
+                    (Sicherheitseinstellungen des Servers verhindern die Einbettung)
+                  </p>
+                  <button
+                    onClick={openInNewWindow}
+                    className="flex items-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors mx-auto text-lg font-medium shadow-lg hover:shadow-xl"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                    <span>Upload-Seite öffnen</span>
+                  </button>
+                  <p className="text-neutral-500 text-xs mt-4">
+                    💡 Tipp: Nutze den Button oben rechts für schnellen Zugriff
+                  </p>
                 </div>
-              )}
-
-              {/* Error State */}
-              {iframeError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-neutral-900">
-                  <div className="text-center max-w-md px-4">
-                    <AlertCircle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-white mb-2">
-                      Upload konnte nicht geladen werden
-                    </h3>
-                    <p className="text-neutral-400 mb-6">
-                      Der Upload-Bereich kann nicht angezeigt werden. 
-                      Bitte öffne den Upload in einem neuen Fenster.
-                    </p>
-                    <button
-                      onClick={openInNewWindow}
-                      className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors mx-auto"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>In neuem Fenster öffnen</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* iFrame - Desktop only */}
-              {!isMobile && (
-                <iframe
-                  src={fileDropUrl}
-                  className={`w-full h-full border-0 ${isLoading || iframeError ? 'invisible' : 'visible'}`}
-                  title="Nextcloud File Upload"
-                  onLoad={handleIframeLoad}
-                  onError={handleIframeError}
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-                />
-              )}
-
-              {/* Mobile: Direct Link */}
-              {isMobile && (
-                <div className="flex items-center justify-center h-full bg-neutral-900">
-                  <div className="text-center px-4">
-                    <Upload className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-white mb-2">
-                      Mobiler Upload
-                    </h3>
-                    <p className="text-neutral-400 mb-6">
-                      Auf mobilen Geräten öffnen wir den Upload in einem neuen Fenster 
-                      für eine bessere Erfahrung.
-                    </p>
-                    <button
-                      onClick={openInNewWindow}
-                      className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors mx-auto"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Upload öffnen</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
 
             {/* Footer */}

@@ -35,7 +35,6 @@ import {
   Search,
   User,
   Edit,
-  ExternalLink,
   LogOut,
   CreditCard,
   ChevronDown,

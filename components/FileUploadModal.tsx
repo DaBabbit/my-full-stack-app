@@ -114,7 +114,7 @@ export function FileUploadModal({
               </h3>
               
               <p className="text-neutral-400 mb-6">
-                Der Upload-Ordner für <span className="text-white font-medium">"{videoName}"</span> wird gerade erstellt. 
+                Der Upload-Ordner für <span className="text-white font-medium">&quot;{videoName}&quot;</span> wird gerade erstellt. 
                 Bitte versuche es in wenigen Sekunden erneut.
               </p>
 

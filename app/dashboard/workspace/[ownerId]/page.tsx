@@ -28,7 +28,6 @@ import {
   X,
   Search,
   User,
-  ExternalLink,
   LogOut,
   CreditCard,
   ChevronDown,

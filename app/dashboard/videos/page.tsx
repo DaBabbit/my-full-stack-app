@@ -23,6 +23,7 @@ import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
 import ResponsiblePersonDropdownSimple from '@/components/ResponsiblePersonDropdownSimple';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import BulkEditBar from '@/components/BulkEditBar';
+import { FileUploadModal } from '@/components/FileUploadModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -49,7 +50,10 @@ import {
   Crown,
   Users,
   Edit3,
-  CheckSquare
+  CheckSquare,
+  Upload,
+  FolderOpen,
+  Loader2
 } from 'lucide-react';
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
@@ -164,6 +168,10 @@ export default function VideosPage() {
   // Bulk Edit States
   const [isBulkEditMode, setIsBulkEditMode] = useState(false);
   const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(new Set());
+
+  // File Upload Modal States
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalVideo, setUploadModalVideo] = useState<Video | null>(null);
 
   // Toast helpers
   const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
@@ -565,6 +573,25 @@ export default function VideosPage() {
     document.addEventListener('keydown', handleEscapeKey);
     return () => document.removeEventListener('keydown', handleEscapeKey);
   }, [isBulkEditMode]);
+
+  // File Upload Modal Handlers
+  const handleOpenUploadModal = (video: Video) => {
+    if (!video.file_drop_url) {
+      addToast({
+        type: 'warning',
+        title: 'Upload noch nicht bereit',
+        message: 'Der Upload-Ordner wird gerade erstellt. Bitte versuche es in wenigen Sekunden erneut.'
+      });
+      return;
+    }
+    setUploadModalVideo(video);
+    setShowUploadModal(true);
+  };
+
+  const handleCloseUploadModal = () => {
+    setShowUploadModal(false);
+    setUploadModalVideo(null);
+  };
 
   // Filter videos based on search term and status filter
   const filteredVideos = videos.filter(video => {
@@ -1131,6 +1158,43 @@ export default function VideosPage() {
                         {/* Aktionen */}
                         <td className="py-4 px-4">
                           <div className="flex items-center space-x-2">
+                            {/* Upload Button */}
+                            {video.file_drop_url ? (
+                              <button
+                                onClick={() => handleOpenUploadModal(video)}
+                                className="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
+                                title="Dateien hochladen"
+                              >
+                                <Upload className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <button
+                                disabled
+                                className="p-2 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
+                                title="Upload-Ordner wird erstellt..."
+                              >
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              </button>
+                            )}
+
+                            {/* Browse Folder Button */}
+                            {video.storage_location && (
+                              <a
+                                href={video.storage_location}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors"
+                                title="Ordner durchsuchen"
+                              >
+                                <FolderOpen className="h-4 w-4" />
+                              </a>
+                            )}
+
+                            {/* Divider */}
+                            {(video.file_drop_url || video.storage_location) && (
+                              <div className="h-6 w-px bg-neutral-700"></div>
+                            )}
+                            
                             <button
                               onClick={() => {
                                 if (canEditVideo(video)) {
@@ -1158,18 +1222,6 @@ export default function VideosPage() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
-                            )}
-                            
-                            {video.storage_location && (
-                              <a
-                                href={video.storage_location}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-white hover:text-neutral-300"
-                                title="Speicherort öffnen"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
                             )}
                           </div>
                         </td>
@@ -1199,6 +1251,38 @@ export default function VideosPage() {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+                          {/* Upload Button */}
+                          {video.file_drop_url ? (
+                            <button
+                              onClick={() => handleOpenUploadModal(video)}
+                              className="p-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20"
+                              title="Dateien hochladen"
+                            >
+                              <Upload className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="p-1.5 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
+                              title="Upload-Ordner wird erstellt..."
+                            >
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </button>
+                          )}
+
+                          {/* Browse Folder Button */}
+                          {video.storage_location && (
+                            <a
+                              href={video.storage_location}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors"
+                              title="Ordner durchsuchen"
+                            >
+                              <FolderOpen className="h-4 w-4" />
+                            </a>
+                          )}
+                          
                           <button
                             onClick={() => {
                               if (canEditVideo(video)) {
@@ -1226,18 +1310,6 @@ export default function VideosPage() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
-                          )}
-                          
-                          {video.storage_location && (
-                            <a
-                              href={video.storage_location}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-white hover:text-neutral-300 p-1"
-                              title="Speicherort öffnen"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
                           )}
                         </div>
                       </div>
@@ -1662,6 +1734,15 @@ export default function VideosPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* File Upload Modal */}
+      <FileUploadModal
+        isOpen={showUploadModal}
+        onClose={handleCloseUploadModal}
+        videoName={uploadModalVideo?.name || ''}
+        fileDropUrl={uploadModalVideo?.file_drop_url}
+        storageLocation={uploadModalVideo?.storage_location}
+      />
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onClose={removeToast} />

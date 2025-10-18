@@ -9,6 +9,7 @@ export interface Video {
   name?: string; // Alias for title (for backwards compatibility)
   status: string;
   storage_location?: string;
+  file_drop_url?: string; // Nextcloud File Drop URL for uploading files
   created_at: string;
   publication_date?: string;
   responsible_person?: string;

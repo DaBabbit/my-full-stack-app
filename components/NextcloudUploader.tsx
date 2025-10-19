@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { Upload, CheckCircle, XCircle, Loader2, FileUp, Trash2 } from 'lucide-react';
 import { uploadFiles, type UploadProgress } from '@/lib/nextcloud-upload';
+import { supabase } from '@/utils/supabase';
 
 interface NextcloudUploaderProps {
   videoId: string;
@@ -40,10 +41,19 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
     setProgressMap(new Map());
 
     try {
-      // 1. Credentials vom Backend holen
+      // 1. Session Token holen
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Keine aktive Session');
+      }
+
+      // 2. Credentials vom Backend holen
       const credentialsResponse = await fetch('/api/nextcloud/credentials', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ 
           videoId, 
           nextcloudPath 
@@ -57,7 +67,7 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
 
       const credentials = await credentialsResponse.json();
 
-      // 2. Dateien uploaden
+      // 3. Dateien uploaden
       await uploadFiles(
         files,
         {
@@ -274,8 +284,9 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
       {/* Info Box */}
       <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
         <p className="text-xs text-blue-300/80">
-          💡 <span className="font-medium">Tipp:</span> Uploads erfolgen direkt zu Nextcloud ohne Vercel-Bandwidth zu belasten. 
-          Große Dateien werden automatisch in 10 MB Chunks aufgeteilt.
+          💡 <span className="font-medium">Tipp:</span> Mehrere Dateien gleichzeitig hochladen möglich. 
+          Die Dateien werden automatisch in deinem Video-Ordner gespeichert. 
+          Zum Entfernen oder Verwalten der Dateien nutze den "Speicherort" Button.
         </p>
       </div>
     </div>

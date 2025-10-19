@@ -19,8 +19,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // User authentifizieren
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // User authentifizieren - Token aus Request Header lesen
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Nicht authentifiziert - kein Auth Header' },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json(

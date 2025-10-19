@@ -1,11 +1,12 @@
 /**
  * Nextcloud WebDAV Upload Library
  * 
- * Robuste Upload-Lösung mit:
- * - Chunked Uploads für große Dateien
+ * Implementiert Nextcloud Chunked Upload v2:
+ * - MKCOL: Erstelle temporären Upload-Ordner
+ * - PUT: Lade Chunks hoch
+ * - MOVE: Verschiebe finale Datei zum Zielort
  * - Progress Tracking
  * - Retry Logic bei Fehlern
- * - Parallel Uploads für mehrere Dateien
  */
 
 export interface UploadProgress {
@@ -18,7 +19,8 @@ export interface UploadProgress {
 }
 
 export interface UploadOptions {
-  webdavUrl: string;
+  webdavUrl: string;        // Final destination path
+  uploadsUrl: string;       // Temporary uploads path
   username: string;
   password: string;
   onProgress?: (progress: UploadProgress) => void;
@@ -32,7 +34,7 @@ export interface UploadOptions {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * Upload einer einzelnen Datei mit Chunking und Retry
+ * Upload einer einzelnen Datei mit Nextcloud Chunked Upload
  */
 export async function uploadFile(
   file: File,
@@ -40,6 +42,7 @@ export async function uploadFile(
 ): Promise<void> {
   const {
     webdavUrl,
+    uploadsUrl,
     username,
     password,
     onProgress,
@@ -67,12 +70,21 @@ export async function uploadFile(
   updateProgress(0, 'pending');
 
   try {
-    // Kleine Dateien: direkter Upload
+    // Kleine Dateien (< 10 MB): direkter Upload
     if (fileSize <= chunkSize) {
       await uploadDirect(file, webdavUrl, username, password, updateProgress, maxRetries);
     } else {
-      // Große Dateien: Chunked Upload
-      await uploadChunked(file, webdavUrl, username, password, chunkSize, updateProgress, maxRetries);
+      // Große Dateien: Nextcloud Chunked Upload (MKCOL → PUT → MOVE)
+      await uploadNextcloudChunked(
+        file,
+        webdavUrl,
+        uploadsUrl,
+        username,
+        password,
+        chunkSize,
+        updateProgress,
+        maxRetries
+      );
     }
 
     updateProgress(fileSize, 'completed');
@@ -157,94 +169,174 @@ async function uploadDirect(
 }
 
 /**
- * Chunked Upload für große Dateien
+ * Nextcloud Chunked Upload für große Dateien
+ * Flow: MKCOL → PUT chunks → MOVE
  */
-async function uploadChunked(
+async function uploadNextcloudChunked(
   file: File,
-  webdavUrl: string,
+  finalUrl: string,
+  uploadsBaseUrl: string,
   username: string,
   password: string,
   chunkSize: number,
   updateProgress: (loaded: number, status: UploadProgress['status']) => void,
   maxRetries: number
 ): Promise<void> {
-  const uploadUrl = `${webdavUrl}/${encodeURIComponent(file.name)}`;
+  // 1. Erstelle eindeutige Upload-ID
+  const uploadId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const uploadFolderUrl = `${uploadsBaseUrl}/${uploadId}`;
+  
   const totalChunks = Math.ceil(file.size / chunkSize);
   let uploadedBytes = 0;
 
   updateProgress(0, 'uploading');
 
-  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-    const start = chunkIndex * chunkSize;
-    const end = Math.min(start + chunkSize, file.size);
-    const chunk = file.slice(start, end);
+  try {
+    // 2. MKCOL: Erstelle temporären Upload-Ordner
+    await makeCollection(uploadFolderUrl, username, password);
 
-    let retries = 0;
+    // 3. PUT: Lade alle Chunks hoch
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      const start = chunkIndex * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+      const chunk = file.slice(start, end);
+      
+      // Chunk-Dateiname: 00000000, 00000001, ...
+      const chunkName = chunkIndex.toString().padStart(8, '0');
+      const chunkUrl = `${uploadFolderUrl}/${chunkName}`;
 
-    while (retries <= maxRetries) {
-      try {
-        await uploadChunk(
-          chunk,
-          uploadUrl,
-          username,
-          password,
-          start,
-          end - 1,
-          file.size
-        );
-
-        uploadedBytes += chunk.size;
-        updateProgress(uploadedBytes, 'uploading');
-        break; // Success - next chunk
-      } catch {
-        retries++;
-        
-        if (retries > maxRetries) {
-          throw new Error(`Chunk ${chunkIndex + 1}/${totalChunks} failed after ${maxRetries} retries`);
+      let retries = 0;
+      while (retries <= maxRetries) {
+        try {
+          await uploadChunkDirect(chunk, chunkUrl, username, password);
+          uploadedBytes += chunk.size;
+          updateProgress(uploadedBytes, 'uploading');
+          break; // Success
+        } catch {
+          retries++;
+          if (retries > maxRetries) {
+            throw new Error(`Chunk ${chunkIndex + 1}/${totalChunks} failed after ${maxRetries} retries`);
+          }
+          const delay = Math.min(1000 * Math.pow(2, retries - 1), 10000);
+          await sleep(delay);
         }
-
-        const delay = Math.min(1000 * Math.pow(2, retries - 1), 10000);
-        console.warn(`Chunk ${chunkIndex + 1} retry ${retries}/${maxRetries}`);
-        await sleep(delay);
       }
     }
+
+    // 4. MOVE: Verschiebe finale Datei zum Zielort
+    const sourceUrl = `${uploadFolderUrl}/.file`;
+    const destinationUrl = `${finalUrl}/${encodeURIComponent(file.name)}`;
+    await moveFile(sourceUrl, destinationUrl, username, password);
+
+  } catch (error) {
+    // Cleanup: Versuche Upload-Ordner zu löschen
+    try {
+      await deleteCollection(uploadFolderUrl, username, password);
+    } catch {
+      // Ignore cleanup errors
+    }
+    throw error;
   }
 }
 
 /**
- * Upload eines einzelnen Chunks
+ * MKCOL: Erstelle WebDAV Collection (Ordner)
  */
-async function uploadChunk(
-  chunk: Blob,
-  uploadUrl: string,
+async function makeCollection(
+  url: string,
   username: string,
-  password: string,
-  start: number,
-  end: number,
-  total: number
+  password: string
 ): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
       } else {
-        reject(new Error(`Chunk upload failed with status ${xhr.status}`));
+        reject(new Error(`MKCOL failed with status ${xhr.status}`));
       }
     });
+    xhr.addEventListener('error', () => reject(new Error('MKCOL network error')));
+    xhr.open('MKCOL', url);
+    xhr.setRequestHeader('Authorization', `Basic ${btoa(`${username}:${password}`)}`);
+    xhr.send();
+  });
+}
 
+/**
+ * PUT: Lade einzelnen Chunk hoch
+ */
+async function uploadChunkDirect(
+  chunk: Blob,
+  url: string,
+  username: string,
+  password: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Chunk PUT failed with status ${xhr.status}`));
+      }
+    });
     xhr.addEventListener('error', () => reject(new Error('Chunk network error')));
-    xhr.addEventListener('abort', () => reject(new Error('Chunk upload aborted')));
-
-    xhr.open('PUT', uploadUrl);
-    xhr.setRequestHeader(
-      'Authorization',
-      `Basic ${btoa(`${username}:${password}`)}`
-    );
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Authorization', `Basic ${btoa(`${username}:${password}`)}`);
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-    xhr.setRequestHeader('Content-Range', `bytes ${start}-${end}/${total}`);
     xhr.send(chunk);
+  });
+}
+
+/**
+ * MOVE: Verschiebe Datei zum finalen Ziel
+ */
+async function moveFile(
+  sourceUrl: string,
+  destinationUrl: string,
+  username: string,
+  password: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`MOVE failed with status ${xhr.status}: ${xhr.responseText}`));
+      }
+    });
+    xhr.addEventListener('error', () => reject(new Error('MOVE network error')));
+    xhr.open('MOVE', sourceUrl);
+    xhr.setRequestHeader('Authorization', `Basic ${btoa(`${username}:${password}`)}`);
+    xhr.setRequestHeader('Destination', destinationUrl);
+    xhr.setRequestHeader('Overwrite', 'T');
+    xhr.send();
+  });
+}
+
+/**
+ * DELETE: Lösche Collection (Cleanup)
+ */
+async function deleteCollection(
+  url: string,
+  username: string,
+  password: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`DELETE failed with status ${xhr.status}`));
+      }
+    });
+    xhr.addEventListener('error', () => reject(new Error('DELETE network error')));
+    xhr.open('DELETE', url);
+    xhr.setRequestHeader('Authorization', `Basic ${btoa(`${username}:${password}`)}`);
+    xhr.send();
   });
 }
 

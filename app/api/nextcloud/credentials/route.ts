@@ -111,8 +111,9 @@ export async function POST(request: Request) {
     const username = process.env.NEXTCLOUD_USERNAME;
     const password = process.env.NEXTCLOUD_APP_PASSWORD;
     const webdavPath = process.env.NEXTCLOUD_WEBDAV_PATH;
+    const uploadsPath = process.env.NEXTCLOUD_UPLOADS_PATH;
 
-    if (!baseUrl || !username || !password || !webdavPath) {
+    if (!baseUrl || !username || !password || !webdavPath || !uploadsPath) {
       console.error('Nextcloud Environment Variables fehlen!');
       return NextResponse.json(
         { error: 'Server-Konfiguration unvollständig' },
@@ -125,12 +126,14 @@ export async function POST(request: Request) {
       ? nextcloudPath.substring(1) 
       : nextcloudPath;
 
-    // WebDAV URL konstruieren
+    // WebDAV URLs konstruieren
     const webdavUrl = `${baseUrl}${webdavPath}/${cleanPath}`;
+    const uploadsUrl = `${baseUrl}${uploadsPath}`;
 
     // Credentials zurückgeben
     return NextResponse.json({
       webdavUrl,
+      uploadsUrl,
       username,
       password,
       baseUrl

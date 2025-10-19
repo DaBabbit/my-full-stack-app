@@ -76,6 +76,7 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
         files,
         {
           webdavUrl: credentials.webdavUrl,
+          uploadsUrl: credentials.uploadsUrl,
           username: credentials.username,
           password: credentials.password,
           chunkSize: 10 * 1024 * 1024, // 10 MB chunks
@@ -86,8 +87,13 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
         }
       );
 
-      // Success!
-      alert(`✅ ${files.length} Datei(en) erfolgreich hochgeladen!`);
+      // Success! Zeige erfolgreich hochgeladene Dateien
+      const successCount = files.length;
+      const fileNames = files.map(f => f.name).join(', ');
+      
+      // TODO: Hier später Toast Notification implementieren
+      alert(`✅ ${successCount} Datei(en) erfolgreich hochgeladen:\n${fileNames}`);
+      
       setFiles([]);
       setProgressMap(new Map());
 

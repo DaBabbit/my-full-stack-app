@@ -575,11 +575,11 @@ export default function VideosPage() {
 
   // File Upload Modal Handlers
   const handleOpenUploadModal = (video: Video) => {
-    if (!video.file_drop_url) {
+    if (!video.nextcloud_path || !video.storage_location) {
       addToast({
         type: 'warning',
         title: 'Upload noch nicht bereit',
-        message: 'Der Upload-Ordner wird gerade erstellt. Bitte versuche es in wenigen Sekunden erneut.'
+        message: 'Der Video-Ordner wird gerade erstellt. Bitte versuche es in wenigen Sekunden erneut.'
       });
       return;
     }

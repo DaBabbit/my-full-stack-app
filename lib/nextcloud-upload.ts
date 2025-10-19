@@ -274,6 +274,9 @@ export async function uploadFiles(
       uploadFile(file, {
         ...options,
         onProgress: createProgressHandler(file.name)
+      }).catch(_error => {
+        // Errors are already tracked in progressMap via onProgress callback
+        // Individual file errors don't stop other uploads
       })
     )
   );

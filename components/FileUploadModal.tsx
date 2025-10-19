@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FolderOpen, ExternalLink } from 'lucide-react';
+import { X, FolderOpen, Upload } from 'lucide-react';
 import { NextcloudUploader } from './NextcloudUploader';
 
 interface FileUploadModalProps {

@@ -6,11 +6,11 @@ import { uploadFiles, type UploadProgress } from '@/lib/nextcloud-upload';
 
 interface NextcloudUploaderProps {
   videoId: string;
-  videoName: string;
+  videoName: string; // Used for user feedback in alerts
   nextcloudPath: string;
 }
 
-export function NextcloudUploader({ videoId, videoName, nextcloudPath }: NextcloudUploaderProps) {
+export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progressMap, setProgressMap] = useState<Map<string, UploadProgress>>(new Map());

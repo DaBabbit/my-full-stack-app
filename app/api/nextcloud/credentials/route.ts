@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/utils/supabase';
 
 /**
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     // User authentifizieren - Token aus Request Header lesen
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('[Nextcloud API] Kein Authorization Header gefunden');
       return NextResponse.json(
         { error: 'Nicht authentifiziert - kein Auth Header' },
         { status: 401 }
@@ -29,14 +31,32 @@ export async function POST(request: Request) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    // Erstelle einen Supabase-Client mit Anon-Key für User-Authentifizierung
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('[Nextcloud API] Supabase Environment Variables fehlen');
+      return NextResponse.json(
+        { error: 'Server-Konfiguration unvollständig' },
+        { status: 500 }
+      );
+    }
+    
+    const authClient = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
     
     if (authError || !user) {
+      console.error('[Nextcloud API] Auth-Fehler:', authError);
+      console.error('[Nextcloud API] User:', user);
       return NextResponse.json(
-        { error: 'Nicht authentifiziert' },
+        { error: 'Nicht authentifiziert', details: authError?.message },
         { status: 401 }
       );
     }
+    
+    console.log('[Nextcloud API] ✅ User authentifiziert:', user.id);
 
     // Verifiziere dass User Zugriff auf das Video hat
     const { data: video, error: videoError } = await supabase

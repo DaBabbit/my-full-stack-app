@@ -57,6 +57,7 @@ export async function POST(request: Request) {
     }
     
     console.log('[Nextcloud API] ✅ User authentifiziert:', user.id);
+    console.log('[Nextcloud API] 🔍 Suche Video mit ID:', videoId);
 
     // Verifiziere dass User Zugriff auf das Video hat
     const { data: video, error: videoError } = await supabase
@@ -65,12 +66,17 @@ export async function POST(request: Request) {
       .eq('id', videoId)
       .single();
 
+    console.log('[Nextcloud API] Video Query Result:', { video, videoError });
+
     if (videoError || !video) {
+      console.error('[Nextcloud API] ❌ Video nicht gefunden oder Fehler:', videoError);
       return NextResponse.json(
-        { error: 'Video nicht gefunden' },
+        { error: 'Video nicht gefunden', details: videoError?.message },
         { status: 404 }
       );
     }
+    
+    console.log('[Nextcloud API] ✅ Video gefunden:', video.id);
 
     // Check: User ist Owner oder hat Workspace-Zugriff
     const isOwner = video.user_id === user.id;

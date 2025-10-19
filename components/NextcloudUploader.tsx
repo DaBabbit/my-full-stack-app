@@ -48,6 +48,8 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
       }
 
       // 2. Credentials vom Backend holen
+      console.log('[NextcloudUploader] 📤 Sende Request:', { videoId, nextcloudPath });
+      
       const credentialsResponse = await fetch('/api/nextcloud/credentials', {
         method: 'POST',
         headers: { 
@@ -59,6 +61,8 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
           nextcloudPath 
         })
       });
+      
+      console.log('[NextcloudUploader] 📥 Response Status:', credentialsResponse.status);
 
       if (!credentialsResponse.ok) {
         const error = await credentialsResponse.json();

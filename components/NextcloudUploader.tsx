@@ -286,7 +286,7 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
         <p className="text-xs text-blue-300/80">
           💡 <span className="font-medium">Tipp:</span> Mehrere Dateien gleichzeitig hochladen möglich. 
           Die Dateien werden automatisch in deinem Video-Ordner gespeichert. 
-          Zum Entfernen oder Verwalten der Dateien nutze den "Speicherort" Button.
+          Zum Entfernen oder Verwalten der Dateien nutze den &quot;Speicherort&quot; Button.
         </p>
       </div>
     </div>

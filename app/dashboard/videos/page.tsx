@@ -1738,8 +1738,10 @@ export default function VideosPage() {
       <FileUploadModal
         isOpen={showUploadModal}
         onClose={handleCloseUploadModal}
+        videoId={uploadModalVideo?.id || ''}
         videoName={uploadModalVideo?.name || ''}
         storageLocation={uploadModalVideo?.storage_location}
+        nextcloudPath={uploadModalVideo?.nextcloud_path}
       />
 
       {/* Toast Notifications */}

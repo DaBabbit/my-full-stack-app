@@ -2,23 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, FolderOpen, ExternalLink, FileUp } from 'lucide-react';
+import { X, FolderOpen, ExternalLink } from 'lucide-react';
+import { NextcloudUploader } from './NextcloudUploader';
 
 interface FileUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
+  videoId: string;
   videoName: string;
   storageLocation?: string;
+  nextcloudPath?: string;
 }
 
 export function FileUploadModal({
   isOpen,
   onClose,
+  videoId,
   videoName,
-  storageLocation
+  storageLocation,
+  nextcloudPath
 }: FileUploadModalProps) {
-  const [isDragging, setIsDragging] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Close on ESC key
   useEffect(() => {
@@ -32,65 +35,14 @@ export function FileUploadModal({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  // Reset loading state when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setIsLoading(true);
-      setIsDragging(false);
-    }
-  }, [isOpen]);
-
-  // Drag & Drop Detection
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleDragEnter = (e: DragEvent) => {
-      e.preventDefault();
-      setIsDragging(true);
-    };
-
-    const handleDragLeave = (e: DragEvent) => {
-      e.preventDefault();
-      // Only set to false if leaving the window entirely
-      if (e.clientX === 0 && e.clientY === 0) {
-        setIsDragging(false);
-      }
-    };
-
-    const handleDragOver = (e: DragEvent) => {
-      e.preventDefault();
-    };
-
-    const handleDrop = (e: DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-    };
-
-    document.addEventListener('dragenter', handleDragEnter);
-    document.addEventListener('dragleave', handleDragLeave);
-    document.addEventListener('dragover', handleDragOver);
-    document.addEventListener('drop', handleDrop);
-
-    return () => {
-      document.removeEventListener('dragenter', handleDragEnter);
-      document.removeEventListener('dragleave', handleDragLeave);
-      document.removeEventListener('dragover', handleDragOver);
-      document.removeEventListener('drop', handleDrop);
-    };
-  }, [isOpen]);
-
   const openInNewWindow = () => {
     if (storageLocation) {
       window.open(storageLocation, '_blank', 'noopener,noreferrer');
     }
   };
 
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-  };
-
-  // Error state: No storage location
-  if (isOpen && !storageLocation) {
+  // Error state: No nextcloud path or storage location
+  if (isOpen && (!nextcloudPath || !storageLocation)) {
     return (
       <AnimatePresence>
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -210,75 +162,20 @@ export function FileUploadModal({
             <div className="flex items-center justify-end gap-2 px-6 py-3 bg-neutral-800/50 border-b border-neutral-700">
               <button
                 onClick={openInNewWindow}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors"
               >
-                <ExternalLink className="w-4 h-4" />
-                <span className="text-sm">In neuem Fenster öffnen</span>
+                <FolderOpen className="w-4 h-4" />
+                <span className="text-sm">Ordner durchsuchen</span>
               </button>
             </div>
 
-            {/* iFrame Container with Drag & Drop Overlay */}
-            <div className="relative" style={{ height: 'calc(95vh - 280px)', minHeight: '500px' }}>
-              {/* Loading Spinner */}
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-neutral-900 z-10">
-                  <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-neutral-400 text-sm">Ordner wird geladen...</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Nextcloud iFrame */}
-              <iframe
-                src={storageLocation}
-                className="w-full h-full bg-neutral-900"
-                onLoad={handleIframeLoad}
-                title={`Nextcloud Ordner für ${videoName}`}
-                sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups"
+            {/* Upload Content */}
+            <div className="px-6 py-6" style={{ maxHeight: 'calc(95vh - 280px)', overflowY: 'auto' }}>
+              <NextcloudUploader
+                videoId={videoId}
+                videoName={videoName}
+                nextcloudPath={nextcloudPath}
               />
-
-              {/* Drag & Drop Overlay */}
-              <AnimatePresence>
-                {isDragging && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-blue-500/10 backdrop-blur-sm border-4 border-dashed border-blue-400 rounded-lg flex items-center justify-center z-20 pointer-events-none"
-                  >
-                    <div className="text-center">
-                      <motion.div
-                        initial={{ scale: 0.8 }}
-                        animate={{ scale: 1 }}
-                        transition={{ repeat: Infinity, duration: 0.8, repeatType: 'reverse' }}
-                        className="w-24 h-24 bg-blue-500/20 rounded-full flex items-center justify-center mb-4 mx-auto"
-                      >
-                        <FileUp className="w-12 h-12 text-blue-400" />
-                      </motion.div>
-                      <p className="text-2xl font-bold text-white mb-2">
-                        Dateien hier ablegen
-                      </p>
-                      <p className="text-blue-300 text-sm">
-                        Alle Dateien werden in deinem Video-Ordner gespeichert
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 bg-neutral-800/50 border-t border-neutral-700">
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-xs text-neutral-500">
-                  💡 <span className="text-neutral-400 font-medium">Tipp:</span> Ziehe Dateien direkt ins Fenster oder nutze den Upload-Button in Nextcloud
-                </p>
-                <div className="flex items-center gap-2 text-xs text-neutral-500">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  Verbunden mit Nextcloud
-                </div>
-              </div>
             </div>
           </motion.div>
         </div>

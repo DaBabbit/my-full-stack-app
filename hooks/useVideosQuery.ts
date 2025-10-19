@@ -10,6 +10,7 @@ export interface Video {
   status: string;
   storage_location?: string;
   file_drop_url?: string; // Nextcloud File Drop URL for uploading files
+  nextcloud_path?: string; // WebDAV path for direct uploads (e.g. /KosmahdmAccountTest/video-folder/)
   created_at: string;
   publication_date?: string;
   responsible_person?: string;
@@ -67,6 +68,7 @@ export function useVideosQuery(userId?: string) {
           responsible_person,
           storage_location,
           file_drop_url,
+          nextcloud_path,
           inspiration_source,
           description,
           created_at,
@@ -138,6 +140,7 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
           responsible_person,
           storage_location,
           file_drop_url,
+          nextcloud_path,
           inspiration_source,
           description,
           created_at,

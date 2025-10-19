@@ -7,7 +7,7 @@ import { uploadFiles, type UploadProgress } from '@/lib/nextcloud-upload';
 interface NextcloudUploaderProps {
   videoId: string;
   videoName: string; // Used for user feedback in alerts
-  nextcloudPath: string;
+  nextcloudPath: string | undefined;
 }
 
 export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderProps) {
@@ -30,6 +30,11 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
 
   const handleUpload = async () => {
     if (files.length === 0) return;
+
+    if (!nextcloudPath) {
+      alert('❌ Fehler: Kein Nextcloud-Pfad vorhanden. Bitte warte bis N8N den Ordner erstellt hat.');
+      return;
+    }
 
     setUploading(true);
     setProgressMap(new Map());

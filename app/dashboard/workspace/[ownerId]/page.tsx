@@ -42,7 +42,6 @@ import {
   Users,
   Edit3,
   CheckSquare,
-  Upload,
   FolderOpen,
   Loader2
 } from 'lucide-react';
@@ -1378,7 +1377,6 @@ export default function SharedWorkspacePage() {
         isOpen={showUploadModal}
         onClose={handleCloseUploadModal}
         videoName={uploadModalVideo?.name || ''}
-        fileDropUrl={uploadModalVideo?.file_drop_url}
         storageLocation={uploadModalVideo?.storage_location}
       />
 

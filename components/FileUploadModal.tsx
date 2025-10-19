@@ -8,7 +8,6 @@ interface FileUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   videoName: string;
-  fileDropUrl?: string;
   storageLocation?: string;
 }
 
@@ -16,7 +15,6 @@ export function FileUploadModal({
   isOpen,
   onClose,
   videoName,
-  fileDropUrl,
   storageLocation
 }: FileUploadModalProps) {
   const [isDragging, setIsDragging] = useState(false);

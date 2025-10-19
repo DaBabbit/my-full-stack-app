@@ -196,7 +196,7 @@ async function uploadChunked(
         uploadedBytes += chunk.size;
         updateProgress(uploadedBytes, 'uploading');
         break; // Success - next chunk
-      } catch (error) {
+      } catch {
         retries++;
         
         if (retries > maxRetries) {
@@ -274,7 +274,7 @@ export async function uploadFiles(
       uploadFile(file, {
         ...options,
         onProgress: createProgressHandler(file.name)
-      }).catch(_error => {
+      }).catch(() => {
         // Errors are already tracked in progressMap via onProgress callback
         // Individual file errors don't stop other uploads
       })

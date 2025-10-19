@@ -42,6 +42,7 @@ import {
   Users,
   Edit3,
   CheckSquare,
+  Upload,
   FolderOpen,
   Loader2
 } from 'lucide-react';
@@ -1028,7 +1029,7 @@ export default function SharedWorkspacePage() {
                           <th className="text-left py-3 px-4 font-medium text-neutral-300">Status</th>
                           <th className="text-left py-3 px-4 font-medium text-neutral-300">Veröffentlichung</th>
                           <th className="text-left py-3 px-4 font-medium text-neutral-300">Verantwortlich</th>
-                          <th className="text-left py-3 px-4 font-medium text-neutral-300">Video-Ordner</th>
+                          <th className="text-left py-3 px-4 font-medium text-neutral-300">Dateien hochladen</th>
                           <th className="text-left py-3 px-4 font-medium text-neutral-300">Speicherort</th>
                           <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktualisiert</th>
                           <th className="text-left py-3 px-4 font-medium text-neutral-300">Beschreibung</th>
@@ -1126,15 +1127,15 @@ export default function SharedWorkspacePage() {
                       <button
                         onClick={() => handleOpenUploadModal(video)}
                         className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
-                        title="Video-Ordner öffnen"
+                        title="Dateien hochladen"
                       >
-                        <FolderOpen className="h-5 w-5" />
+                        <Upload className="h-5 w-5" />
                       </button>
                     ) : (
                       <button
                         disabled
-                        className="p-3 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
-                        title="Video-Ordner wird erstellt..."
+                        className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
+                        title="Ordner wird erstellt..."
                       >
                         <Loader2 className="h-5 w-5 animate-spin" />
                       </button>
@@ -1268,21 +1269,21 @@ export default function SharedWorkspacePage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-xs font-medium text-neutral-400 mb-1">Video-Ordner</label>
+                              <label className="block text-xs font-medium text-neutral-400 mb-1">Dateien hochladen</label>
                               {permissions.can_edit && (
                                 video.storage_location ? (
                                   <button
                                     onClick={() => handleOpenUploadModal(video)}
                                     className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20"
-                                    title="Video-Ordner öffnen"
+                                    title="Dateien hochladen"
                                   >
-                                    <FolderOpen className="h-5 w-5" />
+                                    <Upload className="h-5 w-5" />
                                   </button>
                                 ) : (
                                   <button
                                     disabled
-                                    className="p-3 bg-neutral-800/50 text-neutral-600 rounded-lg cursor-not-allowed opacity-50"
-                                    title="Video-Ordner wird erstellt..."
+                                    className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
+                                    title="Ordner wird erstellt..."
                                   >
                                     <Loader2 className="h-5 w-5 animate-spin" />
                                   </button>

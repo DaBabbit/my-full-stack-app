@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '@/utils/supabase';
 
 /**
  * API Route: Nextcloud WebDAV Credentials
@@ -20,6 +19,26 @@ export async function POST(request: Request) {
       );
     }
 
+    // Environment Variables prüfen
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[Nextcloud API] Supabase Environment Variables fehlen');
+      return NextResponse.json(
+        { error: 'Server-Konfiguration unvollständig' },
+        { status: 500 }
+      );
+    }
+
+    // Erstelle Service-Role-Client (umgeht RLS, funktioniert in Edge Functions)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
     // User authentifizieren - Token aus Request Header lesen
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -31,25 +50,10 @@ export async function POST(request: Request) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    
-    // Erstelle einen Supabase-Client mit Anon-Key für User-Authentifizierung
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('[Nextcloud API] Supabase Environment Variables fehlen');
-      return NextResponse.json(
-        { error: 'Server-Konfiguration unvollständig' },
-        { status: 500 }
-      );
-    }
-    
-    const authClient = createClient(supabaseUrl, supabaseAnonKey);
-    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
       console.error('[Nextcloud API] Auth-Fehler:', authError);
-      console.error('[Nextcloud API] User:', user);
       return NextResponse.json(
         { error: 'Nicht authentifiziert', details: authError?.message },
         { status: 401 }
@@ -60,7 +64,7 @@ export async function POST(request: Request) {
     console.log('[Nextcloud API] 🔍 Suche Video mit ID:', videoId);
 
     // Verifiziere dass User Zugriff auf das Video hat
-    const { data: video, error: videoError } = await supabase
+    const { data: video, error: videoError } = await supabaseAdmin
       .from('videos')
       .select('id, user_id, workspace_owner_id')
       .eq('id', videoId)
@@ -84,7 +88,7 @@ export async function POST(request: Request) {
 
     if (!isOwner && !isWorkspaceMember) {
       // Check ob User Collaborator ist
-      const { data: membership } = await supabase
+      const { data: membership } = await supabaseAdmin
         .from('workspace_members')
         .select('permissions')
         .eq('workspace_owner_id', video.workspace_owner_id || video.user_id)
@@ -94,6 +98,7 @@ export async function POST(request: Request) {
       const canEdit = membership?.permissions?.can_edit || false;
 
       if (!canEdit) {
+        console.log('[Nextcloud API] ❌ Keine Berechtigung für User:', user.id);
         return NextResponse.json(
           { error: 'Keine Berechtigung für dieses Video' },
           { status: 403 }

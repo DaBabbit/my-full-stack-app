@@ -775,11 +775,32 @@ export default function VideosPage() {
     }
   };
 
-  // Filter videos based on search term and status filter
+  // Get active view filters
+  const activeView = workspaceViews.find(v => v.id === activeViewId);
+  const viewFilters = activeView?.filters || {};
+
+  // Filter videos based on search term, status filter, and view filters
   const filteredVideos = videos.filter(video => {
-    // Status filter
+    // Status filter (from filter button)
     if (statusFilter && video.status !== statusFilter) {
       return false;
+    }
+    
+    // View filters (from active view)
+    if (activeViewId && Object.keys(viewFilters).length > 0) {
+      for (const [key, value] of Object.entries(viewFilters)) {
+        if (value === null || value === undefined || value === '') continue;
+        
+        // Status filter from view
+        if (key === 'status' && video.status !== value) {
+          return false;
+        }
+        // Responsible person filter from view
+        if (key === 'responsible_person' && video.responsible_person !== value) {
+          return false;
+        }
+        // Add more filter types as needed
+      }
     }
     
     // Search filter

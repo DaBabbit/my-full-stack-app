@@ -29,7 +29,7 @@ import { TableColumnsSettings, type ColumnConfig } from '@/components/TableColum
 import { ViewTabs } from '@/components/ViewTabs';
 import { ViewCreateModal } from '@/components/ViewCreateModal';
 import { useTableSettings } from '@/hooks/useTableSettings';
-import { useWorkspaceViews } from '@/hooks/useWorkspaceViews';
+import { useWorkspaceViews, type WorkspaceView } from '@/hooks/useWorkspaceViews';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -195,14 +195,14 @@ export default function VideosPage() {
   // Table Settings & Views States
   const [showColumnsModal, setShowColumnsModal] = useState(false);
   const [showViewCreateModal, setShowViewCreateModal] = useState(false);
-  const [editingView, setEditingView] = useState<any | null>(null);
+  const [editingView, setEditingView] = useState<WorkspaceView | null>(null);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
   // Table Settings Hook (lädt Settings des Users)
   const {
     settings: tableSettings,
     updateColumnOrder,
-    updateColumnWidth,
+    // updateColumnWidth, // TODO: Für Resize-Feature
     toggleColumnVisibility,
     resetSettings
   } = useTableSettings({
@@ -227,6 +227,8 @@ export default function VideosPage() {
 
   const hiddenColumns = tableSettings?.hidden_columns || [];
 
+  // Visible columns (für zukünftiges Drag & Drop im Table Header)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const visibleColumns = columnOrder
     .map(id => DEFAULT_COLUMNS.find(col => col.id === id))
     .filter((col): col is ColumnConfig => col !== undefined && !hiddenColumns.includes(col.id));
@@ -662,7 +664,7 @@ export default function VideosPage() {
     setShowViewCreateModal(true);
   };
 
-  const handleEditView = (view: any) => {
+  const handleEditView = (view: WorkspaceView) => {
     setEditingView(view);
     setShowViewCreateModal(true);
   };

@@ -24,6 +24,7 @@ import ResponsiblePersonDropdownSimple from '@/components/ResponsiblePersonDropd
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import BulkEditBar from '@/components/BulkEditBar';
 import { FileUploadModal } from '@/components/FileUploadModal';
+import { Tooltip } from '@/components/Tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -1146,13 +1147,18 @@ export default function VideosPage() {
                       <Upload className="h-5 w-5" />
                     </button>
                   ) : (
-                    <button
-                      disabled
-                      className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
-                      title="Ordner wird erstellt..."
+                    <Tooltip 
+                      content="Der Speicherort wird noch erstellt und wird in Kürze (max. 5 Minuten) verfügbar sein. Bitte um Geduld. Sollte die Funktion nicht verfügbar sein, bitte Kontakt aufnehmen."
+                      position="top"
+                      maxWidth="300px"
                     >
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    </button>
+                      <button
+                        disabled
+                        className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
+                      >
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      </button>
+                    </Tooltip>
                   )}
                 </td>
 
@@ -1355,13 +1361,18 @@ export default function VideosPage() {
                               <Upload className="h-5 w-5" />
                             </button>
                           ) : (
-                            <button
-                              disabled
-                              className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
-                              title="Ordner wird erstellt..."
+                            <Tooltip 
+                              content="Der Speicherort wird noch erstellt und wird in Kürze (max. 5 Minuten) verfügbar sein. Bitte um Geduld. Sollte die Funktion nicht verfügbar sein, bitte Kontakt aufnehmen."
+                              position="top"
+                              maxWidth="300px"
                             >
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                            </button>
+                              <button
+                                disabled
+                                className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
+                              >
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                              </button>
+                            </Tooltip>
                           )}
                         </div>
                         <div>
@@ -1742,6 +1753,14 @@ export default function VideosPage() {
         videoName={uploadModalVideo?.name || ''}
         storageLocation={uploadModalVideo?.storage_location}
         nextcloudPath={uploadModalVideo?.nextcloud_path}
+        onUploadSuccess={(fileNames) => {
+          addToast({
+            type: 'success',
+            title: `${fileNames.length} Datei(en) erfolgreich hochgeladen`,
+            message: fileNames.join(', '),
+            duration: 5000
+          });
+        }}
       />
 
       {/* Toast Notifications */}

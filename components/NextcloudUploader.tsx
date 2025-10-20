@@ -1,28 +1,40 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Upload, CheckCircle, XCircle, Loader2, FileUp, Trash2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Upload, CheckCircle, XCircle, Loader2, FileUp, Trash2, AlertTriangle } from 'lucide-react';
 import { uploadFiles, type UploadProgress } from '@/lib/nextcloud-upload';
 import { supabase } from '@/utils/supabase';
 
 interface NextcloudUploaderProps {
   videoId: string;
-  videoName: string; // Used for user feedback in alerts
+  videoName: string;
   nextcloudPath: string | undefined;
+  onUploadSuccess?: (fileNames: string[]) => void; // Callback für Toast Notification
 }
 
-export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderProps) {
+export function NextcloudUploader({ videoId, nextcloudPath, videoName, onUploadSuccess }: NextcloudUploaderProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progressMap, setProgressMap] = useState<Map<string, UploadProgress>>(new Map());
   const [isDragging, setIsDragging] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [pendingUpload, setPendingUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-Upload Trigger
+  useEffect(() => {
+    if (pendingUpload && files.length > 0 && !uploading) {
+      setPendingUpload(false);
+      handleUpload();
+    }
+  }, [pendingUpload, files.length, uploading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleFileSelect = (selectedFiles: FileList | null) => {
-    if (!selectedFiles) return;
+    if (!selectedFiles || uploading) return;
     
     const newFiles = Array.from(selectedFiles);
     setFiles(prev => [...prev, ...newFiles]);
+    setPendingUpload(true); // Trigger Auto-Upload
   };
 
   const removeFile = (index: number) => {
@@ -39,6 +51,7 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
 
     setUploading(true);
     setProgressMap(new Map());
+    setStartTime(Date.now());
 
     try {
       // 1. Session Token holen
@@ -87,15 +100,15 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
         }
       );
 
-      // Success! Zeige erfolgreich hochgeladene Dateien
-      const successCount = files.length;
-      const fileNames = files.map(f => f.name).join(', ');
-      
-      // TODO: Hier später Toast Notification implementieren
-      alert(`✅ ${successCount} Datei(en) erfolgreich hochgeladen:\n${fileNames}`);
+      // Success! Callback für Toast Notification
+      const fileNames = files.map(f => f.name);
+      if (onUploadSuccess) {
+        onUploadSuccess(fileNames);
+      }
       
       setFiles([]);
       setProgressMap(new Map());
+      setStartTime(null);
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -104,6 +117,39 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
     } finally {
       setUploading(false);
     }
+  };
+
+  // Berechne Gesamtfortschritt
+  const calculateTotalProgress = () => {
+    if (files.length === 0) return 0;
+    
+    let totalLoaded = 0;
+    let totalSize = 0;
+    
+    files.forEach(file => {
+      const progress = progressMap.get(file.name);
+      totalSize += file.size;
+      totalLoaded += progress?.loaded || 0;
+    });
+    
+    return totalSize > 0 ? (totalLoaded / totalSize) * 100 : 0;
+  };
+
+  // Berechne geschätzte Restzeit
+  const calculateEstimatedTime = () => {
+    if (!startTime || !uploading) return null;
+    
+    const elapsed = (Date.now() - startTime) / 1000; // Sekunden
+    const progress = calculateTotalProgress();
+    
+    if (progress <= 0) return null;
+    
+    const totalTime = (elapsed / progress) * 100;
+    const remaining = totalTime - elapsed;
+    
+    if (remaining < 60) return `noch ~${Math.ceil(remaining)} Sekunden`;
+    if (remaining < 3600) return `noch ~${Math.ceil(remaining / 60)} Minuten`;
+    return `noch ~${Math.ceil(remaining / 3600)} Stunden`;
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -126,31 +172,37 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
     }
   };
 
+  const totalProgress = calculateTotalProgress();
+  const estimatedTime = calculateEstimatedTime();
+
   return (
     <div className="space-y-4">
       {/* Drag & Drop Zone */}
       <div
         className={`
-          border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
-          ${isDragging 
-            ? 'border-blue-500 bg-blue-500/10' 
-            : 'border-neutral-600 hover:border-blue-500/50 bg-neutral-900/50'
+          border-2 border-dashed rounded-xl p-8 text-center transition-all 
+          ${uploading 
+            ? 'border-neutral-700 bg-neutral-900/30 cursor-not-allowed opacity-50' 
+            : isDragging 
+              ? 'border-blue-500 bg-blue-500/10 cursor-pointer' 
+              : 'border-neutral-600 hover:border-blue-500/50 bg-neutral-900/50 cursor-pointer'
           }
         `}
         onDrop={(e) => {
           e.preventDefault();
+          if (uploading) return;
           setIsDragging(false);
           handleFileSelect(e.dataTransfer.files);
         }}
         onDragOver={(e) => {
           e.preventDefault();
-          setIsDragging(true);
+          if (!uploading) setIsDragging(true);
         }}
         onDragLeave={(e) => {
           e.preventDefault();
           setIsDragging(false);
         }}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => !uploading && fileInputRef.current?.click()}
       >
         <div className="flex flex-col items-center">
           {isDragging ? (
@@ -270,25 +322,42 @@ export function NextcloudUploader({ videoId, nextcloudPath }: NextcloudUploaderP
         </div>
       )}
 
-      {/* Upload Button */}
-      {files.length > 0 && (
-        <button
-          onClick={handleUpload}
-          disabled={uploading}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-        >
-          {uploading ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Uploading {files.length} Datei(en)...</span>
-            </>
-          ) : (
-            <>
-              <Upload className="w-5 h-5" />
-              <span>{files.length} Datei(en) hochladen</span>
-            </>
-          )}
-        </button>
+      {/* Upload Status - Gesamtfortschritt */}
+      {uploading && (
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+              <span className="text-white font-medium">
+                Uploading {files.length} Datei(en)...
+              </span>
+            </div>
+            {estimatedTime && (
+              <span className="text-sm text-neutral-400">
+                {estimatedTime}
+              </span>
+            )}
+          </div>
+
+          {/* Gesamtfortschritt Bar */}
+          <div className="space-y-1">
+            <div className="w-full bg-neutral-700 rounded-full h-3">
+              <div
+                className="bg-blue-500 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${totalProgress}%` }}
+              />
+            </div>
+            <div className="text-right text-xs text-neutral-400">
+              {totalProgress.toFixed(1)}%
+            </div>
+          </div>
+
+          {/* Warnung */}
+          <div className="flex items-start gap-2 text-yellow-400/80 text-xs">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>Bitte Fenster nicht schließen während des Uploads</span>
+          </div>
+        </div>
       )}
 
       {/* Info Box */}

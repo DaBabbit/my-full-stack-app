@@ -17,3 +17,4 @@ COMMENT ON COLUMN public.users.firstname IS 'User first name collected during on
 COMMENT ON COLUMN public.users.lastname IS 'User last name collected during onboarding';
 COMMENT ON COLUMN public.users.onboarding_completed_at IS 'Timestamp when user completed the onboarding process';
 
+

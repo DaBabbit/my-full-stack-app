@@ -8,7 +8,7 @@ export interface WorkspaceView {
   workspace_owner_id: string;
   name: string;
   is_default: boolean;
-  filters: Record<string, any>;
+  filters: Record<string, string | number | boolean | null>;
   sort_config?: {
     field: string;
     direction: 'asc' | 'desc';
@@ -25,7 +25,7 @@ export interface WorkspaceView {
 
 interface CreateViewInput {
   name: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, string | number | boolean | null>;
   sort_config?: {
     field: string;
     direction: 'asc' | 'desc';

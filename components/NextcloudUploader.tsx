@@ -12,7 +12,7 @@ interface NextcloudUploaderProps {
   onUploadSuccess?: (fileNames: string[]) => void; // Callback für Toast Notification
 }
 
-export function NextcloudUploader({ videoId, nextcloudPath, videoName, onUploadSuccess }: NextcloudUploaderProps) {
+export function NextcloudUploader({ videoId, nextcloudPath, onUploadSuccess }: NextcloudUploaderProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progressMap, setProgressMap] = useState<Map<string, UploadProgress>>(new Map());

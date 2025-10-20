@@ -10,11 +10,11 @@ interface ViewCreateModalProps {
   onClose: () => void;
   onSave: (viewData: {
     name: string;
-    filters: Record<string, any>;
+    filters: Record<string, string | number | boolean | null>;
     sort_config?: { field: string; direction: 'asc' | 'desc' };
   }) => Promise<void>;
   editView?: WorkspaceView | null;
-  currentFilters?: Record<string, any>;
+  currentFilters?: Record<string, string | number | boolean | null>;
   currentSort?: { field: string; direction: 'asc' | 'desc' };
 }
 

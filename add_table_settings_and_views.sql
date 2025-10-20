@@ -84,10 +84,10 @@ USING (
   workspace_owner_id = auth.uid() 
   OR 
   EXISTS (
-    SELECT 1 FROM workspace_collaborations
-    WHERE workspace_collaborations.workspace_owner_id = workspace_views.workspace_owner_id
-    AND workspace_collaborations.collaborator_id = auth.uid()
-    AND workspace_collaborations.status = 'accepted'
+    SELECT 1 FROM workspace_members
+    WHERE workspace_members.workspace_owner_id = workspace_views.workspace_owner_id
+    AND workspace_members.user_id = auth.uid()
+    AND workspace_members.status = 'active'
   )
 );
 
@@ -99,10 +99,10 @@ WITH CHECK (
   workspace_owner_id = auth.uid()
   OR
   EXISTS (
-    SELECT 1 FROM workspace_collaborations
-    WHERE workspace_collaborations.workspace_owner_id = workspace_views.workspace_owner_id
-    AND workspace_collaborations.collaborator_id = auth.uid()
-    AND workspace_collaborations.status = 'accepted'
+    SELECT 1 FROM workspace_members
+    WHERE workspace_members.workspace_owner_id = workspace_views.workspace_owner_id
+    AND workspace_members.user_id = auth.uid()
+    AND workspace_members.status = 'active'
   )
 );
 

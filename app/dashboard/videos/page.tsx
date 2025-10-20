@@ -25,6 +25,11 @@ import { ToastContainer, ToastProps } from '@/components/Toast';
 import BulkEditBar from '@/components/BulkEditBar';
 import { FileUploadModal } from '@/components/FileUploadModal';
 import { Tooltip } from '@/components/Tooltip';
+import { TableColumnsSettings, type ColumnConfig } from '@/components/TableColumnsSettings';
+import { ViewTabs } from '@/components/ViewTabs';
+import { ViewCreateModal } from '@/components/ViewCreateModal';
+import { useTableSettings } from '@/hooks/useTableSettings';
+import { useWorkspaceViews } from '@/hooks/useWorkspaceViews';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -67,6 +72,20 @@ const sidebarBottomItems = [
   }
 ];
 
+// Default-Spalten-Konfiguration
+const DEFAULT_COLUMNS: ColumnConfig[] = [
+  { id: 'checkbox', label: '', fixed: true, resizable: false },
+  { id: 'title', label: 'Name', resizable: true },
+  { id: 'status', label: 'Status', resizable: true },
+  { id: 'publication_date', label: 'Veröffentlichung', resizable: true },
+  { id: 'responsible_person', label: 'Verantwortlich', resizable: true },
+  { id: 'upload', label: 'Datei hochladen', resizable: true },
+  { id: 'storage_location', label: 'Speicherort', resizable: true },
+  { id: 'inspiration_source', label: 'Inspiration', resizable: true },
+  { id: 'description', label: 'Beschreibung', resizable: true },
+  { id: 'updated_at', label: 'Aktualisiert', resizable: true },
+  { id: 'actions', label: 'Aktionen', fixed: true, resizable: false }
+];
 
 export default function VideosPage() {
   const { user, signOut } = useAuth();
@@ -172,6 +191,45 @@ export default function VideosPage() {
   // File Upload Modal States
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalVideo, setUploadModalVideo] = useState<Video | null>(null);
+
+  // Table Settings & Views States
+  const [showColumnsModal, setShowColumnsModal] = useState(false);
+  const [showViewCreateModal, setShowViewCreateModal] = useState(false);
+  const [editingView, setEditingView] = useState<any | null>(null);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+
+  // Table Settings Hook (lädt Settings des Users)
+  const {
+    settings: tableSettings,
+    updateColumnOrder,
+    updateColumnWidth,
+    toggleColumnVisibility,
+    resetSettings
+  } = useTableSettings({
+    userId: user?.id,
+    workspaceOwnerId: user?.id,
+    context: 'own_videos'
+  });
+
+  // Workspace Views Hook
+  const {
+    views: workspaceViews,
+    createView,
+    updateView,
+    deleteView,
+    setDefaultView
+  } = useWorkspaceViews(user?.id);
+
+  // Spalten-Konfiguration basierend auf Settings
+  const columnOrder = tableSettings?.column_order && tableSettings.column_order.length > 0
+    ? tableSettings.column_order
+    : DEFAULT_COLUMNS.map(col => col.id);
+
+  const hiddenColumns = tableSettings?.hidden_columns || [];
+
+  const visibleColumns = columnOrder
+    .map(id => DEFAULT_COLUMNS.find(col => col.id === id))
+    .filter((col): col is ColumnConfig => col !== undefined && !hiddenColumns.includes(col.id));
 
   // Toast helpers
   const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
@@ -593,6 +651,128 @@ export default function VideosPage() {
     setUploadModalVideo(null);
   };
 
+  // View Handlers
+  const handleViewChange = (viewId: string | null) => {
+    setActiveViewId(viewId);
+    // TODO: Filter anwenden basierend auf View
+  };
+
+  const handleCreateView = () => {
+    setEditingView(null);
+    setShowViewCreateModal(true);
+  };
+
+  const handleEditView = (view: any) => {
+    setEditingView(view);
+    setShowViewCreateModal(true);
+  };
+
+  const handleSaveView = async (viewData: {
+    name: string;
+    filters: Record<string, string | number | boolean | null>;
+    sort_config?: { field: string; direction: 'asc' | 'desc' };
+  }) => {
+    try {
+      if (editingView) {
+        await updateView({ id: editingView.id, updates: viewData });
+        addToast({
+          type: 'success',
+          title: 'Ansicht aktualisiert',
+          message: `"${viewData.name}" wurde erfolgreich aktualisiert.`
+        });
+      } else {
+        await createView(viewData);
+        addToast({
+          type: 'success',
+          title: 'Ansicht erstellt',
+          message: `"${viewData.name}" wurde erfolgreich erstellt.`
+        });
+      }
+    } catch (error) {
+      console.error('Error saving view:', error);
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Ansicht konnte nicht gespeichert werden.'
+      });
+      throw error;
+    }
+  };
+
+  const handleDeleteView = async (viewId: string) => {
+    try {
+      await deleteView(viewId);
+      if (activeViewId === viewId) {
+        setActiveViewId(null);
+      }
+      addToast({
+        type: 'success',
+        title: 'Ansicht gelöscht',
+        message: 'Die Ansicht wurde erfolgreich gelöscht.'
+      });
+    } catch (error) {
+      console.error('Error deleting view:', error);
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Ansicht konnte nicht gelöscht werden.'
+      });
+    }
+  };
+
+  const handleSetDefaultView = async (viewId: string | null) => {
+    try {
+      await setDefaultView(viewId);
+      addToast({
+        type: 'success',
+        title: 'Standard-Ansicht gesetzt',
+        message: viewId ? 'Die Ansicht wurde als Standard festgelegt.' : 'Standard-Ansicht wurde entfernt.'
+      });
+    } catch (error) {
+      console.error('Error setting default view:', error);
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Standard-Ansicht konnte nicht gesetzt werden.'
+      });
+    }
+  };
+
+  // Column Settings Handlers
+  const handleColumnOrderChange = async (newOrder: string[]) => {
+    try {
+      await updateColumnOrder(newOrder);
+    } catch (error) {
+      console.error('Error updating column order:', error);
+    }
+  };
+
+  const handleToggleColumnVisibility = async (columnId: string) => {
+    try {
+      await toggleColumnVisibility(columnId);
+    } catch (error) {
+      console.error('Error toggling column visibility:', error);
+    }
+  };
+
+  const handleResetColumns = async () => {
+    try {
+      await resetSettings();
+      addToast({
+        type: 'success',
+        title: 'Spalten zurückgesetzt',
+        message: 'Die Spalten-Einstellungen wurden auf Standard zurückgesetzt.'
+      });
+    } catch (error) {
+      console.error('Error resetting columns:', error);
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Spalten konnten nicht zurückgesetzt werden.'
+      });
+    }
+  };
+
   // Filter videos based on search term and status filter
   const filteredVideos = videos.filter(video => {
     // Status filter
@@ -896,6 +1076,15 @@ export default function VideosPage() {
               <p className="text-neutral-400">Verwalte deine Video-Projekte und deren Status</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              {/* Spalten-Einstellungen Button */}
+              <button
+                onClick={() => setShowColumnsModal(true)}
+                className="px-4 md:px-6 py-3 rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 sm:flex-shrink-0 bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 hover:border-neutral-600"
+              >
+                <Settings className="h-5 w-5" />
+                <span className="hidden sm:inline">Spalten</span>
+              </button>
+
               {/* Mehrfachbearbeitung Button */}
               <button
                 onClick={handleToggleBulkMode}
@@ -992,6 +1181,18 @@ export default function VideosPage() {
                 </div>
               )}
             </div>
+
+            {/* View Tabs */}
+            <ViewTabs
+              activeViewId={activeViewId}
+              views={workspaceViews}
+              onViewChange={handleViewChange}
+              onCreateView={handleCreateView}
+              onEditView={handleEditView}
+              onDeleteView={handleDeleteView}
+              onSetDefault={handleSetDefaultView}
+              canManageViews={permissions.canCreateVideos}
+            />
 
             {filteredVideos.length === 0 ? (
             <div className="text-center py-12">
@@ -1761,6 +1962,30 @@ export default function VideosPage() {
             duration: 5000
           });
         }}
+      />
+
+      {/* Table Columns Settings Modal */}
+      <TableColumnsSettings
+        isOpen={showColumnsModal}
+        onClose={() => setShowColumnsModal(false)}
+        columns={DEFAULT_COLUMNS}
+        columnOrder={columnOrder}
+        hiddenColumns={hiddenColumns}
+        onColumnOrderChange={handleColumnOrderChange}
+        onToggleColumnVisibility={handleToggleColumnVisibility}
+        onReset={handleResetColumns}
+      />
+
+      {/* View Create/Edit Modal */}
+      <ViewCreateModal
+        isOpen={showViewCreateModal}
+        onClose={() => {
+          setShowViewCreateModal(false);
+          setEditingView(null);
+        }}
+        onSave={handleSaveView}
+        editView={editingView}
+        currentFilters={{ status: statusFilter, search: searchTerm }}
       />
 
       {/* Toast Notifications */}

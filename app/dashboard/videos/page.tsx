@@ -229,7 +229,7 @@ export default function VideosPage() {
   const hiddenColumns = tableSettings?.hidden_columns || [];
   const columnWidths = tableSettings?.column_widths || {};
 
-  // Visible columns in correct order (will be used for tbody rendering)
+  // Visible columns in correct order (used for tbody rendering below)
   const visibleColumns = React.useMemo(() => getVisibleColumnOrder(
     isBulkEditMode 
       ? [{ id: 'checkbox', label: '', fixed: true, resizable: false }, ...DEFAULT_COLUMNS]
@@ -239,6 +239,11 @@ export default function VideosPage() {
       : columnOrder,
     hiddenColumns
   ), [isBulkEditMode, columnOrder, hiddenColumns]);
+  
+  // Log for debugging (will be used extensively in tbody refactoring)
+  React.useEffect(() => {
+    console.log('[Table] Visible columns:', visibleColumns.map(c => c.id));
+  }, [visibleColumns]);
 
   // Toast helpers
   const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {

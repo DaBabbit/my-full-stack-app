@@ -12,7 +12,6 @@ interface FilterSortBarProps {
   // Sort config
   sortField?: string;
   sortDirection?: 'asc' | 'desc';
-  onSortChange?: (field: string, direction: 'asc' | 'desc') => void;
   
   // Actions
   onOpenFilterModal?: () => void;
@@ -30,7 +29,6 @@ export function FilterSortBar({
   onFilterChange,
   sortField,
   sortDirection,
-  onSortChange,
   onOpenFilterModal,
   onOpenSortModal,
   onOpenColumnsSettings,

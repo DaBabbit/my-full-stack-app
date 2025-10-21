@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useParams } from 'next/navigation';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
@@ -23,7 +23,7 @@ import { Tooltip } from '@/components/Tooltip';
 import { TableColumnsSettings, type ColumnConfig } from '@/components/TableColumnsSettings';
 import { ViewTabs } from '@/components/ViewTabs';
 import { ViewCreateModal } from '@/components/ViewCreateModal';
-import { DraggableTableHeader } from '@/components/DraggableTableHeader';
+import { DraggableTableHeader, getVisibleColumnOrder } from '@/components/DraggableTableHeader';
 import { useTableSettings } from '@/hooks/useTableSettings';
 import { useWorkspaceViews, type WorkspaceView } from '@/hooks/useWorkspaceViews';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -224,11 +224,16 @@ export default function SharedWorkspacePage() {
   const hiddenColumns = tableSettings?.hidden_columns || [];
   const columnWidths = tableSettings?.column_widths || {};
 
-  // Visible columns (used by DraggableTableHeader internally)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const visibleColumns = columnOrder
-    .map(id => DEFAULT_COLUMNS.find(col => col.id === id))
-    .filter((col): col is ColumnConfig => col !== undefined && !hiddenColumns.includes(col.id));
+  // Visible columns in correct order (will be used for tbody rendering)
+  const visibleColumns = React.useMemo(() => getVisibleColumnOrder(
+    isBulkEditMode 
+      ? [{ id: 'checkbox', label: '', fixed: true, resizable: false }, ...DEFAULT_COLUMNS]
+      : DEFAULT_COLUMNS,
+    isBulkEditMode 
+      ? ['checkbox', ...columnOrder]
+      : columnOrder,
+    hiddenColumns
+  ), [isBulkEditMode, columnOrder, hiddenColumns]);
 
   // Toast helpers
   const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {

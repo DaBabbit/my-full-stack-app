@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -229,8 +229,8 @@ export default function VideosPage() {
   const hiddenColumns = tableSettings?.hidden_columns || [];
   const columnWidths = tableSettings?.column_widths || {};
 
-  // Visible columns in correct order (used for rendering tbody cells)
-  const visibleColumns = getVisibleColumnOrder(
+  // Visible columns in correct order (will be used for tbody rendering)
+  const visibleColumns = React.useMemo(() => getVisibleColumnOrder(
     isBulkEditMode 
       ? [{ id: 'checkbox', label: '', fixed: true, resizable: false }, ...DEFAULT_COLUMNS]
       : DEFAULT_COLUMNS,
@@ -238,7 +238,7 @@ export default function VideosPage() {
       ? ['checkbox', ...columnOrder]
       : columnOrder,
     hiddenColumns
-  );
+  ), [isBulkEditMode, columnOrder, hiddenColumns]);
 
   // Toast helpers
   const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {

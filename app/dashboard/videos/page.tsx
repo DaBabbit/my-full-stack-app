@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -28,6 +28,7 @@ import { Tooltip } from '@/components/Tooltip';
 import { TableColumnsSettings, type ColumnConfig } from '@/components/TableColumnsSettings';
 import { ViewTabs } from '@/components/ViewTabs';
 import { ViewCreateModal } from '@/components/ViewCreateModal';
+import { DraggableTableHeader } from '@/components/DraggableTableHeader';
 import { useTableSettings } from '@/hooks/useTableSettings';
 import { useWorkspaceViews, type WorkspaceView } from '@/hooks/useWorkspaceViews';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -202,7 +203,7 @@ export default function VideosPage() {
   const {
     settings: tableSettings,
     updateColumnOrder,
-    // updateColumnWidth, // TODO: Für Resize-Feature
+    updateColumnWidth,
     toggleColumnVisibility,
     resetSettings
   } = useTableSettings({
@@ -226,9 +227,9 @@ export default function VideosPage() {
     : DEFAULT_COLUMNS.map(col => col.id);
 
   const hiddenColumns = tableSettings?.hidden_columns || [];
+  const columnWidths = tableSettings?.column_widths || {};
 
-  // Visible columns (für zukünftiges Drag & Drop im Table Header)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Visible columns
   const visibleColumns = columnOrder
     .map(id => DEFAULT_COLUMNS.find(col => col.id === id))
     .filter((col): col is ColumnConfig => col !== undefined && !hiddenColumns.includes(col.id));
@@ -775,6 +776,24 @@ export default function VideosPage() {
     }
   };
 
+  // Debounced Column Resize Handler
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const handleColumnResize = (columnId: string, width: number) => {
+    // Clear previous timeout
+    if (resizeTimeoutRef.current) {
+      clearTimeout(resizeTimeoutRef.current);
+    }
+
+    // Debounce: Save after 500ms of no changes
+    resizeTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateColumnWidth(columnId, width);
+      } catch (error) {
+        console.error('Error updating column width:', error);
+      }
+    }, 500);
+  };
+
   // Get active view filters
   const activeView = workspaceViews.find(v => v.id === activeViewId);
   const viewFilters = activeView?.filters || {};
@@ -1243,28 +1262,38 @@ export default function VideosPage() {
               <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-neutral-700">
-                      {isBulkEditMode && (
-                        <th className="text-left py-3 px-4 font-medium text-neutral-300 w-12">
-                          <input
-                            type="checkbox"
-                            checked={selectedVideoIds.size === filteredVideos.length && filteredVideos.length > 0}
-                            onChange={(e) => e.target.checked ? handleSelectAll() : handleDeselectAll()}
-                            className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
-                          />
-                        </th>
+                    <DraggableTableHeader
+                      columns={isBulkEditMode 
+                        ? [{ id: 'checkbox', label: '', fixed: true, resizable: false }, ...DEFAULT_COLUMNS]
+                        : DEFAULT_COLUMNS
+                      }
+                      columnOrder={isBulkEditMode 
+                        ? ['checkbox', ...columnOrder]
+                        : columnOrder
+                      }
+                      hiddenColumns={hiddenColumns}
+                      onColumnOrderChange={(newOrder) => {
+                        // Remove checkbox from order if present
+                        const orderWithoutCheckbox = newOrder.filter(id => id !== 'checkbox');
+                        handleColumnOrderChange(orderWithoutCheckbox);
+                      }}
+                      onColumnResize={handleColumnResize}
+                      columnWidths={columnWidths}
+                    >
+                      {(column) => (
+                        <>
+                          {column.id === 'checkbox' && isBulkEditMode && (
+                            <input
+                              type="checkbox"
+                              checked={selectedVideoIds.size === filteredVideos.length && filteredVideos.length > 0}
+                              onChange={(e) => e.target.checked ? handleSelectAll() : handleDeselectAll()}
+                              className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                            />
+                          )}
+                          {column.id !== 'checkbox' && column.label}
+                        </>
                       )}
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Videotitel</th>
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Veröffentlichung</th>
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Verantwortlich</th>
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Dateien hochladen</th>
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Speicherort</th>
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktualisiert</th>
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Inspiration</th>
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Beschreibung</th>
-                      <th className="text-left py-3 px-4 font-medium text-neutral-300">Aktionen</th>
-                    </tr>
+                    </DraggableTableHeader>
                   </thead>
                   <tbody>
                   {filteredVideos.map((video) => {

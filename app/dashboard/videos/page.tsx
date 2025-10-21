@@ -240,10 +240,237 @@ export default function VideosPage() {
     hiddenColumns
   ), [isBulkEditMode, columnOrder, hiddenColumns]);
   
-  // Log for debugging (will be used extensively in tbody refactoring)
+  // Log for debugging
   React.useEffect(() => {
     console.log('[Table] Visible columns:', visibleColumns.map(c => c.id));
   }, [visibleColumns]);
+
+  // Cell Rendering Function - Maps column IDs to their respective cell content
+  const renderCell = React.useCallback((columnId: string, video: Video) => {
+    const statusInfo = getStatusIcon(video.status);
+    const StatusIcon = statusInfo.icon;
+
+    switch (columnId) {
+      case 'checkbox':
+        return (
+          <td key={`${video.id}-checkbox`} className="py-4 px-4">
+            <input
+              type="checkbox"
+              checked={selectedVideoIds.has(video.id)}
+              onChange={(e) => {
+                e.stopPropagation();
+                handleVideoSelection(video.id, e.target.checked);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+            />
+          </td>
+        );
+
+      case 'title':
+        return (
+          <td key={`${video.id}-title`} className="py-4 px-4">
+            <div className="flex items-center">
+              <div className={`p-2 bg-neutral-800 rounded-lg mr-3`}>
+                <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+              </div>
+              <div>
+                <p className="text-white font-medium">{video.name}</p>
+              </div>
+            </div>
+          </td>
+        );
+
+      case 'status':
+        return (
+          <td key={`${video.id}-status`} className="py-4 px-4">
+            {permissions.canEditVideos ? (
+              <CustomDropdown
+                options={[
+                  { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                  { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                  { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                  { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                  { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
+                ]}
+                value={video.status}
+                onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
+              />
+            ) : (
+              <div className="flex items-center px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-xl cursor-not-allowed">
+                <StatusIcon className={`w-4 h-4 mr-2 ${statusInfo.color}`} />
+                <span className="text-neutral-400 text-sm">{video.status}</span>
+              </div>
+            )}
+          </td>
+        );
+
+      case 'publication_date':
+        return (
+          <td key={`${video.id}-publication_date`} className="py-4 px-4">
+            <EditableDate
+              value={video.publication_date}
+              videoId={video.id}
+              onSave={handleFieldSave}
+              editable={permissions.canEditVideos}
+              placeholder="Datum wählen"
+            />
+          </td>
+        );
+
+      case 'responsible_person':
+        return (
+          <td key={`${video.id}-responsible_person`} className="py-4 px-4">
+            <EditableResponsiblePerson
+              value={video.responsible_person}
+              videoId={video.id}
+              onSave={async (videoId, field, value) => {
+                await handleFieldSave(videoId, field, value);
+              }}
+              editable={permissions.canEditVideos}
+              workspaceOwner={workspaceOwner}
+              workspaceMembers={workspaceMembers}
+            />
+          </td>
+        );
+
+      case 'upload':
+        return (
+          <td key={`${video.id}-upload`} className="py-4 px-4">
+            {video.storage_location ? (
+              <button
+                onClick={() => handleOpenUploadModal(video)}
+                className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
+                title="Dateien hochladen"
+              >
+                <Upload className="h-5 w-5" />
+              </button>
+            ) : (
+              <Tooltip 
+                content="Der Speicherort wird noch erstellt und wird in Kürze (max. 5 Minuten) verfügbar sein. Bitte um Geduld. Sollte die Funktion nicht verfügbar sein, bitte Kontakt aufnehmen."
+                position="top"
+                maxWidth="300px"
+              >
+                <button
+                  disabled
+                  className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
+                >
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </button>
+              </Tooltip>
+            )}
+          </td>
+        );
+
+      case 'storage_location':
+        return (
+          <td key={`${video.id}-storage_location`} className="py-4 px-4">
+            {video.storage_location ? (
+              <a
+                href={video.storage_location}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
+                title="Ordner durchsuchen"
+              >
+                <FolderOpen className="h-5 w-5" />
+              </a>
+            ) : (
+              <span className="text-neutral-500 text-sm">-</span>
+            )}
+          </td>
+        );
+
+      case 'updated_at':
+        return (
+          <td key={`${video.id}-updated_at`} className="py-4 px-4 text-neutral-300 text-sm">
+            {formatRelativeTime(video.last_updated || video.updated_at)}
+          </td>
+        );
+
+      case 'inspiration_source':
+        return (
+          <td key={`${video.id}-inspiration_source`} className="py-4 px-4">
+            <EditableCell
+              value={video.inspiration_source}
+              videoId={video.id}
+              field="inspiration_source"
+              onSave={handleFieldSave}
+              editable={permissions.canEditVideos}
+              type="url"
+              placeholder="URL hinzufügen"
+            />
+          </td>
+        );
+
+      case 'description':
+        return (
+          <td key={`${video.id}-description`} className="py-4 px-4 max-w-xs">
+            <EditableDescription
+              value={video.description}
+              videoId={video.id}
+              onSave={handleFieldSave}
+              editable={permissions.canEditVideos}
+              placeholder="Beschreibung hinzufügen"
+            />
+          </td>
+        );
+
+      case 'actions':
+        return (
+          <td key={`${video.id}-actions`} className="py-4 px-4">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  if (canEditVideo(video)) {
+                    handleEditVideo(video);
+                  } else {
+                    setPermissionErrorAction('Video bearbeiten');
+                    setShowPermissionError(true);
+                  }
+                }}
+                className={`transition-colors ${
+                  canEditVideo(video)
+                    ? 'text-white hover:text-neutral-300' 
+                    : 'text-neutral-600 hover:text-neutral-500 cursor-pointer'
+                }`}
+                title={canEditVideo(video) ? 'Video bearbeiten' : 'Keine Berechtigung'}
+              >
+                <Edit className="h-4 w-4" />
+              </button>
+              
+              {canDeleteVideo(video) && (
+                <button
+                  onClick={() => handleDeleteVideo(video)}
+                  className="text-red-400 hover:text-red-300 transition-colors"
+                  title="Video löschen"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </td>
+        );
+
+      default:
+        return <td key={`${video.id}-${columnId}`} className="py-4 px-4"></td>;
+    }
+  }, [
+    selectedVideoIds,
+    permissions,
+    workspaceOwner,
+    workspaceMembers,
+    handleVideoSelection,
+    handleUpdateStatus,
+    handleFieldSave,
+    handleOpenUploadModal,
+    canEditVideo,
+    canDeleteVideo,
+    handleEditVideo,
+    handleDeleteVideo,
+    setPermissionErrorAction,
+    setShowPermissionError
+  ]);
 
   // Toast helpers
   const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
@@ -1307,207 +1534,16 @@ export default function VideosPage() {
                     </DraggableTableHeader>
                   </thead>
                   <tbody>
-                  {filteredVideos.map((video) => {
-                    const statusInfo = getStatusIcon(video.status);
-                    const StatusIcon = statusInfo.icon;
-                    
-                    return (
+                    {filteredVideos.map((video) => (
                       <tr 
                         key={video.id} 
                         className={`border-b border-neutral-800 hover:bg-neutral-800/30 ${isBulkEditMode ? 'cursor-pointer' : ''} ${selectedVideoIds.has(video.id) ? 'border-l-4 border-l-blue-500 bg-blue-500/5' : ''} transition-all duration-200`}
                         onClick={(e) => handleRowClick(e, video.id)}
                       >
-                        {/* Checkbox Column (nur im Bulk-Edit-Mode) */}
-                        {isBulkEditMode && (
-                          <td className="py-4 px-4">
-                            <input
-                              type="checkbox"
-                              checked={selectedVideoIds.has(video.id)}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                handleVideoSelection(video.id, e.target.checked);
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
-                            />
-                          </td>
-                        )}
-                        
-                        {/* Videotitel mit Status-Icon */}
-                        <td className="py-4 px-4">
-                          <div className="flex items-center">
-                            <div className={`p-2 bg-neutral-800 rounded-lg mr-3`}>
-                              <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
-                            </div>
-                            <div>
-                              <p className="text-white font-medium">{video.name}</p>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td className="py-4 px-4">
-                          {permissions.canEditVideos ? (
-                            <CustomDropdown
-                              options={[
-                                { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
-                                { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
-                                { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
-                                { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
-                                { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
-                              ]}
-                              value={video.status}
-                              onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
-                            />
-                          ) : (
-                            <div className="flex items-center px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-xl cursor-not-allowed">
-                              {(() => {
-                                const statusInfo = getStatusIcon(video.status);
-                                const StatusIcon = statusInfo.icon;
-                                return (
-                                  <>
-                                    <StatusIcon className={`w-4 h-4 mr-2 ${statusInfo.color}`} />
-                                    <span className="text-neutral-400 text-sm">{video.status}</span>
-                                  </>
-                                );
-                              })()}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Veröffentlichungsdatum */}
-                        <td className="py-4 px-4">
-                          <EditableDate
-                            value={video.publication_date}
-                            videoId={video.id}
-                            onSave={handleFieldSave}
-                            editable={permissions.canEditVideos}
-                            placeholder="Datum wählen"
-                          />
-                        </td>
-
-                        {/* Verantwortlichkeit */}
-                        <td className="py-4 px-4">
-                          <EditableResponsiblePerson
-                            value={video.responsible_person}
-                            videoId={video.id}
-                            onSave={async (videoId, field, value) => {
-                              await handleFieldSave(videoId, field, value);
-                            }}
-                            editable={permissions.canEditVideos}
-                            workspaceOwner={workspaceOwner}
-                            workspaceMembers={workspaceMembers}
-                          />
-                        </td>
-
-                {/* Datei hochladen */}
-                <td className="py-4 px-4">
-                  {video.storage_location ? (
-                    <button
-                      onClick={() => handleOpenUploadModal(video)}
-                      className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
-                      title="Dateien hochladen"
-                    >
-                      <Upload className="h-5 w-5" />
-                    </button>
-                  ) : (
-                    <Tooltip 
-                      content="Der Speicherort wird noch erstellt und wird in Kürze (max. 5 Minuten) verfügbar sein. Bitte um Geduld. Sollte die Funktion nicht verfügbar sein, bitte Kontakt aufnehmen."
-                      position="top"
-                      maxWidth="300px"
-                    >
-                      <button
-                        disabled
-                        className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
-                      >
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      </button>
-                    </Tooltip>
-                  )}
-                </td>
-
-                        {/* Speicherort */}
-                        <td className="py-4 px-4">
-                          {video.storage_location ? (
-                            <a
-                              href={video.storage_location}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
-                              title="Ordner durchsuchen"
-                            >
-                              <FolderOpen className="h-5 w-5" />
-                            </a>
-                          ) : (
-                            <span className="text-neutral-500 text-sm">-</span>
-                          )}
-                        </td>
-
-                        {/* Zuletzt aktualisiert */}
-                        <td className="py-4 px-4 text-neutral-300 text-sm">
-                          {formatRelativeTime(video.last_updated || video.updated_at)}
-                        </td>
-
-                        {/* Inspiration Quelle */}
-                        <td className="py-4 px-4">
-                          <EditableCell
-                            value={video.inspiration_source}
-                            videoId={video.id}
-                            field="inspiration_source"
-                            onSave={handleFieldSave}
-                            editable={permissions.canEditVideos}
-                            type="url"
-                            placeholder="URL hinzufügen"
-                          />
-                        </td>
-
-                        {/* Beschreibung */}
-                        <td className="py-4 px-4 max-w-xs">
-                          <EditableDescription
-                            value={video.description}
-                            videoId={video.id}
-                            onSave={handleFieldSave}
-                            editable={permissions.canEditVideos}
-                            placeholder="Beschreibung hinzufügen"
-                          />
-                        </td>
-
-                        {/* Aktionen */}
-                        <td className="py-4 px-4">
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => {
-                                if (canEditVideo(video)) {
-                                  handleEditVideo(video);
-                                } else {
-                                  setPermissionErrorAction('Video bearbeiten');
-                                  setShowPermissionError(true);
-                                }
-                              }}
-                              className={`transition-colors ${
-                                canEditVideo(video)
-                                  ? 'text-white hover:text-neutral-300' 
-                                  : 'text-neutral-600 hover:text-neutral-500 cursor-pointer'
-                              }`}
-                              title={canEditVideo(video) ? 'Video bearbeiten' : 'Keine Berechtigung'}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            
-                            {canDeleteVideo(video) && (
-                              <button
-                                onClick={() => handleDeleteVideo(video)}
-                                className="text-red-400 hover:text-red-300 transition-colors"
-                                title="Video löschen"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                        {/* Render cells dynamically based on visible columns */}
+                        {visibleColumns.map((column) => renderCell(column.id, video))}
                       </tr>
-                    );
-                  })}
+                    ))}
                   </tbody>
                 </table>
               </div>

@@ -5,6 +5,20 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { GripVertical } from 'lucide-react';
 import type { ColumnConfig } from './TableColumnsSettings';
 
+/**
+ * Helper function to get visible columns in the correct order
+ * Use this in tbody to render cells in the same order as headers
+ */
+export function getVisibleColumnOrder(
+  columns: ColumnConfig[],
+  columnOrder: string[],
+  hiddenColumns: string[]
+): ColumnConfig[] {
+  return columnOrder
+    .map(id => columns.find(col => col.id === id))
+    .filter((col): col is ColumnConfig => col !== undefined && !hiddenColumns.includes(col.id));
+}
+
 interface DraggableTableHeaderProps {
   columns: ColumnConfig[];
   columnOrder: string[];
@@ -109,25 +123,30 @@ export function DraggableTableHeader({
               const width = columnWidths[column.id];
 
               return (
-                <Draggable
-                  key={column.id}
-                  draggableId={column.id}
-                  index={index}
-                  isDragDisabled={column.fixed}
-                >
-                  {(provided, snapshot) => (
-                    <th
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      className={`px-4 py-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider border-b border-neutral-700 relative ${
-                        snapshot.isDragging ? 'bg-blue-500/10 shadow-lg z-50' : ''
-                      } ${column.fixed ? 'bg-neutral-900/50' : 'cursor-move'}`}
-                      style={{
-                        ...provided.draggableProps.style,
-                        width: width ? `${width}px` : undefined,
-                        minWidth: column.fixed ? undefined : '100px'
-                      }}
-                    >
+                  <Draggable
+                    key={column.id}
+                    draggableId={column.id}
+                    index={index}
+                    isDragDisabled={column.fixed}
+                  >
+                    {(provided, snapshot) => (
+                      <th
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={`px-4 py-4 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider border-b border-neutral-700 relative ${
+                          snapshot.isDragging ? 'bg-blue-500/10 shadow-lg z-[9999]' : ''
+                        } ${column.fixed ? 'bg-neutral-900/50' : 'cursor-move'}`}
+                        style={{
+                          ...provided.draggableProps.style,
+                          width: width ? `${width}px` : undefined,
+                          minWidth: column.fixed ? undefined : '100px',
+                          ...(snapshot.isDragging && {
+                            position: 'fixed',
+                            top: 'auto',
+                            left: 'auto'
+                          })
+                        }}
+                      >
                       <div className="flex items-center justify-between group">
                         {/* Drag Handle */}
                         {!column.fixed && (

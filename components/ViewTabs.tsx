@@ -53,21 +53,21 @@ export function ViewTabs({
   const defaultView = views.find(v => v.is_default);
 
   return (
-    <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+    <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-2">
       {/* "Alle Videos" Tab */}
       <button
         onClick={() => onViewChange(null)}
         className={`
-          relative px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all
+          relative px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all
           ${activeViewId === null
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-            : 'bg-neutral-800/50 text-neutral-300 hover:bg-neutral-800 hover:text-white'
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 hover:text-white'
           }
         `}
       >
         Alle Videos
         {defaultView === undefined && activeViewId === null && (
-          <Star className="absolute -top-1 -right-1 w-4 h-4 text-yellow-400 fill-yellow-400" />
+          <Star className="absolute -top-1 -right-1 w-3 h-3 text-yellow-400 fill-yellow-400" />
         )}
       </button>
 
@@ -77,16 +77,16 @@ export function ViewTabs({
           <button
             onClick={() => onViewChange(view.id)}
             className={`
-              relative px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all
+              relative px-3 py-1.5 pr-7 rounded-md text-xs whitespace-nowrap transition-all
               ${activeViewId === view.id
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                : 'bg-neutral-800/50 text-neutral-300 hover:bg-neutral-800 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 hover:text-white'
               }
             `}
           >
             {view.name}
             {view.is_default && (
-              <Star className="absolute -top-1 -right-1 w-4 h-4 text-yellow-400 fill-yellow-400" />
+              <Star className="absolute -top-1 -left-1 w-3 h-3 text-yellow-400 fill-yellow-400" />
             )}
           </button>
 
@@ -97,7 +97,7 @@ export function ViewTabs({
                 e.stopPropagation();
                 setContextMenuViewId(contextMenuViewId === view.id ? null : view.id);
               }}
-              className="absolute -top-2 -right-2 p-1 bg-neutral-700 hover:bg-neutral-600 rounded-full text-neutral-400 hover:text-white transition-colors"
+              className="absolute top-1/2 -translate-y-1/2 right-1 p-0.5 hover:bg-neutral-700 rounded text-neutral-500 hover:text-white transition-colors"
             >
               <MoreVertical className="w-3 h-3" />
             </button>
@@ -111,7 +111,7 @@ export function ViewTabs({
                 initial={{ opacity: 0, scale: 0.95, y: -10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                className="absolute top-full right-0 mt-2 z-50 bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]"
+                className="absolute top-full right-0 mt-1 z-[9999] bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]"
               >
                 <button
                   onClick={() => {
@@ -157,10 +157,10 @@ export function ViewTabs({
       {canManageViews && (
         <button
           onClick={onCreateView}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap bg-neutral-800/30 border border-dashed border-neutral-600 text-neutral-400 hover:bg-neutral-800 hover:text-white hover:border-blue-500 transition-all"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs whitespace-nowrap bg-neutral-800/30 border border-dashed border-neutral-600 text-neutral-500 hover:bg-neutral-800 hover:text-white hover:border-blue-500 transition-all"
         >
-          <Plus className="w-4 h-4" />
-          Ansicht erstellen
+          <Plus className="w-3 h-3" />
+          Ansicht
         </button>
       )}
     </div>

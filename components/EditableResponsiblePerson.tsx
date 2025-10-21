@@ -121,21 +121,24 @@ export default function EditableResponsiblePerson({
   console.log('[EditableResponsiblePerson] 👥 Processing', workspaceMembers?.length || 0, 'members');
   (workspaceMembers || []).forEach((member, index) => {
     console.log(`[EditableResponsiblePerson] 👥 Member ${index}:`, member);
-    // Nur hinzufügen wenn user-Daten vorhanden sind UND mindestens ein Name vorhanden ist
-    if (member.user && (member.user.firstname || member.user.lastname)) {
+    
+    // Prüfe ob user-Daten vorhanden sind
+    if (member.user) {
+      // Versuche Name zu bilden, fallback auf E-Mail
       const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
-      console.log(`[EditableResponsiblePerson] 👥 Member ${index} name:`, memberName);
-      if (memberName) {
-        options.push({
-          id: member.id,
-          name: memberName,
-          type: 'member',
-          email: member.user.email
-        });
-        console.log(`[EditableResponsiblePerson] ✅ Added member ${index} to options`);
-      }
+      const displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
+      
+      console.log(`[EditableResponsiblePerson] 👥 Member ${index} name:`, displayName);
+      
+      options.push({
+        id: member.id,
+        name: displayName,
+        type: 'member',
+        email: member.user.email
+      });
+      console.log(`[EditableResponsiblePerson] ✅ Added member ${index} to options`);
     } else {
-      console.log(`[EditableResponsiblePerson] ❌ Member ${index} skipped - no user data or name`);
+      console.log(`[EditableResponsiblePerson] ❌ Member ${index} skipped - no user data`);
     }
   });
 

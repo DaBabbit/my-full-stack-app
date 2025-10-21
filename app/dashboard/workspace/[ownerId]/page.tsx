@@ -224,7 +224,8 @@ export default function SharedWorkspacePage() {
   const hiddenColumns = tableSettings?.hidden_columns || [];
   const columnWidths = tableSettings?.column_widths || {};
 
-  // Visible columns
+  // Visible columns (used by DraggableTableHeader internally)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const visibleColumns = columnOrder
     .map(id => DEFAULT_COLUMNS.find(col => col.id === id))
     .filter((col): col is ColumnConfig => col !== undefined && !hiddenColumns.includes(col.id));

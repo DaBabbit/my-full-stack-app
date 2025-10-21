@@ -98,8 +98,8 @@ export function DraggableTableHeader({
           <tr
             ref={(el) => {
               provided.innerRef(el);
-              if (el) {
-                (tableRef as any).current = el;
+              if (el && tableRef) {
+                tableRef.current = el;
               }
             }}
             {...provided.droppableProps}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -47,13 +47,26 @@ function ProfileContent() {
 
   // Check if user has active subscription (including trial)
   // Use currentSubscription from Stripe if available, otherwise fall back to subscription from Supabase
-  const hasActiveSubscription = (currentSubscription && 
-    ['active', 'trialing'].includes(currentSubscription.status) && 
-    currentSubscription.current_period_end &&
-    new Date(currentSubscription.current_period_end) > new Date()) ||
-    (subscription && 
-    ['active', 'trialing'].includes(subscription.status) && 
-    new Date(subscription.current_period_end) > new Date());
+  const hasActiveSubscription = React.useMemo(() => {
+    const fromStripe = currentSubscription && 
+      ['active', 'trialing'].includes(currentSubscription.status) && 
+      currentSubscription.current_period_end &&
+      new Date(currentSubscription.current_period_end) > new Date();
+    
+    const fromSupabase = subscription && 
+      ['active', 'trialing'].includes(subscription.status) && 
+      new Date(subscription.current_period_end) > new Date();
+    
+    console.log('[Profile] hasActiveSubscription check:', {
+      fromStripe,
+      fromSupabase,
+      currentSubscription: currentSubscription?.status,
+      subscription: subscription?.status,
+      result: fromStripe || fromSupabase
+    });
+    
+    return fromStripe || fromSupabase;
+  }, [currentSubscription, subscription]);
 
   // Show payment success message if redirected from successful payment
   useEffect(() => {

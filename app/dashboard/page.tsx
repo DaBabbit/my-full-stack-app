@@ -438,11 +438,19 @@ export default function Dashboard() {
               {videos.length > 0 ? (
             <div className="space-y-4">
               {videos
-                .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
+                .sort((a, b) => {
+                  const aTime = new Date(a.updated_at || a.last_updated || a.created_at).getTime();
+                  const bTime = new Date(b.updated_at || b.last_updated || b.created_at).getTime();
+                  return bTime - aTime;
+                })
                 .slice(0, 5)
                 .map((video) => {
-                  const updatedAt = video.updated_at || video.created_at;
-                  const editorName = video.created_by_lastname || video.created_by_name || 'Unbekannt';
+                  const updatedAt = video.updated_at || video.last_updated || video.created_at;
+                  
+                  // Namen vom eingeloggten User nutzen (da es seine Videos sind)
+                  const userFirstname = user?.user_metadata?.firstname || '';
+                  const userLastname = user?.user_metadata?.lastname || '';
+                  const userName = userLastname || userFirstname || user?.email?.split('@')[0] || 'Du';
                   
                   return (
                     <div key={video.id} className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
@@ -458,9 +466,9 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 bg-neutral-700 rounded-full flex items-center justify-center text-xs text-white font-medium">
-                            {getInitials(editorName)}
+                            {getInitials(`${userFirstname} ${userLastname}`.trim())}
                           </div>
-                          <span className="text-xs text-neutral-400">{editorName}</span>
+                          <span className="text-xs text-neutral-400">{userName}</span>
                         </div>
                         <span className="text-xs text-neutral-500">
                           {formatRelativeTime(updatedAt)}

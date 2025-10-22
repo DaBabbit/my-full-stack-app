@@ -13,6 +13,7 @@ import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useVideosQuery, useVideoMutations } from '@/hooks/useVideosQuery';
 import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
 import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -75,6 +76,7 @@ export default function Dashboard() {
   const router = useRouter();
   const permissions = usePermissions();
   const { sharedWorkspaces } = useSharedWorkspaces();
+  const { profile } = useUserProfile(); // User-Profil mit main_storage_location
   
   // React Query für Videos
   const { data: videos = [], isLoading } = useVideosQuery(user?.id);
@@ -405,10 +407,15 @@ export default function Dashboard() {
                 <FolderOpen className="w-6 h-6 mr-3 text-blue-400" />
                 <span className="font-medium">Hauptspeicherort</span>
               </div>
-              {user?.user_metadata?.main_storage_location ? (
-                <p className="text-sm text-neutral-400 break-all">
-                  {user.user_metadata.main_storage_location}
-                </p>
+              {profile?.main_storage_location ? (
+                <a 
+                  href={profile.main_storage_location}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-400 hover:text-blue-300 break-all underline"
+                >
+                  {profile.main_storage_location}
+                </a>
               ) : (
                 <p className="text-sm text-neutral-500 italic">Wird erstellt...</p>
               )}
@@ -447,9 +454,9 @@ export default function Dashboard() {
                 .map((video) => {
                   const updatedAt = video.updated_at || video.last_updated || video.created_at;
                   
-                  // Namen vom eingeloggten User nutzen (da es seine Videos sind)
-                  const userFirstname = user?.user_metadata?.firstname || '';
-                  const userLastname = user?.user_metadata?.lastname || '';
+                  // Namen vom User-Profil (public.users) nutzen
+                  const userFirstname = profile?.firstname || user?.user_metadata?.firstname || '';
+                  const userLastname = profile?.lastname || user?.user_metadata?.lastname || '';
                   const userName = userLastname || userFirstname || user?.email?.split('@')[0] || 'Du';
                   
                   return (

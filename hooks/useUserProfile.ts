@@ -31,6 +31,8 @@ export function useUserProfile() {
     }
 
     async function loadProfile() {
+      if (!user?.id) return;
+      
       try {
         const { data, error } = await supabase
           .from('users')

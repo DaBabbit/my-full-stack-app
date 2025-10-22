@@ -18,7 +18,6 @@ import {
   LayoutDashboard, 
   Video as VideoIcon, 
   Settings,
-  Plus,
   Menu,
   X,
   User,

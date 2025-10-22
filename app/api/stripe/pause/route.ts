@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createClient } from '@/utils/supabase/client';
+import { supabaseAdmin } from '@/utils/supabase-admin';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -8,7 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient();
+    const supabase = supabaseAdmin;
 
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -61,10 +61,11 @@ export async function POST(request: Request) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to pause subscription';
     console.error('Pause subscription error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to pause subscription' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

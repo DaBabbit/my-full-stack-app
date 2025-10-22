@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createClient } from '@/utils/supabase/client';
+import { supabaseAdmin } from '@/utils/supabase-admin';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
 });
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    const cookieStore = await cookies();
-    const supabase = createClient();
+    const supabase = supabaseAdmin;
 
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -90,10 +88,11 @@ export async function POST(request: Request) {
       referralCode,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     console.error('Generate referral error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

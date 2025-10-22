@@ -23,6 +23,8 @@ export interface Video {
   thumbnail_url?: string;
   workspace_owner_id?: string;
   created_by?: string;
+  created_by_name?: string; // Full name of creator (for display)
+  created_by_lastname?: string; // Last name of creator
   user_id?: string;
   // Workspace member permissions (only set for shared workspace videos)
   workspace_permissions?: {

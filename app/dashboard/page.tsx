@@ -28,9 +28,39 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
-  Users
+  Users,
+  FolderOpen
 } from 'lucide-react';
 import Image from 'next/image';
+
+// Funktion für relative Zeitangaben
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return 'vor wenigen Sekunden';
+  if (diffMins === 1) return 'vor 1 Minute';
+  if (diffMins < 60) return `vor ${diffMins} Minuten`;
+  if (diffHours === 1) return 'vor 1 Stunde';
+  if (diffHours < 24) return `vor ${diffHours} Stunden`;
+  if (diffDays === 1) return 'vor 1 Tag';
+  if (diffDays < 4) return `vor ${diffDays} Tagen`;
+  return date.toLocaleDateString('de-DE');
+}
+
+// Funktion um Initialen zu generieren
+function getInitials(name: string | undefined): string {
+  if (!name) return '?';
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
 
 const sidebarBottomItems = [
   {
@@ -370,13 +400,20 @@ export default function Dashboard() {
         <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 mb-8">
           <h2 className="text-xl font-semibold text-white mb-4">Schnellaktionen</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <button
-              onClick={() => router.push('/dashboard/videos')}
-              className="flex items-center p-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-            >
-              <Plus className="w-6 h-6 mr-3" />
-              <span>Neues Video erstellen</span>
-            </button>
+            {/* Hauptspeicherort */}
+            <div className="flex flex-col p-4 bg-neutral-800 text-white rounded-2xl border border-neutral-700">
+              <div className="flex items-center mb-2">
+                <FolderOpen className="w-6 h-6 mr-3 text-blue-400" />
+                <span className="font-medium">Hauptspeicherort</span>
+              </div>
+              {user?.user_metadata?.main_storage_location ? (
+                <p className="text-sm text-neutral-400 break-all">
+                  {user.user_metadata.main_storage_location}
+                </p>
+              ) : (
+                <p className="text-sm text-neutral-500 italic">Wird erstellt...</p>
+              )}
+            </div>
             
             <button
               onClick={() => router.push('/dashboard/videos')}
@@ -401,24 +438,38 @@ export default function Dashboard() {
               <h2 className="text-xl font-semibold text-white mb-4">Letzte Aktivitäten</h2>
               {videos.length > 0 ? (
             <div className="space-y-4">
-              {videos.slice(0, 5).map((video) => {
-                return (
-                  <div key={video.id} className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-neutral-700 rounded-lg mr-4">
-                        <VideoIcon className="w-5 h-5 text-neutral-400" />
+              {videos
+                .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
+                .slice(0, 5)
+                .map((video) => {
+                  const updatedAt = video.updated_at || video.created_at;
+                  const editorName = video.created_by_lastname || video.created_by_name || 'Unbekannt';
+                  
+                  return (
+                    <div key={video.id} className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
+                      <div className="flex items-center flex-1">
+                        <div className="p-2 bg-neutral-700 rounded-lg mr-4">
+                          <VideoIcon className="w-5 h-5 text-neutral-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-white font-medium">{video.name}</h3>
+                          <p className="text-sm text-neutral-400">Status: {video.status}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-white font-medium">{video.name}</h3>
-                        <p className="text-sm text-neutral-400">Status: {video.status}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-neutral-700 rounded-full flex items-center justify-center text-xs text-white font-medium">
+                            {getInitials(editorName)}
+                          </div>
+                          <span className="text-xs text-neutral-400">{editorName}</span>
+                        </div>
+                        <span className="text-xs text-neutral-500">
+                          {formatRelativeTime(updatedAt)}
+                        </span>
                       </div>
                     </div>
-                    <span className="text-xs text-neutral-500">
-                      {new Date(video.created_at).toLocaleDateString('de-DE')}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           ) : (
             <div className="text-center py-8">

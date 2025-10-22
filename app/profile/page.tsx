@@ -41,11 +41,19 @@ function ProfileContent() {
   const [isReactivating, setIsReactivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isInTrial, trialEndTime } = useTrialStatus();
+  const [referralLink, setReferralLink] = useState<string>('');
+  const [isGeneratingReferral, setIsGeneratingReferral] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
 
   // Check if user has active subscription (including trial)
-  const hasActiveSubscription = subscription && 
+  // Use currentSubscription from Stripe if available, otherwise fall back to subscription from Supabase
+  const hasActiveSubscription = (currentSubscription && 
+    ['active', 'trialing'].includes(currentSubscription.status) && 
+    currentSubscription.current_period_end &&
+    new Date(currentSubscription.current_period_end) > new Date()) ||
+    (subscription && 
     ['active', 'trialing'].includes(subscription.status) && 
-    new Date(subscription.current_period_end) > new Date();
+    new Date(subscription.current_period_end) > new Date());
 
   // Show payment success message if redirected from successful payment
   useEffect(() => {
@@ -150,6 +158,56 @@ function ProfileContent() {
       toast.error('Fehler beim Wiederherstellen des Abonnements');
     } finally {
       setIsReactivating(false);
+    }
+  };
+
+  const generateReferralLink = async () => {
+    if (!user?.id) return;
+    
+    setIsGeneratingReferral(true);
+    try {
+      const response = await fetch('/api/referrals/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setReferralLink(data.referralLink);
+        toast.success('Empfehlungslink erstellt!', {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "dark"
+        });
+      } else {
+        toast.error('Fehler beim Erstellen des Links', {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "dark"
+        });
+      }
+    } catch (err: unknown) {
+      console.error('Referral generation error:', err);
+      toast.error('Netzwerkfehler', {
+        position: "top-right",
+        autoClose: 3000,
+        theme: "dark"
+      });
+    } finally {
+      setIsGeneratingReferral(false);
+    }
+  };
+
+  const copyReferralLink = () => {
+    if (referralLink) {
+      navigator.clipboard.writeText(referralLink);
+      setReferralCopied(true);
+      toast.success('Link kopiert!', {
+        position: "top-right",
+        autoClose: 2000,
+        theme: "dark"
+      });
+      setTimeout(() => setReferralCopied(false), 2000);
     }
   };
 
@@ -328,10 +386,11 @@ function ProfileContent() {
                   <div className="space-y-3">
                     {currentSubscription.status === 'active' && !currentSubscription.cancel_at_period_end && (
                       <button
-                        onClick={() => setIsCancelModalOpen(true)}
-                        className="w-full p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all duration-300 border border-red-500/20 hover:border-red-500/40"
+                        onClick={() => router.push('/profile/manage-subscription')}
+                        className="w-full p-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-neutral-600 flex items-center justify-center gap-2"
                       >
-                        Abonnement kündigen
+                        <Settings className="w-4 h-4" />
+                        Abo verwalten
                       </button>
                     )}
 
@@ -395,6 +454,74 @@ function ProfileContent() {
                 </div>
               )}
             </motion.div>
+
+            {/* Empfehlungs-Feature */}
+            {hasActiveSubscription && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-md rounded-3xl p-6 border border-blue-500/30 hover:border-blue-400/50 transition-all duration-300"
+              >
+                <div className="flex items-center mb-4">
+                  <div className="p-2 bg-blue-500/20 rounded-xl mr-3">
+                    <CreditCard className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">Freund empfehlen - 250€ Rabatt sichern</h3>
+                </div>
+                <p className="text-neutral-300 mb-4">
+                  Empfehle einen Freund und erhalte <span className="text-blue-400 font-semibold">250€ Rabatt</span> auf deine nächste Rechnung, wenn dein Freund sein erstes Abo bezahlt.
+                </p>
+                
+                {!referralLink ? (
+                  <button
+                    onClick={generateReferralLink}
+                    disabled={isGeneratingReferral}
+                    className="w-full p-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-2xl transition-all duration-300 font-medium flex items-center justify-center gap-2"
+                  >
+                    {isGeneratingReferral ? (
+                      <>
+                        <span className="loading loading-spinner loading-sm"></span>
+                        <span>Wird erstellt...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Empfehlungslink erstellen</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={referralLink}
+                        readOnly
+                        className="flex-1 p-3 bg-neutral-800/50 text-neutral-300 rounded-2xl border border-neutral-700 font-mono text-sm"
+                      />
+                      <button
+                        onClick={copyReferralLink}
+                        className={`p-3 rounded-2xl transition-all duration-300 ${
+                          referralCopied 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700'
+                        }`}
+                      >
+                        {referralCopied ? (
+                          <CheckCircle className="w-5 h-5" />
+                        ) : (
+                          <FileText className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-neutral-400">
+                      Teile diesen Link mit Freunden. Du erhältst 250€ Rabatt, sobald sie ihr erstes Abo bezahlt haben.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            )}
 
             {/* Aktionen */}
             <motion.div

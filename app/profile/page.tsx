@@ -18,7 +18,6 @@ import {
   AlertTriangle, 
   CreditCard, 
   Calendar,
-  User,
   Settings,
   Crown,
   ExternalLink,
@@ -31,7 +30,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 function ProfileContent() {
   const { user } = useAuth();
-  const { subscription, currentSubscription, isLoading: isLoadingSubscription, syncWithStripe, fetchSubscription } = useSubscription();
+  const { subscription, currentSubscription, isLoading: isLoadingSubscription, fetchSubscription } = useSubscription();
   const router = useRouter();
   const searchParams = useSearchParams();
   const paymentStatus = searchParams.get('payment');

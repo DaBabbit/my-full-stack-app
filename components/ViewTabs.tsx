@@ -36,12 +36,15 @@ export function ViewTabs({
   canManageViews = true,
 }: ViewTabsProps) {
   const [contextMenuViewId, setContextMenuViewId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   console.log('[ViewTabs] 🚀 Component rendered');
   console.log('[ViewTabs] 📋 Views:', views.length, 'views');
   console.log('[ViewTabs] 🔑 canManageViews:', canManageViews);
   console.log('[ViewTabs] 📍 contextMenuViewId state:', contextMenuViewId);
+  console.log('[ViewTabs] 📍 menuPosition:', menuPosition);
 
   // ESC key to close menu
   useEffect(() => {
@@ -49,6 +52,7 @@ export function ViewTabs({
       if (event.key === 'Escape' && contextMenuViewId) {
         console.log('[ViewTabs] ⌨️ ESC pressed, closing menu');
         setContextMenuViewId(null);
+        setMenuPosition(null);
       }
     };
 
@@ -101,13 +105,29 @@ export function ViewTabs({
           {/* Context Menu Button */}
           {canManageViews && (
             <button
+              ref={contextMenuViewId === view.id ? buttonRef : undefined}
               onClick={(e) => {
                 e.stopPropagation();
                 console.log('[ViewTabs] 🔘 Button clicked for view:', view.name, view.id);
                 console.log('[ViewTabs] 📊 Current contextMenuViewId:', contextMenuViewId);
-                const newValue = contextMenuViewId === view.id ? null : view.id;
-                console.log('[ViewTabs] ✨ Setting contextMenuViewId to:', newValue);
-                setContextMenuViewId(newValue);
+                
+                if (contextMenuViewId === view.id) {
+                  // Close menu
+                  console.log('[ViewTabs] 🚫 Closing menu');
+                  setContextMenuViewId(null);
+                  setMenuPosition(null);
+                } else {
+                  // Open menu and calculate position
+                  console.log('[ViewTabs] ✨ Opening menu');
+                  const buttonRect = e.currentTarget.getBoundingClientRect();
+                  const position = {
+                    top: buttonRect.top - 10, // 10px above button
+                    left: buttonRect.right - 180 // align right edge of menu with button
+                  };
+                  console.log('[ViewTabs] 📍 Calculated position:', position);
+                  setMenuPosition(position);
+                  setContextMenuViewId(view.id);
+                }
               }}
               className="absolute top-1/2 -translate-y-1/2 right-1 p-0.5 hover:bg-neutral-700 rounded text-neutral-500 hover:text-white transition-colors z-10"
             >
@@ -116,7 +136,7 @@ export function ViewTabs({
           )}
 
           {/* Context Menu with Backdrop */}
-          {contextMenuViewId === view.id && (
+          {contextMenuViewId === view.id && menuPosition && (
             <>
               {/* Backdrop Overlay */}
               <div 
@@ -124,6 +144,7 @@ export function ViewTabs({
                 onClick={() => {
                   console.log('[ViewTabs] 🚫 Backdrop clicked, closing menu');
                   setContextMenuViewId(null);
+                  setMenuPosition(null);
                 }}
               />
               
@@ -131,11 +152,17 @@ export function ViewTabs({
               <AnimatePresence>
                 <motion.div
                   ref={contextMenuRef}
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute bottom-full right-0 mb-2 z-[9999] bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden min-w-[180px]"
+                  style={{
+                    position: 'fixed',
+                    top: `${menuPosition.top}px`,
+                    left: `${menuPosition.left}px`,
+                    transform: 'translateY(-100%)'
+                  }}
+                  className="z-[9999] bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden min-w-[180px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
@@ -143,6 +170,7 @@ export function ViewTabs({
                       console.log('[ViewTabs] ⭐ Set default clicked');
                       onSetDefault(view.is_default ? null : view.id);
                       setContextMenuViewId(null);
+                      setMenuPosition(null);
                     }}
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
                   >
@@ -155,6 +183,7 @@ export function ViewTabs({
                       console.log('[ViewTabs] ✏️ Edit clicked');
                       onEditView(view);
                       setContextMenuViewId(null);
+                      setMenuPosition(null);
                     }}
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
                   >
@@ -168,6 +197,7 @@ export function ViewTabs({
                       if (confirm(`Möchtest du die Ansicht "${view.name}" wirklich löschen?`)) {
                         onDeleteView(view.id);
                         setContextMenuViewId(null);
+                        setMenuPosition(null);
                       }
                     }}
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"

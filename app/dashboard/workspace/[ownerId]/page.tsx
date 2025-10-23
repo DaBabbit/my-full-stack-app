@@ -683,8 +683,22 @@ export default function SharedWorkspacePage() {
   }, [isBulkEditMode]);
 
   // File Upload Modal Handlers
-  const handleOpenUploadModal = (video: Video) => {
-    if (!video.nextcloud_path || !video.storage_location) {
+  const handleOpenUploadModal = async (video: Video) => {
+    // Vor dem Öffnen: Aktuellste Daten aus Supabase holen
+    console.log('[Workspace Upload] Syncing video data before opening upload modal...');
+    const { data: refetchedVideos } = await refetch();
+    
+    // Finde das aktualisierte Video
+    const updatedVideo = refetchedVideos?.find(v => v.id === video.id) || video;
+    
+    console.log('[Workspace Upload] Video data synced:', {
+      oldNextcloudPath: video.nextcloud_path,
+      newNextcloudPath: updatedVideo.nextcloud_path,
+      oldStorageLocation: video.storage_location,
+      newStorageLocation: updatedVideo.storage_location
+    });
+    
+    if (!updatedVideo.nextcloud_path || !updatedVideo.storage_location) {
       addToast({
         type: 'warning',
         title: 'Upload noch nicht bereit',
@@ -692,13 +706,39 @@ export default function SharedWorkspacePage() {
       });
       return;
     }
-    setUploadModalVideo(video);
+    
+    setUploadModalVideo(updatedVideo);
     setShowUploadModal(true);
   };
 
   const handleCloseUploadModal = () => {
     setShowUploadModal(false);
     setUploadModalVideo(null);
+  };
+
+  // Storage Location Handler mit Sync
+  const handleOpenStorageLocation = async (video: Video) => {
+    // Vor dem Öffnen: Aktuellste Daten aus Supabase holen
+    console.log('[Workspace Storage] Syncing video data before opening storage location...');
+    const { data: refetchedVideos } = await refetch();
+    
+    // Finde das aktualisierte Video
+    const updatedVideo = refetchedVideos?.find(v => v.id === video.id) || video;
+    
+    console.log('[Workspace Storage] Video data synced:', {
+      oldStorageLocation: video.storage_location,
+      newStorageLocation: updatedVideo.storage_location
+    });
+    
+    if (updatedVideo.storage_location) {
+      window.open(updatedVideo.storage_location, '_blank', 'noopener,noreferrer');
+    } else {
+      addToast({
+        type: 'warning',
+        title: 'Speicherort noch nicht bereit',
+        message: 'Der Video-Ordner wird gerade erstellt. Bitte versuche es in wenigen Sekunden erneut.'
+      });
+    }
   };
 
   // View Handlers
@@ -1108,15 +1148,13 @@ export default function SharedWorkspacePage() {
         return (
           <td key={`${video.id}-storage_location`} className="py-4 px-4">
             {video.storage_location ? (
-              <a
-                href={video.storage_location}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => handleOpenStorageLocation(video)}
                 className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
                 title="Ordner durchsuchen"
               >
                 <FolderOpen className="h-5 w-5" />
-              </a>
+              </button>
             ) : (
               <span className="text-neutral-500 text-sm">-</span>
             )}
@@ -1172,6 +1210,7 @@ export default function SharedWorkspacePage() {
     handleUpdateStatus,
     handleFieldSave,
     handleOpenUploadModal,
+    handleOpenStorageLocation,
     handleDeleteVideo
   ]);
 
@@ -1732,15 +1771,13 @@ export default function SharedWorkspacePage() {
                             <div>
                               <label className="block text-xs font-medium text-neutral-400 mb-1">Speicherort</label>
                               {video.storage_location ? (
-                                <a
-                                  href={video.storage_location}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <button
+                                  onClick={() => handleOpenStorageLocation(video)}
                                   className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
                                   title="Ordner durchsuchen"
                                 >
                                   <FolderOpen className="h-5 w-5" />
-                                </a>
+                                </button>
                               ) : (
                                 <p className="text-neutral-300">-</p>
                               )}

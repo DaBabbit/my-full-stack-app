@@ -48,24 +48,35 @@ function ProfileContent() {
   // Check if user has active subscription (including trial)
   // Use currentSubscription from Stripe if available, otherwise fall back to subscription from Supabase
   const hasActiveSubscription = React.useMemo(() => {
+    // Check currentSubscription (most recent, including canceled)
     const fromStripe = currentSubscription && 
-      ['active', 'trialing'].includes(currentSubscription.status) && 
+      ['active', 'trialing', 'past_due'].includes(currentSubscription.status);
+    
+    // Check subscription (only active ones)
+    const fromSupabase = subscription && 
+      ['active', 'trialing', 'past_due'].includes(subscription.status);
+    
+    // If subscription is canceled but still in current period, consider it active
+    const isCanceledButActive = currentSubscription && 
+      currentSubscription.status === 'active' &&
+      currentSubscription.cancel_at_period_end === true &&
       currentSubscription.current_period_end &&
       new Date(currentSubscription.current_period_end) > new Date();
     
-    const fromSupabase = subscription && 
-      ['active', 'trialing'].includes(subscription.status) && 
-      new Date(subscription.current_period_end) > new Date();
+    const result = fromStripe || fromSupabase || isCanceledButActive;
     
     console.log('[Profile] hasActiveSubscription check:', {
       fromStripe,
       fromSupabase,
-      currentSubscription: currentSubscription?.status,
-      subscription: subscription?.status,
-      result: fromStripe || fromSupabase
+      isCanceledButActive,
+      currentSubscriptionStatus: currentSubscription?.status,
+      subscriptionStatus: subscription?.status,
+      cancelAtPeriodEnd: currentSubscription?.cancel_at_period_end,
+      periodEnd: currentSubscription?.current_period_end,
+      result
     });
     
-    return fromStripe || fromSupabase;
+    return result;
   }, [currentSubscription, subscription]);
 
   // Show payment success message if redirected from successful payment
@@ -75,18 +86,36 @@ function ProfileContent() {
     }
   }, [paymentStatus]);
 
-  // Add error handling for subscription sync
+  // Sync with Stripe on mount to get latest subscription data
   useEffect(() => {
-    if (subscription?.stripe_subscription_id) {
-      try {
-        syncWithStripe(subscription.stripe_subscription_id);
-        console.log('Subscription synced with Stripe successfully');
-      } catch (err: unknown) {
-        console.error('Error syncing with Stripe:', err);
-        setError('Unable to load subscription details');
+    const syncSubscription = async () => {
+      // Get subscription ID from either currentSubscription or subscription
+      const subId = currentSubscription?.stripe_subscription_id || subscription?.stripe_subscription_id;
+      
+      if (subId) {
+        try {
+          console.log('[Profile] Syncing subscription with Stripe:', subId);
+          const response = await fetch('/api/stripe/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscriptionId: subId }),
+          });
+
+          if (response.ok) {
+            console.log('[Profile] Subscription synced successfully');
+            // Refresh subscription data after sync
+            await fetchSubscription(true);
+          } else {
+            console.error('[Profile] Sync failed:', await response.text());
+          }
+        } catch (err: unknown) {
+          console.error('[Profile] Error syncing with Stripe:', err);
+        }
       }
-    }
-  }, [syncWithStripe, subscription?.stripe_subscription_id]);
+    };
+
+    syncSubscription();
+  }, [currentSubscription?.stripe_subscription_id, subscription?.stripe_subscription_id, fetchSubscription]);
 
   // Add loading timeout with auto-refresh
   useEffect(() => {
@@ -536,49 +565,6 @@ function ProfileContent() {
               </motion.div>
             )}
 
-            {/* Aktionen */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700"
-            >
-              <h3 className="text-lg font-semibold text-white mb-4">Aktionen</h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => router.push('/dashboard')}
-                  className="w-full flex items-center justify-between p-3 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-2xl transition-colors"
-                >
-                  <div className="flex items-center">
-                    <User className="w-5 h-5 text-neutral-400 mr-3" />
-                    <span className="text-white">Dashboard</span>
-                  </div>
-                  <ExternalLink className="w-4 h-4 text-neutral-400" />
-                </button>
-
-                <button
-                  onClick={() => router.push('/dashboard/videos')}
-                  className="w-full flex items-center justify-between p-3 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-2xl transition-colors"
-                >
-                  <div className="flex items-center">
-                    <CreditCard className="w-5 h-5 text-neutral-400 mr-3" />
-                    <span className="text-white">Videos</span>
-                  </div>
-                  <ExternalLink className="w-4 h-4 text-neutral-400" />
-                </button>
-
-                <button
-                  onClick={() => router.push('/profile/invoices')}
-                  className="w-full flex items-center justify-between p-3 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-2xl transition-colors"
-                >
-                  <div className="flex items-center">
-                    <FileText className="w-5 h-5 text-neutral-400 mr-3" />
-                    <span className="text-white">Rechnungen</span>
-                  </div>
-                  <ExternalLink className="w-4 h-4 text-neutral-400" />
-                </button>
-              </div>
-            </motion.div>
           </div>
         </div>
       </div>

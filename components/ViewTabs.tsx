@@ -130,7 +130,6 @@ export function ViewTabs({
                   
                   // Calculate position relative to viewport
                   const viewportWidth = window.innerWidth;
-                  const menuWidth = 180;
                   
                   // Position menu directly below the button, aligned to its right edge
                   const position = {

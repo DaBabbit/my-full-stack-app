@@ -121,7 +121,7 @@ export function ViewTabs({
                   console.log('[ViewTabs] ✨ Opening menu');
                   const buttonRect = e.currentTarget.getBoundingClientRect();
                   const position = {
-                    top: buttonRect.top - 10, // 10px above button
+                    top: buttonRect.bottom + 8, // 8px below button
                     left: buttonRect.right - 180 // align right edge of menu with button
                   };
                   console.log('[ViewTabs] 📍 Calculated position:', position);
@@ -138,9 +138,9 @@ export function ViewTabs({
           {/* Context Menu with Backdrop */}
           {contextMenuViewId === view.id && menuPosition && (
             <>
-              {/* Backdrop Overlay */}
+              {/* Backdrop Overlay - Transparent, nur zum Klicken */}
               <div 
-                className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[9998]"
+                className="fixed inset-0 bg-transparent z-[9998]"
                 onClick={() => {
                   console.log('[ViewTabs] 🚫 Backdrop clicked, closing menu');
                   setContextMenuViewId(null);
@@ -159,8 +159,7 @@ export function ViewTabs({
                   style={{
                     position: 'fixed',
                     top: `${menuPosition.top}px`,
-                    left: `${menuPosition.left}px`,
-                    transform: 'translateY(-100%)'
+                    left: `${menuPosition.left}px`
                   }}
                   className="z-[9999] bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden min-w-[180px]"
                   onClick={(e) => e.stopPropagation()}

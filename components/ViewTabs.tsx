@@ -104,14 +104,14 @@ export function ViewTabs({
           )}
 
           {/* Context Menu */}
-          {contextMenuViewId === view.id && (
-            <AnimatePresence>
+          <AnimatePresence>
+            {contextMenuViewId === view.id && (
               <motion.div
                 ref={contextMenuRef}
                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                className="absolute bottom-full right-0 mb-1 z-[10000] bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]"
+                className="absolute bottom-full right-0 mb-2 z-[10000] bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]"
               >
                 <button
                   onClick={() => {
@@ -148,8 +148,8 @@ export function ViewTabs({
                   Löschen
                 </button>
               </motion.div>
-            </AnimatePresence>
-          )}
+            )}
+          </AnimatePresence>
         </div>
       ))}
 

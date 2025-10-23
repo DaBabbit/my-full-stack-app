@@ -38,10 +38,17 @@ export function ViewTabs({
   const [contextMenuViewId, setContextMenuViewId] = useState<string | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
+  console.log('[ViewTabs] 🚀 Component rendered');
+  console.log('[ViewTabs] 📋 Views:', views.length, 'views');
+  console.log('[ViewTabs] 🔑 canManageViews:', canManageViews);
+  console.log('[ViewTabs] 📍 contextMenuViewId state:', contextMenuViewId);
+
   // Close context menu on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      console.log('[ViewTabs] 🖱️ Click outside detected');
       if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        console.log('[ViewTabs] 🚫 Closing context menu');
         setContextMenuViewId(null);
       }
     };
@@ -72,7 +79,9 @@ export function ViewTabs({
       </button>
 
       {/* Custom Views */}
-      {views.map((view) => (
+      {views.map((view) => {
+        console.log('[ViewTabs] 🔄 Rendering view:', view.name, 'id:', view.id);
+        return (
         <div key={view.id} className="relative">
           <button
             onClick={() => onViewChange(view.id)}
@@ -95,7 +104,11 @@ export function ViewTabs({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setContextMenuViewId(contextMenuViewId === view.id ? null : view.id);
+                console.log('[ViewTabs] 🔘 Button clicked for view:', view.name, view.id);
+                console.log('[ViewTabs] 📊 Current contextMenuViewId:', contextMenuViewId);
+                const newValue = contextMenuViewId === view.id ? null : view.id;
+                console.log('[ViewTabs] ✨ Setting contextMenuViewId to:', newValue);
+                setContextMenuViewId(newValue);
               }}
               className="absolute top-1/2 -translate-y-1/2 right-1 p-0.5 hover:bg-neutral-700 rounded text-neutral-500 hover:text-white transition-colors"
             >
@@ -105,7 +118,10 @@ export function ViewTabs({
 
           {/* Context Menu */}
           <AnimatePresence>
-            {contextMenuViewId === view.id && (
+            {contextMenuViewId === view.id && (() => {
+              console.log('[ViewTabs] 🎯 Rendering dropdown for view:', view.name);
+              console.log('[ViewTabs] 📍 contextMenuViewId:', contextMenuViewId, 'view.id:', view.id);
+              return (
               <motion.div
                 ref={contextMenuRef}
                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -148,10 +164,12 @@ export function ViewTabs({
                   Löschen
                 </button>
               </motion.div>
-            )}
+              );
+            })()}
           </AnimatePresence>
         </div>
-      ))}
+        );
+      })}
 
       {/* "+ Ansicht erstellen" Button */}
       {canManageViews && (

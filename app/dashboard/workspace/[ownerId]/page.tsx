@@ -1828,7 +1828,7 @@ export default function SharedWorkspacePage() {
             duration: 5000
           });
         }}
-        onUploadError={(errorMessage) => {
+        onUploadError={() => {
           addToast({
             type: 'error',
             title: 'Upload der Datei fehlgeschlagen',

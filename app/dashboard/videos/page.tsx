@@ -2178,7 +2178,7 @@ export default function VideosPage() {
             duration: 5000
           });
         }}
-        onUploadError={(errorMessage) => {
+        onUploadError={() => {
           addToast({
             type: 'error',
             title: 'Upload der Datei fehlgeschlagen',

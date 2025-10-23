@@ -36,7 +36,7 @@ export function ViewTabs({
   canManageViews = true,
 }: ViewTabsProps) {
   const [contextMenuViewId, setContextMenuViewId] = useState<string | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -122,9 +122,9 @@ export function ViewTabs({
                   const buttonRect = e.currentTarget.getBoundingClientRect();
                   const position = {
                     top: buttonRect.bottom + 8, // 8px below button
-                    left: buttonRect.right - 180 // align right edge of menu with button
+                    right: window.innerWidth - buttonRect.right // distance from right edge of viewport
                   };
-                  console.log('[ViewTabs] 📍 Calculated position:', position);
+                  console.log('[ViewTabs] 📍 Calculated position:', position, 'buttonRect:', buttonRect);
                   setMenuPosition(position);
                   setContextMenuViewId(view.id);
                 }
@@ -159,9 +159,9 @@ export function ViewTabs({
                   style={{
                     position: 'fixed',
                     top: `${menuPosition.top}px`,
-                    left: `${menuPosition.left}px`
+                    right: `${menuPosition.right}px`
                   }}
-                  className="z-[9999] bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden min-w-[180px]"
+                  className="z-[9999] bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button

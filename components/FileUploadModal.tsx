@@ -13,6 +13,7 @@ interface FileUploadModalProps {
   storageLocation?: string;
   nextcloudPath?: string;
   onUploadSuccess?: (fileNames: string[]) => void;
+  onUploadError?: (errorMessage: string) => void;
 }
 
 export function FileUploadModal({
@@ -22,7 +23,8 @@ export function FileUploadModal({
   videoName,
   storageLocation,
   nextcloudPath,
-  onUploadSuccess
+  onUploadSuccess,
+  onUploadError
 }: FileUploadModalProps) {
 
   // Close on ESC key
@@ -178,6 +180,7 @@ export function FileUploadModal({
                 videoName={videoName}
                 nextcloudPath={nextcloudPath}
                 onUploadSuccess={onUploadSuccess}
+                onUploadError={onUploadError}
               />
             </div>
           </motion.div>

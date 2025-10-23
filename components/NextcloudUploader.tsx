@@ -10,9 +10,10 @@ interface NextcloudUploaderProps {
   videoName: string;
   nextcloudPath: string | undefined;
   onUploadSuccess?: (fileNames: string[]) => void; // Callback für Toast Notification
+  onUploadError?: (errorMessage: string) => void; // Callback für Error Notification
 }
 
-export function NextcloudUploader({ videoId, nextcloudPath, onUploadSuccess }: NextcloudUploaderProps) {
+export function NextcloudUploader({ videoId, nextcloudPath, onUploadSuccess, onUploadError }: NextcloudUploaderProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progressMap, setProgressMap] = useState<Map<string, UploadProgress>>(new Map());
@@ -113,7 +114,14 @@ export function NextcloudUploader({ videoId, nextcloudPath, onUploadSuccess }: N
     } catch (error) {
       console.error('Upload error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload fehlgeschlagen';
-      alert(`❌ Fehler: ${errorMessage}`);
+      
+      // Callback für Error Notification
+      if (onUploadError) {
+        onUploadError(errorMessage);
+      } else {
+        // Fallback: alert wenn kein Callback vorhanden
+        alert(`❌ Fehler: ${errorMessage}`);
+      }
     } finally {
       setUploading(false);
     }

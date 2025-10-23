@@ -2178,6 +2178,14 @@ export default function VideosPage() {
             duration: 5000
           });
         }}
+        onUploadError={(errorMessage) => {
+          addToast({
+            type: 'error',
+            title: 'Upload der Datei fehlgeschlagen',
+            message: 'Bitte versuche es in einem Moment erneut. Nach Änderungen an den Video-Feldern kann es einen Moment dauern, bis der Upload wieder funktioniert.',
+            duration: 6000
+          });
+        }}
       />
 
       {/* Table Columns Settings Modal */}

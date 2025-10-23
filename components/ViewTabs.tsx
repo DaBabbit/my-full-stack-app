@@ -108,10 +108,10 @@ export function ViewTabs({
             <AnimatePresence>
               <motion.div
                 ref={contextMenuRef}
-                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                className="absolute top-full right-0 mt-1 z-[9999] bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]"
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="absolute bottom-full right-0 mb-1 z-[10000] bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]"
               >
                 <button
                   onClick={() => {

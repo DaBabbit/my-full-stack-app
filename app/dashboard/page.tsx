@@ -409,9 +409,10 @@ export default function Dashboard() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center p-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                title="Verwalten Sie all Ihre Dateien"
               >
                 <FolderOpen className="w-6 h-6 mr-3" />
-                <span>Verwalte alle Ihre Dateien</span>
+                <span>Speicherort</span>
               </a>
             ) : (
               <div className="flex flex-col p-4 bg-orange-900/20 border-2 border-orange-500/30 rounded-2xl">

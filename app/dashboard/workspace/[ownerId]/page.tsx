@@ -217,12 +217,16 @@ export default function SharedWorkspacePage() {
   } = useWorkspaceViews(ownerId);
 
   // Spalten-Konfiguration basierend auf Settings
-  const columnOrder = tableSettings?.column_order && tableSettings.column_order.length > 0
-    ? tableSettings.column_order
-    : DEFAULT_COLUMNS.map(col => col.id);
+  // Wenn aktive Ansicht vorhanden und column_settings hat, verwende diese
+  const activeView = workspaceViews.find(v => v.id === activeViewId);
+  const columnOrder = activeView?.column_settings?.order && activeView.column_settings.order.length > 0
+    ? activeView.column_settings.order
+    : (tableSettings?.column_order && tableSettings.column_order.length > 0
+      ? tableSettings.column_order
+      : DEFAULT_COLUMNS.map(col => col.id));
 
-  const hiddenColumns = tableSettings?.hidden_columns || [];
-  const columnWidths = tableSettings?.column_widths || {};
+  const hiddenColumns = activeView?.column_settings?.hidden || tableSettings?.hidden_columns || [];
+  const columnWidths = activeView?.column_settings?.widths || tableSettings?.column_widths || {};
 
   // Visible columns in correct order (used for tbody rendering below)
   const visibleColumns = React.useMemo(() => getVisibleColumnOrder(
@@ -233,7 +237,7 @@ export default function SharedWorkspacePage() {
       ? ['checkbox', ...columnOrder]
       : columnOrder,
     hiddenColumns
-  ), [isBulkEditMode, columnOrder, hiddenColumns]);
+  ), [isBulkEditMode, columnOrder, hiddenColumns, activeViewId]);
   
   // Log for debugging
   React.useEffect(() => {
@@ -452,8 +456,7 @@ export default function SharedWorkspacePage() {
   };
 
   // Filter videos by search term
-  // Get active view filters
-  const activeView = workspaceViews.find(v => v.id === activeViewId);
+  // Get active view filters (activeView ist bereits oben definiert)
   const viewFilters = activeView?.filters || {};
 
   const filteredVideos = videos.filter(video => {
@@ -699,9 +702,32 @@ export default function SharedWorkspacePage() {
   };
 
   // View Handlers
-  const handleViewChange = (viewId: string | null) => {
+  const handleViewChange = async (viewId: string | null) => {
     setActiveViewId(viewId);
-    // Filter werden automatisch angewendet (siehe filteredVideos unten)
+    
+    // Lade Spalteneinstellungen der neuen Ansicht
+    if (viewId) {
+      const view = workspaceViews.find(v => v.id === viewId);
+      if (view?.column_settings) {
+        // Lade column_settings aus der View
+        if (view.column_settings.order && view.column_settings.order.length > 0) {
+          await updateColumnOrder(view.column_settings.order);
+        }
+        if (view.column_settings.hidden && view.column_settings.hidden.length > 0) {
+          // Update hidden columns
+          for (const columnId of view.column_settings.hidden) {
+            await toggleColumnVisibility(columnId);
+          }
+        }
+        
+        addToast({
+          type: 'success',
+          title: 'Ansicht geladen',
+          message: `Spalteneinstellungen von "${view.name}" wurden geladen.`,
+          duration: 2000
+        });
+      }
+    }
   };
 
   const handleCreateView = () => {
@@ -788,17 +814,82 @@ export default function SharedWorkspacePage() {
   // Column Settings Handlers
   const handleColumnOrderChange = async (newOrder: string[]) => {
     try {
-      await updateColumnOrder(newOrder);
+      // Wenn aktive Ansicht vorhanden, speichere in der Ansicht
+      if (activeViewId) {
+        const view = workspaceViews.find(v => v.id === activeViewId);
+        if (view) {
+          await updateView({
+            id: activeViewId,
+            updates: {
+              column_settings: {
+                order: newOrder,
+                widths: view.column_settings?.widths || {},
+                hidden: view.column_settings?.hidden || []
+              }
+            }
+          });
+          
+          addToast({
+            type: 'success',
+            title: 'Ansicht gespeichert',
+            message: `Spaltenreihenfolge in "${view.name}" gespeichert.`,
+            duration: 2000
+          });
+        }
+      } else {
+        // Ansonsten in user_table_settings speichern
+        await updateColumnOrder(newOrder);
+      }
     } catch (error) {
       console.error('Error updating column order:', error);
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Spaltenreihenfolge konnte nicht gespeichert werden.'
+      });
     }
   };
 
   const handleToggleColumnVisibility = async (columnId: string) => {
     try {
-      await toggleColumnVisibility(columnId);
+      // Wenn aktive Ansicht vorhanden, speichere in der Ansicht
+      if (activeViewId) {
+        const view = workspaceViews.find(v => v.id === activeViewId);
+        if (view) {
+          const currentHidden = view.column_settings?.hidden || [];
+          const newHidden = currentHidden.includes(columnId)
+            ? currentHidden.filter(id => id !== columnId)
+            : [...currentHidden, columnId];
+          
+          await updateView({
+            id: activeViewId,
+            updates: {
+              column_settings: {
+                order: view.column_settings?.order || [],
+                widths: view.column_settings?.widths || {},
+                hidden: newHidden
+              }
+            }
+          });
+          
+          addToast({
+            type: 'success',
+            title: 'Ansicht gespeichert',
+            message: `Spaltensichtbarkeit in "${view.name}" gespeichert.`,
+            duration: 2000
+          });
+        }
+      } else {
+        // Ansonsten in user_table_settings speichern
+        await toggleColumnVisibility(columnId);
+      }
     } catch (error) {
       console.error('Error toggling column visibility:', error);
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Spaltensichtbarkeit konnte nicht gespeichert werden.'
+      });
     }
   };
 
@@ -831,7 +922,32 @@ export default function SharedWorkspacePage() {
     // Debounce: Save after 500ms of no changes
     resizeTimeoutRef.current = setTimeout(async () => {
       try {
-        await updateColumnWidth(columnId, width);
+        // Wenn aktive Ansicht vorhanden, speichere in der Ansicht
+        if (activeViewId) {
+          const view = workspaceViews.find(v => v.id === activeViewId);
+          if (view) {
+            await updateView({
+              id: activeViewId,
+              updates: {
+                column_settings: {
+                  order: view.column_settings?.order || [],
+                  widths: { ...view.column_settings?.widths, [columnId]: width },
+                  hidden: view.column_settings?.hidden || []
+                }
+              }
+            });
+            
+            addToast({
+              type: 'success',
+              title: 'Ansicht gespeichert',
+              message: `Spaltenbreite in "${view.name}" gespeichert.`,
+              duration: 2000
+            });
+          }
+        } else {
+          // Ansonsten in user_table_settings speichern
+          await updateColumnWidth(columnId, width);
+        }
       } catch (error) {
         console.error('Error updating column width:', error);
       }

@@ -25,7 +25,7 @@ export function Tooltip({
   children, 
   position = 'top',
   delay = 200,
-  maxWidth = '320px'
+  maxWidth = '400px'
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [showTimeout, setShowTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -85,12 +85,12 @@ export function Tooltip({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className={`absolute z-[9999] ${getPositionStyles()}`}
+            className={`absolute z-[10000] pointer-events-none ${getPositionStyles()}`}
             style={{ maxWidth }}
           >
-            <div className="bg-neutral-800 text-white text-sm rounded-lg px-3 py-2 shadow-xl border border-neutral-700">
+            <div className="bg-neutral-800 text-white text-sm rounded-lg px-4 py-3 shadow-2xl border border-neutral-700">
               {typeof content === 'string' ? (
-                <p className="text-neutral-200 leading-relaxed">{content}</p>
+                <p className="text-neutral-200 leading-relaxed whitespace-normal">{content}</p>
               ) : (
                 content
               )}

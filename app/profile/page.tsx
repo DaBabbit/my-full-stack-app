@@ -367,12 +367,107 @@ function ProfileContent() {
 
           {/* Right Column - Subscription Status */}
           <div className="space-y-8">
+            {/* Empfehlungs-Feature */}
+            {hasActiveSubscription && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-md rounded-3xl p-6 border border-blue-500/30 hover:border-blue-400/50 transition-all duration-300"
+              >
+                <div className="flex items-center mb-4">
+                  <div className="p-2 bg-blue-500/20 rounded-xl mr-3">
+                    <CreditCard className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">Freund empfehlen - 250€ Rabatt sichern</h3>
+                </div>
+                <p className="text-neutral-300 mb-4">
+                  Empfehle einen Freund und erhalte <span className="text-blue-400 font-semibold">250€ Rabatt</span> auf deine nächste Rechnung, wenn dein Freund sein erstes Abo bezahlt.
+                </p>
+                
+                {!referralLink ? (
+                  <button
+                    onClick={generateReferralLink}
+                    disabled={isGeneratingReferral}
+                    className="w-full p-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-2xl transition-all duration-300 font-medium flex items-center justify-center gap-2"
+                  >
+                    {isGeneratingReferral ? (
+                      <>
+                        <span className="loading loading-spinner loading-sm"></span>
+                        <span>Wird erstellt...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Empfehlungslink erstellen</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={referralLink}
+                        readOnly
+                        className="flex-1 p-3 bg-neutral-800/50 text-neutral-300 rounded-2xl border border-neutral-700 font-mono text-sm"
+                      />
+                      <button
+                        onClick={copyReferralLink}
+                        className={`p-3 rounded-2xl transition-all duration-300 ${
+                          referralCopied 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700'
+                        }`}
+                      >
+                        {referralCopied ? (
+                          <CheckCircle className="w-5 h-5" />
+                        ) : (
+                          <FileText className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-neutral-400">
+                      Teile diesen Link mit Freunden. Du erhältst 250€ Rabatt, sobald sie ihr erstes Abo bezahlt haben.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Rechnungen */}
+            {hasActiveSubscription && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 transition-all duration-300"
+              >
+                <div className="flex items-center mb-4">
+                  <div className="p-2 bg-neutral-800 rounded-xl mr-3">
+                    <FileText className="w-6 h-6 text-neutral-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">Rechnungen</h3>
+                </div>
+                <p className="text-neutral-400 mb-4">
+                  Sehe alle deine Rechnungen und Zahlungsbelege ein
+                </p>
+                <button
+                  onClick={() => router.push('/profile/invoices')}
+                  className="w-full p-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-neutral-600 flex items-center justify-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Rechnungen ansehen
+                </button>
+              </motion.div>
+            )}
+
             {/* Subscription Status Card */}
             <motion.div
               id="subscription-section"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
+              transition={{ delay: 0.2 }}
               className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700"
             >
               <div className="flex items-center mb-4">
@@ -495,74 +590,6 @@ function ProfileContent() {
                 </div>
               )}
             </motion.div>
-
-            {/* Empfehlungs-Feature */}
-            {hasActiveSubscription && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-md rounded-3xl p-6 border border-blue-500/30 hover:border-blue-400/50 transition-all duration-300"
-              >
-                <div className="flex items-center mb-4">
-                  <div className="p-2 bg-blue-500/20 rounded-xl mr-3">
-                    <CreditCard className="w-6 h-6 text-blue-400" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white">Freund empfehlen - 250€ Rabatt sichern</h3>
-                </div>
-                <p className="text-neutral-300 mb-4">
-                  Empfehle einen Freund und erhalte <span className="text-blue-400 font-semibold">250€ Rabatt</span> auf deine nächste Rechnung, wenn dein Freund sein erstes Abo bezahlt.
-                </p>
-                
-                {!referralLink ? (
-                  <button
-                    onClick={generateReferralLink}
-                    disabled={isGeneratingReferral}
-                    className="w-full p-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-2xl transition-all duration-300 font-medium flex items-center justify-center gap-2"
-                  >
-                    {isGeneratingReferral ? (
-                      <>
-                        <span className="loading loading-spinner loading-sm"></span>
-                        <span>Wird erstellt...</span>
-                      </>
-                    ) : (
-                      <>
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Empfehlungslink erstellen</span>
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={referralLink}
-                        readOnly
-                        className="flex-1 p-3 bg-neutral-800/50 text-neutral-300 rounded-2xl border border-neutral-700 font-mono text-sm"
-                      />
-                      <button
-                        onClick={copyReferralLink}
-                        className={`p-3 rounded-2xl transition-all duration-300 ${
-                          referralCopied 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700'
-                        }`}
-                      >
-                        {referralCopied ? (
-                          <CheckCircle className="w-5 h-5" />
-                        ) : (
-                          <FileText className="w-5 h-5" />
-                        )}
-                      </button>
-                    </div>
-                    <p className="text-xs text-neutral-400">
-                      Teile diesen Link mit Freunden. Du erhältst 250€ Rabatt, sobald sie ihr erstes Abo bezahlt haben.
-                    </p>
-                  </div>
-                )}
-              </motion.div>
-            )}
 
           </div>
         </div>

@@ -29,7 +29,8 @@ import {
   ChevronRight,
   Crown,
   Users,
-  FolderOpen
+  FolderOpen,
+  Loader2
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -402,24 +403,35 @@ export default function Dashboard() {
           <h2 className="text-xl font-semibold text-white mb-4">Schnellaktionen</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Hauptspeicherort */}
-            <div className="flex flex-col p-4 bg-neutral-800 text-white rounded-2xl border border-neutral-700">
-              <div className="flex items-center mb-2">
-                <FolderOpen className="w-6 h-6 mr-3 text-blue-400" />
-                <span className="font-medium">Hauptspeicherort</span>
-              </div>
-              {profile?.main_storage_location ? (
-                <a 
-                  href={profile.main_storage_location}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-400 hover:text-blue-300 break-all underline"
+            {profile?.main_storage_location ? (
+              <a
+                href={profile.main_storage_location}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center p-4 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+              >
+                <FolderOpen className="w-6 h-6 mr-3" />
+                <span>Verwalte alle Ihre Dateien</span>
+              </a>
+            ) : (
+              <div className="flex flex-col p-4 bg-orange-900/20 border-2 border-orange-500/30 rounded-2xl">
+                <div className="flex items-center mb-3">
+                  <div className="relative mr-3">
+                    <Loader2 className="w-6 h-6 text-orange-400 animate-spin" />
+                  </div>
+                  <span className="font-medium text-orange-300">Hauptspeicherort wird erstellt</span>
+                </div>
+                <p className="text-sm text-orange-200/80 mb-3">
+                  Gib unter Profile deinen Vor- und Nachnamen an
+                </p>
+                <button
+                  onClick={() => router.push('/profile')}
+                  className="text-sm text-orange-400 hover:text-orange-300 font-medium underline text-left flex items-center"
                 >
-                  {profile.main_storage_location}
-                </a>
-              ) : (
-                <p className="text-sm text-neutral-500 italic">Wird erstellt...</p>
-              )}
-            </div>
+                  → Zum Profil
+                </button>
+              </div>
+            )}
             
             <button
               onClick={() => router.push('/dashboard/videos')}

@@ -2,16 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-// Removed unused imports: useSubscription, useTrialStatus, BuyMeCoffee
+// Removed unused imports: useSubscription, useTrialStatus, BuyMeCoffee, useRouter
 // import { supabase } from '@/utils/supabase';
 
 // TopBar component handles user profile display and navigation
 export default function TopBar() {
   const { user, signOut } = useAuth();
-  const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   // Removed subscription-related state

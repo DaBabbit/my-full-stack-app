@@ -2,6 +2,7 @@
 
 import { Plus, MoreVertical, Trash2, Edit, Star } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { WorkspaceView } from '@/hooks/useWorkspaceViews';
 
@@ -37,8 +38,14 @@ export function ViewTabs({
 }: ViewTabsProps) {
   const [contextMenuViewId, setContextMenuViewId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Ensure we're mounted (for portal)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   console.log('[ViewTabs] 🚀 Component rendered');
   console.log('[ViewTabs] 📋 Views:', views.length, 'views');
@@ -120,11 +127,28 @@ export function ViewTabs({
                   // Open menu and calculate position
                   console.log('[ViewTabs] ✨ Opening menu');
                   const buttonRect = e.currentTarget.getBoundingClientRect();
+                  
+                  // Calculate position relative to viewport
+                  const viewportWidth = window.innerWidth;
+                  const menuWidth = 180;
+                  
+                  // Position menu directly below the button, aligned to its right edge
                   const position = {
-                    top: buttonRect.bottom + 8, // 8px below button
-                    right: window.innerWidth - buttonRect.right // distance from right edge of viewport
+                    top: buttonRect.bottom + 4, // 4px below button for tighter spacing
+                    right: viewportWidth - buttonRect.right // align right edge with button
                   };
-                  console.log('[ViewTabs] 📍 Calculated position:', position, 'buttonRect:', buttonRect);
+                  
+                  console.log('[ViewTabs] 📍 Button position:', {
+                    top: buttonRect.top,
+                    bottom: buttonRect.bottom,
+                    left: buttonRect.left,
+                    right: buttonRect.right,
+                    width: buttonRect.width,
+                    height: buttonRect.height
+                  });
+                  console.log('[ViewTabs] 📍 Calculated menu position:', position);
+                  console.log('[ViewTabs] 📍 Viewport width:', viewportWidth);
+                  
                   setMenuPosition(position);
                   setContextMenuViewId(view.id);
                 }
@@ -135,82 +159,93 @@ export function ViewTabs({
             </button>
           )}
 
-          {/* Context Menu with Backdrop */}
-          {contextMenuViewId === view.id && menuPosition && (
-            <>
-              {/* Backdrop Overlay - Transparent, nur zum Klicken */}
-              <div 
-                className="fixed inset-0 bg-transparent z-[9998]"
-                onClick={() => {
-                  console.log('[ViewTabs] 🚫 Backdrop clicked, closing menu');
-                  setContextMenuViewId(null);
-                  setMenuPosition(null);
-                }}
-              />
-              
-              {/* Dropdown Menu */}
-              <AnimatePresence>
-                <motion.div
-                  ref={contextMenuRef}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  style={{
-                    position: 'fixed',
-                    top: `${menuPosition.top}px`,
-                    right: `${menuPosition.right}px`
-                  }}
-                  className="z-[9999] bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px]"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() => {
-                      console.log('[ViewTabs] ⭐ Set default clicked');
-                      onSetDefault(view.is_default ? null : view.id);
-                      setContextMenuViewId(null);
-                      setMenuPosition(null);
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
-                  >
-                    <Star className={`w-4 h-4 ${view.is_default ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-                    {view.is_default ? 'Als Standard entfernen' : 'Als Standard festlegen'}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      console.log('[ViewTabs] ✏️ Edit clicked');
-                      onEditView(view);
-                      setContextMenuViewId(null);
-                      setMenuPosition(null);
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Bearbeiten
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      console.log('[ViewTabs] 🗑️ Delete clicked');
-                      if (confirm(`Möchtest du die Ansicht "${view.name}" wirklich löschen?`)) {
-                        onDeleteView(view.id);
-                        setContextMenuViewId(null);
-                        setMenuPosition(null);
-                      }
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Löschen
-                  </button>
-                </motion.div>
-              </AnimatePresence>
-            </>
-          )}
         </div>
         );
       })}
+
+      {/* Context Menu Portal - Render outside the normal DOM flow */}
+      {mounted && contextMenuViewId && menuPosition && createPortal(
+        <>
+          {/* Backdrop Overlay - Transparent, nur zum Klicken */}
+          <div 
+            className="fixed inset-0 bg-transparent z-[9998]"
+            onClick={() => {
+              console.log('[ViewTabs] 🚫 Backdrop clicked, closing menu');
+              setContextMenuViewId(null);
+              setMenuPosition(null);
+            }}
+          />
+          
+          {/* Dropdown Menu */}
+          <AnimatePresence>
+            <motion.div
+              ref={contextMenuRef}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: 'fixed',
+                top: `${menuPosition.top}px`,
+                right: `${menuPosition.right}px`
+              }}
+              className="z-[9999] bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {(() => {
+                const activeView = views.find(v => v.id === contextMenuViewId);
+                if (!activeView) return null;
+                
+                return (
+                  <>
+                    <button
+                      onClick={() => {
+                        console.log('[ViewTabs] ⭐ Set default clicked');
+                        onSetDefault(activeView.is_default ? null : activeView.id);
+                        setContextMenuViewId(null);
+                        setMenuPosition(null);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
+                    >
+                      <Star className={`w-4 h-4 ${activeView.is_default ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                      {activeView.is_default ? 'Als Standard entfernen' : 'Als Standard festlegen'}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        console.log('[ViewTabs] ✏️ Edit clicked');
+                        onEditView(activeView);
+                        setContextMenuViewId(null);
+                        setMenuPosition(null);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Bearbeiten
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        console.log('[ViewTabs] 🗑️ Delete clicked');
+                        if (confirm(`Möchtest du die Ansicht "${activeView.name}" wirklich löschen?`)) {
+                          onDeleteView(activeView.id);
+                          setContextMenuViewId(null);
+                          setMenuPosition(null);
+                        }
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Löschen
+                    </button>
+                  </>
+                );
+              })()}
+            </motion.div>
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
 
       {/* "+ Ansicht erstellen" Button */}
       {canManageViews && (

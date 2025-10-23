@@ -43,19 +43,18 @@ export function ViewTabs({
   console.log('[ViewTabs] 🔑 canManageViews:', canManageViews);
   console.log('[ViewTabs] 📍 contextMenuViewId state:', contextMenuViewId);
 
-  // Close context menu on click outside
+  // ESC key to close menu
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      console.log('[ViewTabs] 🖱️ Click outside detected');
-      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
-        console.log('[ViewTabs] 🚫 Closing context menu');
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && contextMenuViewId) {
+        console.log('[ViewTabs] ⌨️ ESC pressed, closing menu');
         setContextMenuViewId(null);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [contextMenuViewId]);
 
   const defaultView = views.find(v => v.is_default);
 
@@ -110,63 +109,76 @@ export function ViewTabs({
                 console.log('[ViewTabs] ✨ Setting contextMenuViewId to:', newValue);
                 setContextMenuViewId(newValue);
               }}
-              className="absolute top-1/2 -translate-y-1/2 right-1 p-0.5 hover:bg-neutral-700 rounded text-neutral-500 hover:text-white transition-colors"
+              className="absolute top-1/2 -translate-y-1/2 right-1 p-0.5 hover:bg-neutral-700 rounded text-neutral-500 hover:text-white transition-colors z-10"
             >
               <MoreVertical className="w-3 h-3" />
             </button>
           )}
 
-          {/* Context Menu */}
-          <AnimatePresence>
-            {contextMenuViewId === view.id && (() => {
-              console.log('[ViewTabs] 🎯 Rendering dropdown for view:', view.name);
-              console.log('[ViewTabs] 📍 contextMenuViewId:', contextMenuViewId, 'view.id:', view.id);
-              return (
-              <motion.div
-                ref={contextMenuRef}
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                className="absolute bottom-full right-0 mb-2 z-[10000] bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl overflow-hidden min-w-[180px]"
-              >
-                <button
-                  onClick={() => {
-                    onSetDefault(view.is_default ? null : view.id);
-                    setContextMenuViewId(null);
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
+          {/* Context Menu with Backdrop */}
+          {contextMenuViewId === view.id && (
+            <>
+              {/* Backdrop Overlay */}
+              <div 
+                className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[9998]"
+                onClick={() => {
+                  console.log('[ViewTabs] 🚫 Backdrop clicked, closing menu');
+                  setContextMenuViewId(null);
+                }}
+              />
+              
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                <motion.div
+                  ref={contextMenuRef}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute bottom-full right-0 mb-2 z-[9999] bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden min-w-[180px]"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <Star className={`w-4 h-4 ${view.is_default ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-                  {view.is_default ? 'Als Standard entfernen' : 'Als Standard festlegen'}
-                </button>
-
-                <button
-                  onClick={() => {
-                    onEditView(view);
-                    setContextMenuViewId(null);
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
-                >
-                  <Edit className="w-4 h-4" />
-                  Bearbeiten
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (confirm(`Möchtest du die Ansicht "${view.name}" wirklich löschen?`)) {
-                      onDeleteView(view.id);
+                  <button
+                    onClick={() => {
+                      console.log('[ViewTabs] ⭐ Set default clicked');
+                      onSetDefault(view.is_default ? null : view.id);
                       setContextMenuViewId(null);
-                    }
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Löschen
-                </button>
-              </motion.div>
-              );
-            })()}
-          </AnimatePresence>
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
+                  >
+                    <Star className={`w-4 h-4 ${view.is_default ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                    {view.is_default ? 'Als Standard entfernen' : 'Als Standard festlegen'}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      console.log('[ViewTabs] ✏️ Edit clicked');
+                      onEditView(view);
+                      setContextMenuViewId(null);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-neutral-700 transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Bearbeiten
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      console.log('[ViewTabs] 🗑️ Delete clicked');
+                      if (confirm(`Möchtest du die Ansicht "${view.name}" wirklich löschen?`)) {
+                        onDeleteView(view.id);
+                        setContextMenuViewId(null);
+                      }
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Löschen
+                  </button>
+                </motion.div>
+              </AnimatePresence>
+            </>
+          )}
         </div>
         );
       })}

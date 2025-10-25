@@ -313,17 +313,23 @@ export default function VideosPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [userDropdownOpen]);
 
-  // Body scroll lock for Add/Edit modals
+  // Body scroll lock for Add/Edit modals - Verbesserte Version
   useEffect(() => {
     if (showAddModal || showEditModal) {
+      const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${scrollY}px`;
+      
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+      };
     }
-    
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
   }, [showAddModal, showEditModal]);
 
   // Helper function: Check if user can edit a specific video
@@ -1326,35 +1332,6 @@ export default function VideosPage() {
               <span className="text-xl font-semibold text-white">kosmamedia</span>
             </div>
 
-            {/* Search Bar */}
-            <div className="hidden md:flex md:ml-8 md:items-center md:gap-3">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-neutral-400" />
-                </div>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-64 pl-10 p-2.5 placeholder-neutral-400"
-                  placeholder="Videos suchen..."
-                />
-              </div>
-              
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-48 p-2.5 placeholder-neutral-400"
-              >
-                <option value="">Alle Status</option>
-                <option value="Idee">Idee</option>
-                <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
-                <option value="In Bearbeitung (Schnitt)">In Bearbeitung</option>
-                <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
-                <option value="Hochgeladen">Hochgeladen</option>
-              </select>
-            </div>
           </div>
 
           <div className="flex items-center space-x-3">
@@ -1526,61 +1503,8 @@ export default function VideosPage() {
         className="p-4 ml-0 md:ml-64 pt-24"
       >
         <div className="mb-6 md:mb-8">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Videos</h1>
-              <p className="text-neutral-400">Verwalte deine Video-Projekte und deren Status</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              {/* Spalten-Einstellungen Button */}
-              <button
-                onClick={() => setShowColumnsModal(true)}
-                className="px-4 md:px-6 py-3 rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 sm:flex-shrink-0 bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 hover:border-neutral-600"
-              >
-                <Settings className="h-5 w-5" />
-                <span className="hidden sm:inline">Spalten</span>
-              </button>
-
-              {/* Mehrfachbearbeitung Button */}
-              <button
-                onClick={handleToggleBulkMode}
-                className={`px-4 md:px-6 py-3 rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 sm:flex-shrink-0 ${
-                  isBulkEditMode
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
-                    : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 hover:border-neutral-600'
-                }`}
-              >
-                {isBulkEditMode ? <CheckSquare className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
-                <span className="hidden sm:inline">{isBulkEditMode ? 'Bearbeitung aktiv' : 'Mehrfachbearbeitung'}</span>
-                <span className="sm:hidden">{isBulkEditMode ? 'Aktiv' : 'Mehrfach'}</span>
-              </button>
-              
-              {/* Neues Video Button */}
-              <button
-                onClick={() => {
-                  if (permissions.canCreateVideos) {
-                    setShowAddModal(true);
-                  } else {
-                    setPermissionErrorAction('Video erstellen');
-                    setShowPermissionError(true);
-                  }
-                }}
-                className={`px-4 md:px-6 py-3 rounded-3xl flex items-center justify-center space-x-2 transition-all duration-300 sm:flex-shrink-0 ${
-                  permissions.canCreateVideos 
-                    ? 'bg-neutral-800 hover:bg-white hover:text-black text-white border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]'
-                    : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400 hover:text-neutral-300 border border-neutral-600 cursor-pointer'
-                }`}
-                title={!permissions.canCreateVideos ? 'Berechtigungen anzeigen' : ''}
-              >
-                <Plus className="h-5 w-5" />
-                <span className="hidden sm:inline">Neues Video</span>
-                <span className="sm:hidden">Video hinzufügen</span>
-              </button>
-            </div>
-          </div>
-          
           {/* Subscription Warning */}
-          <SubscriptionWarning className="mt-6" />
+          <SubscriptionWarning className="mb-6" />
           
           {/* Workspace Description */}
           <div className="mt-6 bg-neutral-900/30 border border-neutral-700/50 rounded-2xl p-4">
@@ -1625,17 +1549,82 @@ export default function VideosPage() {
           <VideoTableSkeleton />
         ) : (
           <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-neutral-700 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
-              {isFetching && !isLoading && (
-                <div className="flex items-center text-neutral-400 text-sm">
-                  <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Aktualisiere...
+            <div className="sticky top-0 z-10 bg-neutral-900/95 backdrop-blur-md px-6 py-4 border-b border-neutral-700 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
+                
+                {/* Desktop Search (inline) */}
+                <div className="hidden md:flex relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-neutral-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-neutral-800/50 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white pl-10 pr-3 py-2 w-64 placeholder-neutral-400"
+                    placeholder="Videos suchen..."
+                  />
                 </div>
-              )}
+              </div>
+
+              {/* Action Buttons - Icon Only mit Tooltips */}
+              <div className="flex items-center gap-2">
+                {/* Neues Video - Icon Only */}
+                <Tooltip content="Neues Video erstellen" position="bottom">
+                  <button
+                    onClick={() => {
+                      if (permissions.canCreateVideos) {
+                        setShowAddModal(true);
+                      } else {
+                        setPermissionErrorAction('Video erstellen');
+                        setShowPermissionError(true);
+                      }
+                    }}
+                    className={`p-2 rounded-lg transition-all ${
+                      permissions.canCreateVideos 
+                        ? 'bg-neutral-800 hover:bg-white hover:text-black text-white border border-neutral-700' 
+                        : 'bg-neutral-700 text-neutral-400 border border-neutral-600 cursor-not-allowed'
+                    }`}
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </Tooltip>
+
+                {/* Mehrfachbearbeitung - Icon Only */}
+                <Tooltip content={isBulkEditMode ? "Bearbeitung deaktivieren" : "Mehrfachbearbeitung"} position="bottom">
+                  <button
+                    onClick={handleToggleBulkMode}
+                    className={`p-2 rounded-lg transition-all ${
+                      isBulkEditMode
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500'
+                        : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700'
+                    }`}
+                  >
+                    {isBulkEditMode ? <CheckSquare className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
+                  </button>
+                </Tooltip>
+
+                {/* Spalten-Einstellungen - Icon Only */}
+                <Tooltip content="Spalten anpassen" position="bottom">
+                  <button
+                    onClick={() => setShowColumnsModal(true)}
+                    className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
+                </Tooltip>
+
+                {/* Loading Indicator */}
+                {isFetching && !isLoading && (
+                  <div className="flex items-center text-neutral-400 text-sm ml-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* View Tabs */}

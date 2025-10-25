@@ -78,17 +78,23 @@ export default function StatusFilterModal({
   const { user } = useAuth();
   const { members: workspaceMembers } = useWorkspaceMembers();
 
-  // Body scroll lock
+  // Body scroll lock - Verbesserte Version
   useEffect(() => {
     if (isOpen) {
+      const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${scrollY}px`;
+      
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+      };
     }
-    
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
   }, [isOpen]);
 
   // Filtere Videos nach Status und Suchbegriff

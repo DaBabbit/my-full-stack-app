@@ -1591,7 +1591,9 @@ export default function VideosPage() {
           {/* Workspace Description */}
           <div className="mt-6 bg-neutral-900/30 border border-neutral-700/50 rounded-2xl p-4">
             <p className="text-neutral-400 text-sm leading-relaxed">
-              <span className="font-medium text-neutral-300">Mein Workspace:</span> Hier befinden sich alle Videos aus Ihrem persönlichen Workspace. Diese Videos gehören zu Ihrem Account und können von Ihnen verwaltet werden.
+              <span className="font-medium text-neutral-300">
+                Workspace von {user?.user_metadata?.firstname || 'dir'}:
+              </span> Hier befinden sich alle deine Videos. Verwalte sie ganz einfach, lade Mitarbeitende ein und behalte die Status im Blick.
             </p>
           </div>
           

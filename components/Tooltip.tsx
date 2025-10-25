@@ -31,7 +31,6 @@ export function Tooltip({
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [showTimeout, setShowTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [mounted, setMounted] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
 
@@ -39,18 +38,7 @@ export function Tooltip({
     setMounted(true);
   }, []);
 
-  const updatePosition = () => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setTooltipPosition({ 
-        top: rect.top + window.scrollY, 
-        left: rect.left + window.scrollX 
-      });
-    }
-  };
-
   const handleMouseEnter = () => {
-    updatePosition();
     const timeout = setTimeout(() => {
       setIsVisible(true);
     }, delay);

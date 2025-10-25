@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
@@ -110,6 +110,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
 export default function VideosPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const permissions = usePermissions();
   const { sharedWorkspaces } = useSharedWorkspaces();
   const { members: workspaceMembers } = useWorkspaceMembers();
@@ -306,6 +307,19 @@ export default function VideosPage() {
       router.push('/login');
     }
   }, [user, router]);
+
+  // URL-Parameter auslesen und Edit-Modal öffnen
+  useEffect(() => {
+    const editVideoId = searchParams?.get('edit');
+    if (editVideoId && videos.length > 0) {
+      const videoToEdit = videos.find(v => v.id === editVideoId);
+      if (videoToEdit) {
+        handleEditVideo(videoToEdit);
+        // URL-Parameter entfernen
+        router.replace('/dashboard/videos', { scroll: false });
+      }
+    }
+  }, [searchParams, videos]);
 
   // Handle mobile detection and resize
   useEffect(() => {
@@ -671,11 +685,26 @@ export default function VideosPage() {
   };
 
   const handleRowClick = (e: React.MouseEvent, videoId: string) => {
-    // Nur wenn Bulk-Edit-Mode aktiv ist UND Strg/Cmd gedrückt ist
+    // Wenn geklickt auf Aktions-Buttons, ignorieren
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('input') || target.closest('select') || target.closest('a')) {
+      return;
+    }
+
+    // Bulk-Edit-Mode mit Strg/Cmd
     if (isBulkEditMode && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       const isSelected = selectedVideoIds.has(videoId);
       handleVideoSelection(videoId, !isSelected);
+      return;
+    }
+
+    // Normaler Klick: Edit-Modal öffnen
+    if (!isBulkEditMode) {
+      const video = filteredVideos.find(v => v.id === videoId);
+      if (video && canEditVideo(video)) {
+        handleEditVideo(video);
+      }
     }
   };
 
@@ -1622,7 +1651,7 @@ export default function VideosPage() {
               }}
             >
               {/* Header mit Title und Actions - zusammenhängend */}
-              <div className={`bg-neutral-900/95 backdrop-blur-md ${isHeaderSticky ? 'rounded-t-2xl' : 'rounded-t-3xl'} border border-neutral-700 px-6 py-5 flex items-center justify-between`}>
+              <div className={`bg-neutral-900/95 backdrop-blur-md rounded-t-2xl border border-neutral-700 px-6 py-4 flex items-center justify-between`}>
                 <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
 
                 {/* Action Buttons - Rechts mit neuer Reihenfolge */}
@@ -1778,7 +1807,7 @@ export default function VideosPage() {
                     {filteredVideos.map((video) => (
                       <tr 
                         key={video.id} 
-                        className={`border-b border-neutral-800/30 hover:bg-neutral-800/30 ${isBulkEditMode ? 'cursor-pointer' : ''} ${selectedVideoIds.has(video.id) ? 'border-l-4 border-l-blue-500 bg-blue-500/5' : ''} transition-all duration-200`}
+                        className={`border-b border-neutral-800/30 hover:bg-neutral-800/30 cursor-pointer ${selectedVideoIds.has(video.id) ? 'border-l-4 border-l-blue-500 bg-blue-500/5' : ''} transition-all duration-200`}
                         onClick={(e) => handleRowClick(e, video.id)}
                       >
                         {/* Render cells dynamically based on visible columns */}

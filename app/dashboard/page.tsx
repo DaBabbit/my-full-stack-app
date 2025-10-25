@@ -473,7 +473,11 @@ export default function Dashboard() {
                   const userName = userLastname || userFirstname || user?.email?.split('@')[0] || 'Du';
                   
                   return (
-                    <div key={video.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
+                    <div 
+                      key={video.id} 
+                      onClick={() => router.push(`/dashboard/videos?edit=${video.id}`)}
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-neutral-800/50 rounded-xl border border-neutral-700 cursor-pointer hover:bg-neutral-800/70 hover:border-neutral-600 transition-all"
+                    >
                       <div className="flex items-center flex-1 min-w-0 w-full sm:w-auto">
                         <div className="p-2 bg-neutral-700 rounded-lg mr-4 flex-shrink-0">
                           <VideoIcon className="w-5 h-5 text-neutral-400" />

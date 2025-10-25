@@ -1548,8 +1548,10 @@ export default function VideosPage() {
         {showSkeleton ? (
           <VideoTableSkeleton />
         ) : (
-          <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-visible">
-            <div className="sticky top-16 z-10 bg-neutral-900/95 backdrop-blur-md px-6 py-4 border-b border-neutral-700 flex items-center justify-between transition-all duration-300 ease-in-out">
+          <>
+            {/* Sticky Header - außerhalb aber sieht aus wie Teil der Tabelle */}
+            <div className="sticky top-16 z-20 transition-all duration-300 ease-in-out">
+              <div className="bg-neutral-900/50 backdrop-blur-md rounded-t-3xl border border-b-0 border-neutral-700 px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
 
               {/* Action Buttons - Rechts mit neuer Reihenfolge */}
@@ -1623,20 +1625,25 @@ export default function VideosPage() {
                   </div>
                 )}
               </div>
+              </div>
+
+              {/* View Tabs - auch im Sticky */}
+              <div className="bg-neutral-900/50 backdrop-blur-md border-x border-neutral-700 px-6">
+                <ViewTabs
+                  activeViewId={activeViewId}
+                  views={workspaceViews}
+                  onViewChange={handleViewChange}
+                  onCreateView={handleCreateView}
+                  onEditView={handleEditView}
+                  onDeleteView={handleDeleteView}
+                  onSetDefault={handleSetDefaultView}
+                  canManageViews={permissions.canCreateVideos}
+                />
+              </div>
             </div>
 
-            {/* View Tabs */}
-            <ViewTabs
-              activeViewId={activeViewId}
-              views={workspaceViews}
-              onViewChange={handleViewChange}
-              onCreateView={handleCreateView}
-              onEditView={handleEditView}
-              onDeleteView={handleDeleteView}
-              onSetDefault={handleSetDefaultView}
-              canManageViews={permissions.canCreateVideos}
-            />
-
+            {/* Tabellen-Content - sieht aus wie Fortsetzung */}
+            <div className="bg-neutral-900/50 backdrop-blur-md rounded-b-3xl border border-t-0 border-neutral-700">
             {filteredVideos.length === 0 ? (
             <div className="text-center py-12">
               <VideoIcon className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
@@ -1930,7 +1937,8 @@ export default function VideosPage() {
               </div>
             </>
             )}
-          </div>
+            </div>
+          </>
         )}
       </motion.main>
 

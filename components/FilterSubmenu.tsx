@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check } from 'lucide-react';
-import { ResponsiblePersonAvatar } from './ResponsiblePersonAvatar';
+import { X } from 'lucide-react';
+import ResponsiblePersonAvatar from './ResponsiblePersonAvatar';
+import type { FilterValue } from '@/hooks/useWorkspaceViews';
 
 export type FilterType = 'status' | 'person' | 'location' | 'date';
 
@@ -14,8 +15,8 @@ interface FilterSubmenuProps {
   triggerRef: React.RefObject<HTMLElement>;
   filterType: FilterType;
   columnLabel: string;
-  currentValue: any; // Aktuell gesetzter Filter-Wert
-  onApply: (value: any) => void;
+  currentValue: FilterValue; // Aktuell gesetzter Filter-Wert
+  onApply: (value: FilterValue) => void;
   // Data für Optionen
   statusOptions?: string[];
   personOptions?: Array<{ id: string; firstname: string; lastname: string; email: string }>;

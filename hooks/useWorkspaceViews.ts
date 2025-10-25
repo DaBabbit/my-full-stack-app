@@ -9,12 +9,14 @@ export interface SortConfig {
   priority: number; // 0 = höchste Priorität
 }
 
+export type FilterValue = string[] | { from?: string; to?: string } | string | number | boolean | null;
+
 export interface WorkspaceView {
   id: string;
   workspace_owner_id: string;
   name: string;
   is_default: boolean;
-  filters: Record<string, any>; // Flexibel für verschiedene Filter-Typen
+  filters: Record<string, FilterValue>; // Flexibel für verschiedene Filter-Typen
   sort_config?: SortConfig[]; // Array für Mehrfach-Sortierung
   column_settings?: {
     order: string[];
@@ -28,7 +30,7 @@ export interface WorkspaceView {
 
 interface CreateViewInput {
   name: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, FilterValue>;
   sort_config?: SortConfig[];
   column_settings?: {
     order: string[];

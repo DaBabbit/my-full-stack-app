@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { GripVertical, ArrowUp, ArrowDown, Filter as FilterIcon } from 'lucide-react';
 import type { ColumnConfig } from './TableColumnsSettings';
-import type { SortConfig } from '@/hooks/useWorkspaceViews';
+import type { SortConfig, FilterValue } from '@/hooks/useWorkspaceViews';
 
 /**
  * Helper function to get visible columns in the correct order
@@ -30,7 +30,7 @@ interface DraggableTableHeaderProps {
   children: (column: ColumnConfig, width?: number) => React.ReactNode;
   // Neue Props für Filter/Sort
   onHeaderClick?: (columnId: string, element: HTMLElement) => void;
-  activeFilters?: Record<string, any>;
+  activeFilters?: Record<string, FilterValue>;
   activeSorts?: SortConfig[];
 }
 

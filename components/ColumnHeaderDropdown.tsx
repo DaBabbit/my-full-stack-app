@@ -21,9 +21,6 @@ interface ColumnHeaderDropdownProps {
 }
 
 export function ColumnHeaderDropdown({
-  columnId,
-  columnLabel,
-  columnType,
   isOpen,
   onClose,
   triggerRef,

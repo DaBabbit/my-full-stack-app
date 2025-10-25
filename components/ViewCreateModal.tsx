@@ -3,18 +3,18 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Filter, ArrowUpDown } from 'lucide-react';
-import type { WorkspaceView, SortConfig } from '@/hooks/useWorkspaceViews';
+import type { WorkspaceView, SortConfig, FilterValue } from '@/hooks/useWorkspaceViews';
 
 interface ViewCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (viewData: {
     name: string;
-    filters: Record<string, any>;
+    filters: Record<string, FilterValue>;
     sort_config?: SortConfig[];
   }) => Promise<void>;
   editView?: WorkspaceView | null;
-  currentFilters?: Record<string, any>;
+  currentFilters?: Record<string, FilterValue>;
   currentSort?: SortConfig[];
 }
 

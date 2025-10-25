@@ -30,7 +30,7 @@ import { ViewTabs } from '@/components/ViewTabs';
 import { ViewCreateModal } from '@/components/ViewCreateModal';
 import { DraggableTableHeader, getVisibleColumnOrder } from '@/components/DraggableTableHeader';
 import { useTableSettings } from '@/hooks/useTableSettings';
-import { useWorkspaceViews, type WorkspaceView, type SortConfig } from '@/hooks/useWorkspaceViews';
+import { useWorkspaceViews, type WorkspaceView, type SortConfig, type FilterValue } from '@/hooks/useWorkspaceViews';
 import { ColumnHeaderDropdown, type ColumnType } from '@/components/ColumnHeaderDropdown';
 import { FilterSubmenu, type FilterType } from '@/components/FilterSubmenu';
 import { ActiveFiltersBar } from '@/components/ActiveFiltersBar';
@@ -230,7 +230,7 @@ export default function VideosPage() {
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
   // Filter & Sort States
-  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
+  const [activeFilters, setActiveFilters] = useState<Record<string, FilterValue>>({});
   const [activeSorts, setActiveSorts] = useState<SortConfig[]>([]);
   
   // Dropdown States
@@ -927,7 +927,7 @@ export default function VideosPage() {
 
   const handleSaveView = async (viewData: {
     name: string;
-    filters: Record<string, any>;
+    filters: Record<string, FilterValue>;
     sort_config?: SortConfig[];
   }) => {
     try {
@@ -1051,7 +1051,7 @@ export default function VideosPage() {
     setActiveSorts(reorderedSorts);
   };
 
-  const handleAddFilter = (field: string, value: any) => {
+  const handleAddFilter = (field: string, value: FilterValue) => {
     if (value === null || value === undefined) {
       // Remove filter
       const newFilters = { ...activeFilters };
@@ -1338,10 +1338,10 @@ export default function VideosPage() {
         
         if (field === 'publication_date' || field === 'updated_at') {
           // Datum Range
-          if (typeof value !== 'object') return true;
+          if (typeof value !== 'object' || Array.isArray(value) || value === null) return true;
           const videoDate = new Date(video[field as keyof Video] as string);
-          if (value.from && videoDate < new Date(value.from)) return false;
-          if (value.to && videoDate > new Date(value.to)) return false;
+          if ('from' in value && value.from && videoDate < new Date(value.from)) return false;
+          if ('to' in value && value.to && videoDate > new Date(value.to)) return false;
           return true;
         }
         

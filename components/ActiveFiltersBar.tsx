@@ -2,10 +2,10 @@
 
 import { X, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import type { SortConfig } from '@/hooks/useWorkspaceViews';
+import type { SortConfig, FilterValue } from '@/hooks/useWorkspaceViews';
 
 interface ActiveFiltersBarProps {
-  filters: Record<string, any>;
+  filters: Record<string, FilterValue>;
   sorts: SortConfig[];
   onRemoveFilter: (field: string) => void;
   onRemoveSort: (field: string) => void;
@@ -52,7 +52,11 @@ export function ActiveFiltersBar({
   };
 
   // Formatiere Filter-Werte für Anzeige
-  const formatFilterValue = (field: string, value: any): string => {
+  const formatFilterValue = (field: string, value: FilterValue): string => {
+    // Ignoriere null/undefined/boolean/number/string values
+    if (!value || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return String(value || '');
+    }
     if (Array.isArray(value)) {
       if (field === 'responsible_person_id') {
         // Person IDs zu Namen

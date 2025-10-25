@@ -313,6 +313,19 @@ export default function VideosPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [userDropdownOpen]);
 
+  // Body scroll lock for Add/Edit modals
+  useEffect(() => {
+    if (showAddModal || showEditModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showAddModal, showEditModal]);
+
   // Helper function: Check if user can edit a specific video
   const canEditVideo = (video: Video): boolean => {
     // If it's the user's own video (no workspace_permissions = own video)
@@ -1144,45 +1157,49 @@ export default function VideosPage() {
       case 'upload':
         return (
           <td key={`${video.id}-upload`} className="py-4 px-4 border-r border-neutral-800/30">
-            {video.storage_location ? (
-              <button
-                onClick={() => handleOpenUploadModal(video)}
-                className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
-                title="Dateien hochladen"
-              >
-                <Upload className="h-5 w-5" />
-              </button>
-            ) : (
-              <Tooltip 
-                content="Der Speicherort wird noch erstellt und wird in Kürze (max. 5 Minuten) verfügbar sein. Bitte um Geduld. Sollte die Funktion nicht verfügbar sein, bitte Kontakt aufnehmen."
-                position="top"
-                maxWidth="300px"
-              >
+            <div className="flex items-center justify-center">
+              {video.storage_location ? (
                 <button
-                  disabled
-                  className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
+                  onClick={() => handleOpenUploadModal(video)}
+                  className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40 flex items-center justify-center"
+                  title="Dateien hochladen"
                 >
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Upload className="w-5 h-5" />
                 </button>
-              </Tooltip>
-            )}
+              ) : (
+                <Tooltip 
+                  content="Der Speicherort wird noch erstellt und wird in Kürze (max. 5 Minuten) verfügbar sein. Bitte um Geduld. Sollte die Funktion nicht verfügbar sein, bitte Kontakt aufnehmen."
+                  position="top"
+                  maxWidth="300px"
+                >
+                  <button
+                    disabled
+                    className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20 flex items-center justify-center"
+                  >
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  </button>
+                </Tooltip>
+              )}
+            </div>
           </td>
         );
 
       case 'storage_location':
         return (
           <td key={`${video.id}-storage_location`} className="py-4 px-4 border-r border-neutral-800/30">
-            {video.storage_location ? (
-              <button
-                onClick={() => handleOpenStorageLocation(video)}
-                className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
-                title="Ordner durchsuchen"
-              >
-                <FolderOpen className="h-5 w-5" />
-              </button>
-            ) : (
-              <span className="text-neutral-500 text-sm">-</span>
-            )}
+            <div className="flex items-center justify-center">
+              {video.storage_location ? (
+                <button
+                  onClick={() => handleOpenStorageLocation(video)}
+                  className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors flex items-center justify-center"
+                  title="Ordner durchsuchen"
+                >
+                  <FolderOpen className="w-5 h-5" />
+                </button>
+              ) : (
+                <span className="text-neutral-500 text-sm">-</span>
+              )}
+            </div>
           </td>
         );
 
@@ -1224,7 +1241,7 @@ export default function VideosPage() {
       case 'actions':
         return (
           <td key={`${video.id}-actions`} className="py-4 px-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center space-x-2">
               <button
                 onClick={() => {
                   if (canEditVideo(video)) {
@@ -1241,7 +1258,7 @@ export default function VideosPage() {
                 }`}
                 title={canEditVideo(video) ? 'Video bearbeiten' : 'Keine Berechtigung'}
               >
-                <Edit className="h-4 w-4" />
+                <Edit className="w-5 h-5" />
               </button>
               
               {canDeleteVideo(video) && (
@@ -1250,7 +1267,7 @@ export default function VideosPage() {
                   className="text-red-400 hover:text-red-300 transition-colors"
                   title="Video löschen"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="w-5 h-5" />
                 </button>
               )}
             </div>
@@ -1696,7 +1713,7 @@ export default function VideosPage() {
                     {filteredVideos.map((video) => (
                       <tr 
                         key={video.id} 
-                        className={`border-b border-neutral-800 hover:bg-neutral-800/30 ${isBulkEditMode ? 'cursor-pointer' : ''} ${selectedVideoIds.has(video.id) ? 'border-l-4 border-l-blue-500 bg-blue-500/5' : ''} transition-all duration-200`}
+                        className={`border-b border-neutral-800/30 hover:bg-neutral-800/30 ${isBulkEditMode ? 'cursor-pointer' : ''} ${selectedVideoIds.has(video.id) ? 'border-l-4 border-l-blue-500 bg-blue-500/5' : ''} transition-all duration-200`}
                         onClick={(e) => handleRowClick(e, video.id)}
                       >
                         {/* Render cells dynamically based on visible columns */}

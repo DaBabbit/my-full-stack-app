@@ -473,22 +473,22 @@ export default function Dashboard() {
                   const userName = userLastname || userFirstname || user?.email?.split('@')[0] || 'Du';
                   
                   return (
-                    <div key={video.id} className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
-                      <div className="flex items-center flex-1">
-                        <div className="p-2 bg-neutral-700 rounded-lg mr-4">
+                    <div key={video.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-neutral-800/50 rounded-xl border border-neutral-700">
+                      <div className="flex items-center flex-1 min-w-0 w-full sm:w-auto">
+                        <div className="p-2 bg-neutral-700 rounded-lg mr-4 flex-shrink-0">
                           <VideoIcon className="w-5 h-5 text-neutral-400" />
                         </div>
-                        <div className="flex-1">
-                          <h3 className="text-white font-medium">{video.name}</h3>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white font-medium truncate">{video.name}</h3>
                           <p className="text-sm text-neutral-400">Status: {video.status}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-neutral-700 rounded-full flex items-center justify-center text-xs text-white font-medium">
+                          <div className="w-6 h-6 bg-neutral-700 rounded-full flex items-center justify-center text-xs text-white font-medium flex-shrink-0">
                             {getInitials(`${userFirstname} ${userLastname}`.trim())}
                           </div>
-                          <span className="text-xs text-neutral-400">{userName}</span>
+                          <span className="text-xs text-neutral-400 truncate max-w-[150px]">{userName}</span>
                         </div>
                         <span className="text-xs text-neutral-500">
                           {formatRelativeTime(updatedAt)}

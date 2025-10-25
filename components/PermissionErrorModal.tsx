@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -27,6 +28,19 @@ interface PermissionErrorModalProps {
 export default function PermissionErrorModal({ isOpen, onClose, action }: PermissionErrorModalProps) {
   const router = useRouter();
   const permissions = usePermissions();
+
+  // Body scroll lock
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const getSubscriptionStatusInfo = () => {
     switch (permissions.subscriptionStatus) {

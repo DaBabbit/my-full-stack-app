@@ -78,6 +78,19 @@ export default function StatusFilterModal({
   const { user } = useAuth();
   const { members: workspaceMembers } = useWorkspaceMembers();
 
+  // Body scroll lock
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   // Filtere Videos nach Status und Suchbegriff
   const filteredVideos = useMemo(() => {
     return videos

@@ -50,11 +50,11 @@ body {
   scrollbar-width: none;
 }
 
-/* Sticky Header Slide Animation */
+/* Sticky Header Slide Animation - Nur beim ersten Mal, dann bleibt es */
 @keyframes slideDown {
   0% {
     opacity: 0;
-    transform: translateY(-50px);
+    transform: translateY(-20px);
   }
   100% {
     opacity: 1;
@@ -63,5 +63,5 @@ body {
 }
 
 .animate-slideDown {
-  animation: slideDown 0.3s ease-in-out;
+  animation: slideDown 0.2s ease-out forwards;
 }

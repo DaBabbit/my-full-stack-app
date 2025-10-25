@@ -1651,7 +1651,7 @@ export default function VideosPage() {
               }}
             >
               {/* Header mit Title und Actions - zusammenhängend */}
-              <div className={`bg-neutral-900/95 backdrop-blur-md rounded-t-2xl border border-neutral-700 px-6 py-4 flex items-center justify-between`}>
+              <div className={`bg-neutral-900/95 backdrop-blur-md rounded-t-2xl border border-neutral-700 px-6 ${isHeaderSticky ? 'py-5' : 'py-4'} flex items-center justify-between`}>
                 <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
 
                 {/* Action Buttons - Rechts mit neuer Reihenfolge */}
@@ -2050,14 +2050,16 @@ export default function VideosPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 touch-action-none"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 touch-action-none"
+            onClick={() => setShowAddModal(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
+              className="bg-neutral-900/95 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
+              onClick={(e) => e.stopPropagation()}
             >
             <h3 className="text-xl font-semibold mb-6 text-white">🎬 Neues Video erstellen</h3>
             <form onSubmit={handleAddVideo}>
@@ -2179,14 +2181,19 @@ export default function VideosPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-40 touch-action-none"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-40 touch-action-none"
+            onClick={() => {
+              setShowEditModal(false);
+              setEditingVideo(null);
+            }}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
+              className="bg-neutral-900/95 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
+              onClick={(e) => e.stopPropagation()}
             >
             <h3 className="text-xl font-semibold mb-6 text-white">✏️ Video bearbeiten</h3>
             <form onSubmit={handleUpdateVideo}>

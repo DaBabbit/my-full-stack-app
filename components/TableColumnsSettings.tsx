@@ -69,6 +69,25 @@ export function TableColumnsSettings({
   const fixedColumns = columns.filter(col => col.fixed);
   const movableColumns = orderedColumns.filter(col => !col.fixed);
 
+  // Body scroll lock - Verhindert Hintergrund-Scrollen
+  useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${scrollY}px`;
+
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isOpen]);
+
   // Close on ESC key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -101,7 +120,7 @@ export function TableColumnsSettings({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="relative bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 overflow-hidden"
-          style={{ maxHeight: '80vh' }}
+          style={{ maxHeight: '90vh' }}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-neutral-700 bg-gradient-to-r from-neutral-900 to-neutral-800">
@@ -124,7 +143,7 @@ export function TableColumnsSettings({
           </div>
 
           {/* Content */}
-          <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(80vh - 140px)' }}>
+          <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
             {/* Fixed Columns */}
             {fixedColumns.length > 0 && (
               <div className="mb-6">

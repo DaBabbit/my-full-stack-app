@@ -1548,12 +1548,13 @@ export default function VideosPage() {
         {showSkeleton ? (
           <VideoTableSkeleton />
         ) : (
-          <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-hidden">
-            <div className="sticky top-0 z-10 bg-neutral-900/95 backdrop-blur-md px-6 py-4 border-b border-neutral-700 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
-                
-                {/* Desktop Search (inline) */}
+          <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-visible">
+            <div className="sticky top-16 z-10 bg-neutral-900/95 backdrop-blur-md px-6 py-4 border-b border-neutral-700 flex items-center justify-between transition-all duration-300 ease-in-out">
+              <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
+
+              {/* Action Buttons - Rechts mit neuer Reihenfolge */}
+              <div className="flex items-center gap-2">
+                {/* Desktop Search - Jetzt rechts */}
                 <div className="hidden md:flex relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Search className="h-4 w-4 text-neutral-400" />
@@ -1566,33 +1567,19 @@ export default function VideosPage() {
                     placeholder="Videos suchen..."
                   />
                 </div>
-              </div>
 
-              {/* Action Buttons - Icon Only mit Tooltips */}
-              <div className="flex items-center gap-2">
-                {/* Neues Video - Icon Only */}
-                <Tooltip content="Neues Video erstellen" position="bottom">
+                {/* Spalten-Einstellungen */}
+                <Tooltip content="Spalten anpassen" position="left">
                   <button
-                    onClick={() => {
-                      if (permissions.canCreateVideos) {
-                        setShowAddModal(true);
-                      } else {
-                        setPermissionErrorAction('Video erstellen');
-                        setShowPermissionError(true);
-                      }
-                    }}
-                    className={`p-2 rounded-lg transition-all ${
-                      permissions.canCreateVideos 
-                        ? 'bg-neutral-800 hover:bg-white hover:text-black text-white border border-neutral-700' 
-                        : 'bg-neutral-700 text-neutral-400 border border-neutral-600 cursor-not-allowed'
-                    }`}
+                    onClick={() => setShowColumnsModal(true)}
+                    className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Settings className="w-5 h-5" />
                   </button>
                 </Tooltip>
 
-                {/* Mehrfachbearbeitung - Icon Only */}
-                <Tooltip content={isBulkEditMode ? "Bearbeitung deaktivieren" : "Mehrfachbearbeitung"} position="bottom">
+                {/* Mehrfachbearbeitung */}
+                <Tooltip content={isBulkEditMode ? "Bearbeitung deaktivieren" : "Mehrfachbearbeitung"} position="left">
                   <button
                     onClick={handleToggleBulkMode}
                     className={`p-2 rounded-lg transition-all ${
@@ -1605,13 +1592,24 @@ export default function VideosPage() {
                   </button>
                 </Tooltip>
 
-                {/* Spalten-Einstellungen - Icon Only */}
-                <Tooltip content="Spalten anpassen" position="bottom">
+                {/* Neues Video - Blau wie Tabs */}
+                <Tooltip content="Neues Video erstellen" position="left">
                   <button
-                    onClick={() => setShowColumnsModal(true)}
-                    className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
+                    onClick={() => {
+                      if (permissions.canCreateVideos) {
+                        setShowAddModal(true);
+                      } else {
+                        setPermissionErrorAction('Video erstellen');
+                        setShowPermissionError(true);
+                      }
+                    }}
+                    className={`p-2 rounded-lg transition-all ${
+                      permissions.canCreateVideos 
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-sm' 
+                        : 'bg-neutral-700 text-neutral-400 border border-neutral-600 cursor-not-allowed'
+                    }`}
                   >
-                    <Settings className="w-5 h-5" />
+                    <Plus className="w-5 h-5" />
                   </button>
                 </Tooltip>
 

@@ -11,6 +11,8 @@ export function ConnectionStatus() {
   const [isOnline, setIsOnline] = useState(true);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(true);
   const [showWarning, setShowWarning] = useState(false);
+  const [errorCount, setErrorCount] = useState(0);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   
   // 🔥 REQUEST GUARD: Verhindert parallele checkSupabaseConnection Calls
   const isCheckingRef = useRef(false);
@@ -41,10 +43,10 @@ export function ConnectionStatus() {
         return;
       }
 
-      // GUARD 2: Debounce - mindestens 5 Sekunden zwischen Checks
+      // GUARD 2: Debounce - mindestens 10 Sekunden zwischen Checks
       const now = Date.now();
       const timeSinceLastCheck = now - lastCheckTimeRef.current;
-      if (timeSinceLastCheck < 5000) {
+      if (timeSinceLastCheck < 10000) {
         console.log(`[ConnectionStatus] ⏭️ Skipping connection check - too recent (${Math.floor(timeSinceLastCheck / 1000)}s ago)`);
         return;
       }
@@ -60,14 +62,22 @@ export function ConnectionStatus() {
         if (sessionError) {
           console.error('[ConnectionStatus] ❌ Connection LOST - Session error:', sessionError.message);
           setIsSupabaseConnected(false);
-          setShowWarning(true);
+          setErrorCount(prev => prev + 1);
+          // Nur Warning anzeigen wenn 2+ aufeinanderfolgende Fehler
+          if (errorCount >= 1) {
+            setShowWarning(true);
+          }
           return;
         }
 
         if (!session) {
           console.warn('[ConnectionStatus] ❌ Connection LOST - No session');
           setIsSupabaseConnected(false);
-          setShowWarning(true);
+          setErrorCount(prev => prev + 1);
+          // Nur Warning anzeigen wenn 2+ aufeinanderfolgende Fehler
+          if (errorCount >= 1) {
+            setShowWarning(true);
+          }
           return;
         }
 
@@ -80,17 +90,26 @@ export function ConnectionStatus() {
         if (dbError) {
           console.error('[ConnectionStatus] ❌ Connection LOST - DB error:', dbError.message);
           setIsSupabaseConnected(false);
-          setShowWarning(true);
+          setErrorCount(prev => prev + 1);
+          // Nur Warning anzeigen wenn 2+ aufeinanderfolgende Fehler
+          if (errorCount >= 1) {
+            setShowWarning(true);
+          }
         } else {
           console.log('[ConnectionStatus] ✅ Connection OK - Session valid, DB reachable');
           setIsSupabaseConnected(true);
+          setErrorCount(0); // Reset error count bei Erfolg
           setShowWarning(false);
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         console.error('[ConnectionStatus] ❌ Connection check failed:', errorMsg);
         setIsSupabaseConnected(false);
-        setShowWarning(true);
+        setErrorCount(prev => prev + 1);
+        // Nur Warning anzeigen wenn 2+ aufeinanderfolgende Fehler
+        if (errorCount >= 1) {
+          setShowWarning(true);
+        }
       } finally {
         isCheckingRef.current = false;
       }
@@ -99,8 +118,11 @@ export function ConnectionStatus() {
     // Check connection every 30 seconds (weniger aggressive für Chrome/Safari)
     const interval = setInterval(checkSupabaseConnection, 30000);
     
-    // Initial check
-    checkSupabaseConnection();
+    // Initial check - MIT DELAY von 10 Sekunden
+    const initialTimer = setTimeout(() => {
+      setInitialCheckDone(true);
+      checkSupabaseConnection();
+    }, 10000);
 
     // Listen to auth state changes - DEADLOCK-FIX mit setTimeout
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -122,12 +144,12 @@ export function ConnectionStatus() {
 
     // Check on tab visibility change - MIT GUARD!
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
+      if (!document.hidden && initialCheckDone) {
         const now = Date.now();
         const timeSinceLastCheck = now - lastCheckTimeRef.current;
         
-        // Nur checken wenn letzter Check > 5 Sekunden her
-        if (timeSinceLastCheck >= 5000) {
+        // Nur checken wenn letzter Check > 10 Sekunden her
+        if (timeSinceLastCheck >= 10000) {
           console.log('[ConnectionStatus] 👁️ Tab visible - checking connection...');
           checkSupabaseConnection();
         } else {
@@ -143,9 +165,10 @@ export function ConnectionStatus() {
       window.removeEventListener('offline', handleOffline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(interval);
+      clearTimeout(initialTimer);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [errorCount]); // errorCount als Dependency hinzufügen
 
   const handleReconnect = async () => {
     console.log('[ConnectionStatus] 🔄 Reconnecting...');

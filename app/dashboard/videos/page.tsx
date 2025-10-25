@@ -194,6 +194,9 @@ export default function VideosPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalVideo, setUploadModalVideo] = useState<Video | null>(null);
 
+  // Mobile Expanded Card State
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
   // Table Settings & Views States
   const [showColumnsModal, setShowColumnsModal] = useState(false);
   const [showViewCreateModal, setShowViewCreateModal] = useState(false);
@@ -1057,7 +1060,7 @@ export default function VideosPage() {
     switch (columnId) {
       case 'checkbox':
         return (
-          <td key={`${video.id}-checkbox`} className="py-4 px-4">
+          <td key={`${video.id}-checkbox`} className="py-4 px-4 border-r border-neutral-800/30">
             <input
               type="checkbox"
               checked={selectedVideoIds.has(video.id)}
@@ -1073,7 +1076,7 @@ export default function VideosPage() {
 
       case 'title':
         return (
-          <td key={`${video.id}-title`} className="py-4 px-4">
+          <td key={`${video.id}-title`} className="py-4 px-4 border-r border-neutral-800/30">
             <div className="flex items-center">
               <div className={`p-2 bg-neutral-800 rounded-lg mr-3`}>
                 <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
@@ -1087,7 +1090,7 @@ export default function VideosPage() {
 
       case 'status':
         return (
-          <td key={`${video.id}-status`} className="py-4 px-4">
+          <td key={`${video.id}-status`} className="py-4 px-4 border-r border-neutral-800/30">
             {permissions.canEditVideos ? (
               <CustomDropdown
                 options={[
@@ -1111,7 +1114,7 @@ export default function VideosPage() {
 
       case 'publication_date':
         return (
-          <td key={`${video.id}-publication_date`} className="py-4 px-4">
+          <td key={`${video.id}-publication_date`} className="py-4 px-4 border-r border-neutral-800/30">
             <EditableDate
               value={video.publication_date}
               videoId={video.id}
@@ -1124,7 +1127,7 @@ export default function VideosPage() {
 
       case 'responsible_person':
         return (
-          <td key={`${video.id}-responsible_person`} className="py-4 px-4">
+          <td key={`${video.id}-responsible_person`} className="py-4 px-4 border-r border-neutral-800/30">
             <EditableResponsiblePerson
               value={video.responsible_person}
               videoId={video.id}
@@ -1140,7 +1143,7 @@ export default function VideosPage() {
 
       case 'upload':
         return (
-          <td key={`${video.id}-upload`} className="py-4 px-4">
+          <td key={`${video.id}-upload`} className="py-4 px-4 border-r border-neutral-800/30">
             {video.storage_location ? (
               <button
                 onClick={() => handleOpenUploadModal(video)}
@@ -1168,7 +1171,7 @@ export default function VideosPage() {
 
       case 'storage_location':
         return (
-          <td key={`${video.id}-storage_location`} className="py-4 px-4">
+          <td key={`${video.id}-storage_location`} className="py-4 px-4 border-r border-neutral-800/30">
             {video.storage_location ? (
               <button
                 onClick={() => handleOpenStorageLocation(video)}
@@ -1185,14 +1188,14 @@ export default function VideosPage() {
 
       case 'updated_at':
         return (
-          <td key={`${video.id}-updated_at`} className="py-4 px-4 text-neutral-300 text-sm">
+          <td key={`${video.id}-updated_at`} className="py-4 px-4 text-neutral-300 text-sm border-r border-neutral-800/30">
             {formatRelativeTime(video.last_updated || video.updated_at)}
           </td>
         );
 
       case 'inspiration_source':
         return (
-          <td key={`${video.id}-inspiration_source`} className="py-4 px-4">
+          <td key={`${video.id}-inspiration_source`} className="py-4 px-4 border-r border-neutral-800/30">
             <EditableCell
               value={video.inspiration_source}
               videoId={video.id}
@@ -1207,7 +1210,7 @@ export default function VideosPage() {
 
       case 'description':
         return (
-          <td key={`${video.id}-description`} className="py-4 px-4 max-w-xs">
+          <td key={`${video.id}-description`} className="py-4 px-4 max-w-xs border-r border-neutral-800/30">
             <EditableDescription
               value={video.description}
               videoId={video.id}
@@ -1255,7 +1258,7 @@ export default function VideosPage() {
         );
 
       default:
-        return <td key={`${video.id}-${columnId}`} className="py-4 px-4"></td>;
+        return <td key={`${video.id}-${columnId}`} className="py-4 px-4 border-r border-neutral-800/30"></td>;
     }
   }, [
     selectedVideoIds,
@@ -1709,10 +1712,11 @@ export default function VideosPage() {
                 {filteredVideos.map((video) => {
                   const statusInfo = getStatusIcon(video.status);
                   const StatusIcon = statusInfo.icon;
+                  const isExpanded = expandedCardId === video.id;
                   
                   return (
-                    <div key={video.id} className="bg-neutral-800/50 border border-neutral-700 rounded-2xl p-4 space-y-4">
-                      {/* Header mit Titel und Status Icon */}
+                    <div key={video.id} className="bg-neutral-800/50 border border-neutral-700 rounded-2xl p-4 space-y-3">
+                      {/* Header mit Titel, Status Icon und Actions */}
                       <div className="flex items-start justify-between">
                         <div className="flex items-center flex-1 min-w-0">
                           <div className={`p-2 bg-neutral-800 rounded-lg mr-3 flex-shrink-0`}>
@@ -1786,32 +1790,24 @@ export default function VideosPage() {
                         )}
                       </div>
 
-                      {/* Details Grid */}
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      {/* Verantwortlich */}
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-400 mb-2">Verantwortlich</label>
+                        <ResponsiblePersonAvatar 
+                          responsiblePerson={video.responsible_person} 
+                          size="sm" 
+                          showFullName={true}
+                        />
+                      </div>
+
+                      {/* Aktionen Grid: Upload & Speicherort */}
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-medium text-neutral-400 mb-1">Veröffentlichung</label>
-                          <EditableDate
-                            value={video.publication_date}
-                            videoId={video.id}
-                            onSave={handleFieldSave}
-                            editable={permissions.canEditVideos}
-                            placeholder="Datum wählen"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-neutral-400 mb-1">Verantwortlich</label>
-                          <ResponsiblePersonAvatar 
-                            responsiblePerson={video.responsible_person} 
-                            size="sm" 
-                            showFullName={true}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-neutral-400 mb-1">Dateien hochladen</label>
+                          <label className="block text-xs font-medium text-neutral-400 mb-2">Dateien hochladen</label>
                           {video.storage_location ? (
                             <button
                               onClick={() => handleOpenUploadModal(video)}
-                              className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20"
+                              className="w-full p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 flex items-center justify-center"
                               title="Dateien hochladen"
                             >
                               <Upload className="h-5 w-5" />
@@ -1824,7 +1820,7 @@ export default function VideosPage() {
                             >
                               <button
                                 disabled
-                                className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
+                                className="w-full p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20 flex items-center justify-center"
                               >
                                 <Loader2 className="h-5 w-5 animate-spin" />
                               </button>
@@ -1832,52 +1828,98 @@ export default function VideosPage() {
                           )}
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-neutral-400 mb-1">Speicherort</label>
+                          <label className="block text-xs font-medium text-neutral-400 mb-2">Speicherort</label>
                           {video.storage_location ? (
                             <button
                               onClick={() => handleOpenStorageLocation(video)}
-                              className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
+                              className="w-full p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors flex items-center justify-center border border-neutral-700"
                               title="Ordner durchsuchen"
                             >
                               <FolderOpen className="h-5 w-5" />
                             </button>
                           ) : (
-                            <p className="text-neutral-300">-</p>
+                            <div className="w-full p-3 bg-neutral-800/30 rounded-lg flex items-center justify-center border border-neutral-700">
+                              <span className="text-neutral-500 text-sm">-</span>
+                            </div>
                           )}
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-neutral-400 mb-1">Aktualisiert</label>
-                          <p className="text-neutral-300">
-                            {formatRelativeTime(video.last_updated || video.updated_at)}
-                          </p>
                         </div>
                       </div>
 
-                      {/* Inspiration und Beschreibung */}
-                      <div className="space-y-3 pt-2 border-t border-neutral-700">
-                        <div>
-                          <label className="block text-xs font-medium text-neutral-400 mb-1">Inspiration</label>
-                          <EditableCell
-                            value={video.inspiration_source}
-                            videoId={video.id}
-                            field="inspiration_source"
-                            onSave={handleFieldSave}
-                            editable={permissions.canEditVideos}
-                            type="url"
-                            placeholder="URL hinzufügen"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-neutral-400 mb-1">Beschreibung</label>
-                          <EditableDescription
-                            value={video.description}
-                            videoId={video.id}
-                            onSave={handleFieldSave}
-                            editable={permissions.canEditVideos}
-                            placeholder="Beschreibung hinzufügen"
-                          />
-                        </div>
-                      </div>
+                      {/* Details Toggle Button */}
+                      <button
+                        onClick={() => setExpandedCardId(isExpanded ? null : video.id)}
+                        className="w-full flex items-center justify-between px-4 py-2 bg-neutral-800/50 hover:bg-neutral-800 rounded-lg transition-colors border border-neutral-700"
+                      >
+                        <span className="text-sm text-neutral-300">
+                          {isExpanded ? 'Details verbergen' : 'Details anzeigen'}
+                        </span>
+                        <ChevronDown 
+                          className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+
+                      {/* Expandable Details Section */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-3 pt-3 border-t border-neutral-700">
+                              {/* Veröffentlichungsdatum */}
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-400 mb-2">Veröffentlichung</label>
+                                <EditableDate
+                                  value={video.publication_date}
+                                  videoId={video.id}
+                                  onSave={handleFieldSave}
+                                  editable={permissions.canEditVideos}
+                                  placeholder="Datum wählen"
+                                />
+                              </div>
+
+                              {/* Inspiration */}
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-400 mb-2">Inspiration</label>
+                                <EditableCell
+                                  value={video.inspiration_source}
+                                  videoId={video.id}
+                                  field="inspiration_source"
+                                  onSave={handleFieldSave}
+                                  editable={permissions.canEditVideos}
+                                  type="url"
+                                  placeholder="URL hinzufügen"
+                                />
+                              </div>
+
+                              {/* Beschreibung */}
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-400 mb-2">Beschreibung</label>
+                                <EditableDescription
+                                  value={video.description}
+                                  videoId={video.id}
+                                  onSave={handleFieldSave}
+                                  editable={permissions.canEditVideos}
+                                  placeholder="Beschreibung hinzufügen"
+                                />
+                              </div>
+
+                              {/* Aktualisiert */}
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-400 mb-2">Aktualisiert</label>
+                                <p className="text-neutral-300 text-sm px-3 py-2 bg-neutral-800/50 rounded-lg border border-neutral-700">
+                                  {formatRelativeTime(video.last_updated || video.updated_at)}
+                                </p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })}

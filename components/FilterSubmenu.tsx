@@ -254,9 +254,7 @@ export function FilterSubmenu({
                     />
                   </div>
                   <ResponsiblePersonAvatar
-                    firstname={person.firstname}
-                    lastname={person.lastname}
-                    email={person.email}
+                    responsiblePerson={person.id}
                     size="sm"
                   />
                   <span className="text-sm text-white">

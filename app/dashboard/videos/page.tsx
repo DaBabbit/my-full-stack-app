@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -63,6 +63,25 @@ import {
 } from 'lucide-react';
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
+
+// Custom Hook für Sticky Header
+function useStickyHeader(offset = 100) {
+  const [isSticky, setIsSticky] = useState(false);
+  
+  const handleScroll = () => {
+    setIsSticky(window.scrollY > offset);
+  };
+  
+  useLayoutEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [offset]);
+  
+  return isSticky;
+}
 
 const sidebarBottomItems = [
   {
@@ -985,6 +1004,18 @@ export default function VideosPage() {
     }, 500);
   };
 
+  // Sticky Header Hook - wird aktiv bei Scroll > 100px
+  const isHeaderSticky = useStickyHeader(100);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  // Messe die Header-Höhe für den Placeholder
+  useEffect(() => {
+    if (headerRef.current) {
+      setHeaderHeight(headerRef.current.offsetHeight);
+    }
+  }, [isHeaderSticky, workspaceViews.length]);
+
   // Get active view filters (activeView ist bereits oben definiert)
   const viewFilters = activeView?.filters || {};
 
@@ -1549,9 +1580,25 @@ export default function VideosPage() {
           <VideoTableSkeleton />
         ) : (
           <>
-            {/* Sticky Header - außerhalb aber sieht aus wie Teil der Tabelle */}
-            <div className="sticky top-16 z-20 transition-all duration-300 ease-in-out">
-              <div className="bg-neutral-900/50 backdrop-blur-md rounded-t-3xl border border-b-0 border-neutral-700 px-6 py-4 flex items-center justify-between">
+            {/* Placeholder für Sticky Header - verhindert Layout-Shift */}
+            {isHeaderSticky && (
+              <div style={{ height: headerHeight }} />
+            )}
+
+            {/* Sticky Header mit position: fixed */}
+            <div 
+              ref={headerRef}
+              className={`${
+                isHeaderSticky 
+                  ? 'fixed top-16 left-0 right-0 z-30 animate-slideDown shadow-lg' 
+                  : 'relative z-20'
+              } transition-all duration-300 ease-in-out`}
+              style={{
+                marginLeft: isHeaderSticky && !isMobile ? (sidebarCollapsed ? '80px' : '256px') : undefined,
+                marginRight: isHeaderSticky && !isMobile ? '0' : undefined
+              }}
+            >
+              <div className={`bg-neutral-900/95 backdrop-blur-md ${isHeaderSticky ? '' : 'rounded-t-3xl'} border ${isHeaderSticky ? 'border-b' : 'border-b-0'} border-neutral-700 px-6 py-4 flex items-center justify-between`}>
               <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
 
               {/* Action Buttons - Rechts mit neuer Reihenfolge */}
@@ -1628,7 +1675,7 @@ export default function VideosPage() {
               </div>
 
               {/* View Tabs - auch im Sticky */}
-              <div className="bg-neutral-900/50 backdrop-blur-md border-x border-neutral-700 px-6">
+              <div className="bg-neutral-900/95 backdrop-blur-md border-x border-b border-neutral-700 px-6">
                 <ViewTabs
                   activeViewId={activeViewId}
                   views={workspaceViews}
@@ -1643,7 +1690,7 @@ export default function VideosPage() {
             </div>
 
             {/* Tabellen-Content - sieht aus wie Fortsetzung */}
-            <div className="bg-neutral-900/50 backdrop-blur-md rounded-b-3xl border border-t-0 border-neutral-700">
+            <div className={`bg-neutral-900/50 backdrop-blur-md ${isHeaderSticky ? 'rounded-3xl border' : 'rounded-b-3xl border border-t-0'} border-neutral-700`}>
             {filteredVideos.length === 0 ? (
             <div className="text-center py-12">
               <VideoIcon className="w-16 h-16 text-neutral-600 mx-auto mb-4" />

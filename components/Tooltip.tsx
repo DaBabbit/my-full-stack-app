@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, ReactNode } from 'react';
+import { useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 
@@ -32,36 +32,14 @@ export function Tooltip({
   const [isVisible, setIsVisible] = useState(false);
   const [showTimeout, setShowTimeout] = useState<NodeJS.Timeout | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [tooltipStyles, setTooltipStyles] = useState<React.CSSProperties>({});
   const triggerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleMouseEnter = () => {
-    const timeout = setTimeout(() => {
-      setIsVisible(true);
-    }, delay);
-    setShowTimeout(timeout);
-  };
-
-  const handleMouseLeave = () => {
-    if (showTimeout) {
-      clearTimeout(showTimeout);
-      setShowTimeout(null);
-    }
-    setIsVisible(false);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (showTimeout) {
-        clearTimeout(showTimeout);
-      }
-    };
-  }, [showTimeout]);
-
-  const getPositionStyles = () => {
+  const calculatePosition = useCallback(() => {
     if (!triggerRef.current) return {};
     
     const rect = triggerRef.current.getBoundingClientRect();
@@ -100,7 +78,34 @@ export function Tooltip({
           transform: 'translate(-50%, -100%)'
         };
     }
-  };
+  }, [position]);
+
+  const handleMouseEnter = useCallback(() => {
+    // Position nur bei Mouse-Enter berechnen
+    const styles = calculatePosition();
+    setTooltipStyles(styles);
+    
+    const timeout = setTimeout(() => {
+      setIsVisible(true);
+    }, delay);
+    setShowTimeout(timeout);
+  }, [delay, calculatePosition]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (showTimeout) {
+      clearTimeout(showTimeout);
+      setShowTimeout(null);
+    }
+    setIsVisible(false);
+  }, [showTimeout]);
+
+  useEffect(() => {
+    return () => {
+      if (showTimeout) {
+        clearTimeout(showTimeout);
+      }
+    };
+  }, [showTimeout]);
 
   const tooltipContent = isVisible && mounted ? (
     <motion.div
@@ -109,7 +114,7 @@ export function Tooltip({
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.15 }}
       className="fixed z-[9999] pointer-events-none"
-      style={{ ...getPositionStyles(), maxWidth }}
+      style={{ ...tooltipStyles, maxWidth }}
     >
       <div className="bg-neutral-800 text-white text-sm rounded-lg px-4 py-3 shadow-2xl border border-neutral-700">
         {typeof content === 'string' ? (

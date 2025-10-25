@@ -64,21 +64,24 @@ import {
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
 
-// Custom Hook für Sticky Header
+// Custom Hook für Sticky Header - Optimiert mit Throttling
 function useStickyHeader(offset = 100) {
   const [isSticky, setIsSticky] = useState(false);
   
-  const handleScroll = () => {
-    setIsSticky(window.scrollY > offset);
-  };
+  const handleScroll = React.useCallback(() => {
+    const shouldBeSticky = window.scrollY > offset;
+    // Nur State updaten wenn sich der Wert ändert (verhindert unnötige Re-renders)
+    setIsSticky(prev => prev !== shouldBeSticky ? shouldBeSticky : prev);
+  }, [offset]);
   
-  useLayoutEffect(() => {
-    window.addEventListener('scroll', handleScroll);
+  useEffect(() => {
+    // Passive Event Listener für bessere Scroll-Performance
+    window.addEventListener('scroll', handleScroll, { passive: true });
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [offset]);
+  }, [handleScroll]);
   
   return isSticky;
 }
@@ -309,17 +312,22 @@ export default function VideosPage() {
   }, [user, router]);
 
   // URL-Parameter auslesen und Edit-Modal öffnen
+  const hasProcessedEditParam = useRef(false);
   useEffect(() => {
+    // Nur einmal ausführen
+    if (hasProcessedEditParam.current) return;
+    
     const editVideoId = searchParams?.get('edit');
     if (editVideoId && videos.length > 0) {
       const videoToEdit = videos.find(v => v.id === editVideoId);
       if (videoToEdit) {
+        hasProcessedEditParam.current = true;
         handleEditVideo(videoToEdit);
         // URL-Parameter entfernen
         router.replace('/dashboard/videos', { scroll: false });
       }
     }
-  }, [searchParams, videos]);
+  }, [searchParams, videos, router]);
 
   // Handle mobile detection and resize
   useEffect(() => {
@@ -1047,23 +1055,26 @@ export default function VideosPage() {
     }
   }, [isHeaderSticky, workspaceViews.length]);
 
-  // Track Animation - nur abspielen beim Übergang zu sticky
+  // Track Animation - nur abspielen beim Übergang zu sticky (optimiert)
   useEffect(() => {
-    if (isHeaderSticky && !wasSticky.current) {
-      // Wurde gerade sticky
-      setShowStickyAnimation(true);
-      wasSticky.current = true;
-      
-      // Animation nach 300ms entfernen (Animation ist fertig)
-      const timer = setTimeout(() => {
+    // Nur State ändern wenn nötig
+    if (isHeaderSticky !== wasSticky.current) {
+      if (isHeaderSticky) {
+        // Wurde gerade sticky
+        wasSticky.current = true;
+        setShowStickyAnimation(true);
+        
+        // Animation nach 300ms entfernen (Animation ist fertig)
+        const timer = setTimeout(() => {
+          setShowStickyAnimation(false);
+        }, 300);
+        
+        return () => clearTimeout(timer);
+      } else {
+        // Ist nicht mehr sticky
+        wasSticky.current = false;
         setShowStickyAnimation(false);
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    } else if (!isHeaderSticky && wasSticky.current) {
-      // Ist nicht mehr sticky
-      wasSticky.current = false;
-      setShowStickyAnimation(false);
+      }
     }
   }, [isHeaderSticky]);
 

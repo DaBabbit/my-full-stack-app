@@ -169,7 +169,7 @@ export function DraggableTableHeader({
 
                         {/* Column Content - Clickable für Dropdown */}
                         <div 
-                          ref={el => headerRefs.current[column.id] = el}
+                          ref={(el) => { headerRefs.current[column.id] = el; }}
                           className="flex-1 flex items-center gap-2 cursor-pointer hover:text-white transition-colors"
                           onClick={(e) => {
                             // Nur für nicht-fixed Spalten (außer checkbox und actions)

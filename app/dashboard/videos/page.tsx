@@ -1407,7 +1407,7 @@ export default function VideosPage() {
           } else if (typeof aVal === 'number' && typeof bVal === 'number') {
             comparison = aVal - bVal;
           } else if (aVal instanceof Date || bVal instanceof Date) {
-            comparison = new Date(aVal as any).getTime() - new Date(bVal as any).getTime();
+            comparison = new Date(aVal as string | number | Date).getTime() - new Date(bVal as string | number | Date).getTime();
           } else {
             comparison = String(aVal).localeCompare(String(bVal));
           }

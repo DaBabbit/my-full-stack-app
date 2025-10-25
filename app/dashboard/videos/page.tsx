@@ -1618,7 +1618,7 @@ export default function VideosPage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl focus:ring-white focus:border-white block w-full pl-10 p-3 placeholder-neutral-400"
+                className="mobile-search-input bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl focus:ring-white focus:border-white block w-full pl-10 p-3 placeholder-neutral-400"
                 placeholder="Videos suchen..."
               />
             </div>
@@ -1658,9 +1658,9 @@ export default function VideosPage() {
                   : 'relative z-20'
               } transition-all duration-300 ease-in-out`}
               style={{
-                left: isHeaderSticky && !isMobile ? `calc(${sidebarCollapsed ? '80px' : '256px'} + 16px)` : undefined,
-                right: isHeaderSticky && !isMobile ? '16px' : undefined,
-                width: isHeaderSticky && !isMobile ? `calc(100% - ${sidebarCollapsed ? '80px' : '256px'} - 32px)` : undefined
+                left: isHeaderSticky && !isMobile ? `calc(${sidebarCollapsed ? '80px' : '256px'} + 16px)` : (isHeaderSticky && isMobile ? '16px' : undefined),
+                right: isHeaderSticky ? '16px' : undefined,
+                width: isHeaderSticky && !isMobile ? `calc(100% - ${sidebarCollapsed ? '80px' : '256px'} - 32px)` : (isHeaderSticky && isMobile ? 'calc(100% - 32px)' : undefined)
               }}
             >
               {/* Header mit Title und Actions - zusammenhängend */}
@@ -1683,21 +1683,38 @@ export default function VideosPage() {
                     />
                   </div>
 
-                  {/* Spalten-Einstellungen */}
+                  {/* Mobile Search Icon */}
+                  <Tooltip content="Suchen" position="left">
+                    <button
+                      onClick={() => {
+                        // Scroll zur mobilen Suchleiste
+                        const mobileSearch = document.querySelector('.mobile-search-input') as HTMLInputElement;
+                        if (mobileSearch) {
+                          mobileSearch.focus();
+                          mobileSearch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }}
+                      className="md:hidden p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
+                    >
+                      <Search className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+
+                  {/* Spalten-Einstellungen - Nur Desktop */}
                   <Tooltip content="Spalten anpassen" position="left">
                     <button
                       onClick={() => setShowColumnsModal(true)}
-                      className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
+                      className="hidden md:block p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
                     >
                       <Settings className="w-5 h-5" />
                     </button>
                   </Tooltip>
 
-                  {/* Mehrfachbearbeitung */}
+                  {/* Mehrfachbearbeitung - Nur Desktop */}
                   <Tooltip content={isBulkEditMode ? "Bearbeitung deaktivieren" : "Mehrfachbearbeitung"} position="left">
                     <button
                       onClick={handleToggleBulkMode}
-                      className={`p-2 rounded-lg transition-all ${
+                      className={`hidden md:block p-2 rounded-lg transition-all ${
                         isBulkEditMode
                           ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500'
                           : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700'
@@ -1730,7 +1747,7 @@ export default function VideosPage() {
 
                   {/* Loading Indicator */}
                   {isFetching && !isLoading && (
-                    <div className="flex items-center text-neutral-400 text-sm ml-2">
+                    <div className="hidden md:flex items-center text-neutral-400 text-sm ml-2">
                       <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

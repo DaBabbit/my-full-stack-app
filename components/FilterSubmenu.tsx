@@ -58,7 +58,7 @@ export function FilterSubmenu({
     Array.isArray(currentValue) ? currentValue : []
   );
   const [dateRange, setDateRange] = useState<{ from?: string; to?: string }>(
-    currentValue && typeof currentValue === 'object' ? currentValue : {}
+    currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue) ? currentValue : {}
   );
 
   useEffect(() => {

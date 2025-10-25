@@ -25,7 +25,7 @@ import { ViewTabs } from '@/components/ViewTabs';
 import { ViewCreateModal } from '@/components/ViewCreateModal';
 import { DraggableTableHeader, getVisibleColumnOrder } from '@/components/DraggableTableHeader';
 import { useTableSettings } from '@/hooks/useTableSettings';
-import { useWorkspaceViews, type WorkspaceView } from '@/hooks/useWorkspaceViews';
+import { useWorkspaceViews, type WorkspaceView, type SortConfig, type FilterValue } from '@/hooks/useWorkspaceViews';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -782,8 +782,8 @@ export default function SharedWorkspacePage() {
 
   const handleSaveView = async (viewData: {
     name: string;
-    filters: Record<string, string | number | boolean | null>;
-    sort_config?: { field: string; direction: 'asc' | 'desc' };
+    filters: Record<string, FilterValue>;
+    sort_config?: SortConfig[];
   }) => {
     try {
       if (editingView) {

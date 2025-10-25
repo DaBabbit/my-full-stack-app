@@ -70,7 +70,7 @@ export function ViewTabs({
   const defaultView = views.find(v => v.is_default);
 
   return (
-    <div className="flex items-center gap-1 mt-3 mb-4 overflow-x-auto pb-2">
+    <div className="flex items-center gap-1 py-3 overflow-x-auto">
       {/* "Alle Videos" Tab */}
       <button
         onClick={() => onViewChange(null)}

@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ArrowUp, ArrowDown, Filter as FilterIcon } from 'lucide-react';
 import type { ColumnConfig } from './TableColumnsSettings';
+import type { SortConfig } from '@/hooks/useWorkspaceViews';
 
 /**
  * Helper function to get visible columns in the correct order
@@ -27,6 +28,10 @@ interface DraggableTableHeaderProps {
   onColumnResize?: (columnId: string, width: number) => void;
   columnWidths?: Record<string, number>;
   children: (column: ColumnConfig, width?: number) => React.ReactNode;
+  // Neue Props für Filter/Sort
+  onHeaderClick?: (columnId: string, element: HTMLElement) => void;
+  activeFilters?: Record<string, any>;
+  activeSorts?: SortConfig[];
 }
 
 /**
@@ -45,10 +50,14 @@ export function DraggableTableHeader({
   onColumnOrderChange,
   onColumnResize,
   columnWidths = {},
-  children
+  children,
+  onHeaderClick,
+  activeFilters = {},
+  activeSorts = []
 }: DraggableTableHeaderProps) {
   const [resizing, setResizing] = useState<{ columnId: string; startX: number; startWidth: number } | null>(null);
   const tableRef = useRef<HTMLTableRowElement>(null);
+  const headerRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Sortiere Spalten nach columnOrder und filtere hidden columns
   const visibleColumns = columnOrder
@@ -158,9 +167,45 @@ export function DraggableTableHeader({
                           </div>
                         )}
 
-                        {/* Column Content */}
-                        <div className="flex-1">
+                        {/* Column Content - Clickable für Dropdown */}
+                        <div 
+                          ref={el => headerRefs.current[column.id] = el}
+                          className="flex-1 flex items-center gap-2 cursor-pointer hover:text-white transition-colors"
+                          onClick={(e) => {
+                            // Nur für nicht-fixed Spalten (außer checkbox und actions)
+                            if (!column.fixed && column.id !== 'checkbox' && column.id !== 'actions' && onHeaderClick) {
+                              e.stopPropagation();
+                              const element = headerRefs.current[column.id];
+                              if (element) {
+                                onHeaderClick(column.id, element);
+                              }
+                            }
+                          }}
+                        >
                           {children(column, width)}
+                          
+                          {/* Sort Indicator */}
+                          {(() => {
+                            const sort = activeSorts.find(s => s.field === column.id);
+                            if (sort) {
+                              return (
+                                <div className="flex items-center gap-0.5 text-purple-400">
+                                  {sort.direction === 'asc' ? (
+                                    <ArrowUp className="w-3 h-3" />
+                                  ) : (
+                                    <ArrowDown className="w-3 h-3" />
+                                  )}
+                                  <span className="text-[10px] font-bold">{sort.priority + 1}</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                          
+                          {/* Filter Indicator */}
+                          {activeFilters[column.id] && (
+                            <FilterIcon className="w-3 h-3 text-blue-400" />
+                          )}
                         </div>
 
                         {/* Resize Handle */}

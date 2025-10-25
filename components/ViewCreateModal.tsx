@@ -3,19 +3,19 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Filter, ArrowUpDown } from 'lucide-react';
-import type { WorkspaceView } from '@/hooks/useWorkspaceViews';
+import type { WorkspaceView, SortConfig } from '@/hooks/useWorkspaceViews';
 
 interface ViewCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (viewData: {
     name: string;
-    filters: Record<string, string | number | boolean | null>;
-    sort_config?: { field: string; direction: 'asc' | 'desc' };
+    filters: Record<string, any>;
+    sort_config?: SortConfig[];
   }) => Promise<void>;
   editView?: WorkspaceView | null;
-  currentFilters?: Record<string, string | number | boolean | null>;
-  currentSort?: { field: string; direction: 'asc' | 'desc' };
+  currentFilters?: Record<string, any>;
+  currentSort?: SortConfig[];
 }
 
 /**
@@ -89,6 +89,8 @@ export function ViewCreateModal({
     const value = currentFilters[key];
     return value !== null && value !== undefined && value !== '';
   }).length;
+  
+  const activeSortsCount = currentSort?.length || 0;
 
   if (!isOpen) return null;
 
@@ -193,9 +195,9 @@ export function ViewCreateModal({
                   <ArrowUpDown className="w-4 h-4 text-blue-400" />
                   Aktuelle Sortierung einbeziehen
                 </label>
-                {currentSort ? (
+                {activeSortsCount > 0 ? (
                   <p className="text-xs text-neutral-400 mt-1">
-                    Sortiert nach: {currentSort.field} ({currentSort.direction === 'asc' ? 'Aufsteigend' : 'Absteigend'})
+                    {activeSortsCount} Sortierung{activeSortsCount > 1 ? 'en' : ''} aktiv
                   </p>
                 ) : (
                   <p className="text-xs text-neutral-500 mt-1">

@@ -3,16 +3,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/utils/supabase';
 
+export interface SortConfig {
+  field: string;
+  direction: 'asc' | 'desc';
+  priority: number; // 0 = höchste Priorität
+}
+
 export interface WorkspaceView {
   id: string;
   workspace_owner_id: string;
   name: string;
   is_default: boolean;
-  filters: Record<string, string | number | boolean | null>;
-  sort_config?: {
-    field: string;
-    direction: 'asc' | 'desc';
-  };
+  filters: Record<string, any>; // Flexibel für verschiedene Filter-Typen
+  sort_config?: SortConfig[]; // Array für Mehrfach-Sortierung
   column_settings?: {
     order: string[];
     widths: Record<string, number>;
@@ -25,11 +28,8 @@ export interface WorkspaceView {
 
 interface CreateViewInput {
   name: string;
-  filters?: Record<string, string | number | boolean | null>;
-  sort_config?: {
-    field: string;
-    direction: 'asc' | 'desc';
-  };
+  filters?: Record<string, any>;
+  sort_config?: SortConfig[];
   column_settings?: {
     order: string[];
     widths: Record<string, number>;

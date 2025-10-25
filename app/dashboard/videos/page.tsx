@@ -30,7 +30,10 @@ import { ViewTabs } from '@/components/ViewTabs';
 import { ViewCreateModal } from '@/components/ViewCreateModal';
 import { DraggableTableHeader, getVisibleColumnOrder } from '@/components/DraggableTableHeader';
 import { useTableSettings } from '@/hooks/useTableSettings';
-import { useWorkspaceViews, type WorkspaceView } from '@/hooks/useWorkspaceViews';
+import { useWorkspaceViews, type WorkspaceView, type SortConfig } from '@/hooks/useWorkspaceViews';
+import { ColumnHeaderDropdown, type ColumnType } from '@/components/ColumnHeaderDropdown';
+import { FilterSubmenu, type FilterType } from '@/components/FilterSubmenu';
+import { ActiveFiltersBar } from '@/components/ActiveFiltersBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -226,6 +229,16 @@ export default function VideosPage() {
   const [editingView, setEditingView] = useState<WorkspaceView | null>(null);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
+  // Filter & Sort States
+  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
+  const [activeSorts, setActiveSorts] = useState<SortConfig[]>([]);
+  
+  // Dropdown States
+  const [columnDropdownOpen, setColumnDropdownOpen] = useState<string | null>(null);
+  const [columnDropdownTrigger, setColumnDropdownTrigger] = useState<HTMLElement | null>(null);
+  const [filterSubmenuOpen, setFilterSubmenuOpen] = useState<string | null>(null);
+  const [filterSubmenuTrigger, setFilterSubmenuTrigger] = useState<HTMLElement | null>(null);
+
   // Table Settings Hook (lädt Settings des Users)
   const {
     settings: tableSettings,
@@ -372,6 +385,62 @@ export default function VideosPage() {
       };
     }
   }, [showAddModal, showEditModal]);
+
+  // LocalStorage Persistierung für Filter und Sortierungen
+  useEffect(() => {
+    if (activeViewId) {
+      // Speichere in View
+      const view = workspaceViews.find(v => v.id === activeViewId);
+      if (view) {
+        // Debounced update - nur wenn sich Werte geändert haben
+        const timeoutId = setTimeout(async () => {
+          try {
+            await updateView({
+              id: activeViewId,
+              updates: {
+                filters: activeFilters,
+                sort_config: activeSorts
+              }
+            });
+            console.log('[Filter/Sort] Auto-saved to view:', activeViewId);
+          } catch (error) {
+            console.error('[Filter/Sort] Error auto-saving to view:', error);
+          }
+        }, 1000); // 1 Sekunde Debounce
+        
+        return () => clearTimeout(timeoutId);
+      }
+    } else {
+      // Speichere in localStorage für "Alle Videos"
+      localStorage.setItem('default_view_filters', JSON.stringify(activeFilters));
+      localStorage.setItem('default_view_sorts', JSON.stringify(activeSorts));
+    }
+  }, [activeFilters, activeSorts, activeViewId, workspaceViews, updateView]);
+
+  // Lade initial Filter und Sortierungen beim Mount
+  useEffect(() => {
+    // Nur beim initialen Mount laden
+    if (!activeViewId) {
+      const savedFilters = localStorage.getItem('default_view_filters');
+      const savedSorts = localStorage.getItem('default_view_sorts');
+      
+      if (savedFilters) {
+        try {
+          setActiveFilters(JSON.parse(savedFilters));
+        } catch (e) {
+          console.error('Error parsing saved filters:', e);
+        }
+      }
+      
+      if (savedSorts) {
+        try {
+          setActiveSorts(JSON.parse(savedSorts));
+        } catch (e) {
+          console.error('Error parsing saved sorts:', e);
+        }
+      }
+    }
+  }, []); // Nur beim Mount
 
   // Helper function: Check if user can edit a specific video
   const canEditVideo = (video: Video): boolean => {
@@ -792,27 +861,56 @@ export default function VideosPage() {
   const handleViewChange = async (viewId: string | null) => {
     setActiveViewId(viewId);
     
-    // Lade Spalteneinstellungen der neuen Ansicht
+    // Lade Spalteneinstellungen, Filter und Sortierungen der neuen Ansicht
     if (viewId) {
       const view = workspaceViews.find(v => v.id === viewId);
-      if (view?.column_settings) {
-        // Lade column_settings aus der View
-        if (view.column_settings.order && view.column_settings.order.length > 0) {
-          await updateColumnOrder(view.column_settings.order);
-        }
-        if (view.column_settings.hidden && view.column_settings.hidden.length > 0) {
-          // Update hidden columns
-          for (const columnId of view.column_settings.hidden) {
-            await toggleColumnVisibility(columnId);
+      if (view) {
+        // Lade column_settings
+        if (view.column_settings) {
+          if (view.column_settings.order && view.column_settings.order.length > 0) {
+            await updateColumnOrder(view.column_settings.order);
+          }
+          if (view.column_settings.hidden && view.column_settings.hidden.length > 0) {
+            for (const columnId of view.column_settings.hidden) {
+              await toggleColumnVisibility(columnId);
+            }
           }
         }
+        
+        // Lade Filter und Sortierungen
+        setActiveFilters(view.filters || {});
+        setActiveSorts(view.sort_config || []);
         
         addToast({
           type: 'success',
           title: 'Ansicht geladen',
-          message: `Spalteneinstellungen von "${view.name}" wurden geladen.`,
+          message: `"${view.name}" wurde geladen.`,
           duration: 2000
         });
+      }
+    } else {
+      // "Alle Videos" - Reset zu gespeicherten Werten aus localStorage
+      const savedFilters = localStorage.getItem('default_view_filters');
+      const savedSorts = localStorage.getItem('default_view_sorts');
+      
+      if (savedFilters) {
+        try {
+          setActiveFilters(JSON.parse(savedFilters));
+        } catch (e) {
+          console.error('Error parsing saved filters:', e);
+        }
+      } else {
+        setActiveFilters({});
+      }
+      
+      if (savedSorts) {
+        try {
+          setActiveSorts(JSON.parse(savedSorts));
+        } catch (e) {
+          console.error('Error parsing saved sorts:', e);
+        }
+      } else {
+        setActiveSorts([]);
       }
     }
   };
@@ -829,8 +927,8 @@ export default function VideosPage() {
 
   const handleSaveView = async (viewData: {
     name: string;
-    filters: Record<string, string | number | boolean | null>;
-    sort_config?: { field: string; direction: 'asc' | 'desc' };
+    filters: Record<string, any>;
+    sort_config?: SortConfig[];
   }) => {
     try {
       if (editingView) {
@@ -896,6 +994,137 @@ export default function VideosPage() {
         message: 'Standard-Ansicht konnte nicht gesetzt werden.'
       });
     }
+  };
+
+  // Filter & Sort Handlers
+  const handleAddSort = (field: string, direction: 'asc' | 'desc') => {
+    // Prüfe ob bereits sortiert
+    const existingIndex = activeSorts.findIndex(s => s.field === field);
+    
+    if (existingIndex >= 0) {
+      // Aktualisiere bestehende Sortierung
+      const newSorts = [...activeSorts];
+      newSorts[existingIndex] = { ...newSorts[existingIndex], direction };
+      setActiveSorts(newSorts);
+    } else {
+      // Füge neue Sortierung hinzu mit höchster Priorität
+      const newSort: SortConfig = {
+        field,
+        direction,
+        priority: activeSorts.length
+      };
+      setActiveSorts([...activeSorts, newSort]);
+    }
+
+    addToast({
+      type: 'success',
+      title: 'Sortierung hinzugefügt',
+      message: `Sortiert nach ${fieldLabels[field] || field}`,
+      duration: 2000
+    });
+  };
+
+  const handleRemoveSort = (field: string) => {
+    const newSorts = activeSorts.filter(s => s.field !== field);
+    // Prioritäten neu berechnen
+    const reorderedSorts = newSorts.map((sort, index) => ({
+      ...sort,
+      priority: index
+    }));
+    setActiveSorts(reorderedSorts);
+  };
+
+  const handleUpdateSortPriority = (field: string, newPriority: number) => {
+    const sortedSorts = [...activeSorts].sort((a, b) => a.priority - b.priority);
+    const movedSort = sortedSorts.find(s => s.field === field);
+    if (!movedSort) return;
+
+    const otherSorts = sortedSorts.filter(s => s.field !== field);
+    otherSorts.splice(newPriority, 0, movedSort);
+
+    // Prioritäten neu setzen
+    const reorderedSorts = otherSorts.map((sort, index) => ({
+      ...sort,
+      priority: index
+    }));
+
+    setActiveSorts(reorderedSorts);
+  };
+
+  const handleAddFilter = (field: string, value: any) => {
+    if (value === null || value === undefined) {
+      // Remove filter
+      const newFilters = { ...activeFilters };
+      delete newFilters[field];
+      setActiveFilters(newFilters);
+    } else {
+      setActiveFilters({
+        ...activeFilters,
+        [field]: value
+      });
+      
+      addToast({
+        type: 'success',
+        title: 'Filter hinzugefügt',
+        message: `Gefiltert nach ${fieldLabels[field] || field}`,
+        duration: 2000
+      });
+    }
+  };
+
+  const handleRemoveFilter = (field: string) => {
+    const newFilters = { ...activeFilters };
+    delete newFilters[field];
+    setActiveFilters(newFilters);
+  };
+
+  const handleEditFilter = (field: string) => {
+    // Öffne Filter-Submenu für dieses Feld
+    const headerElement = document.querySelector(`[data-column-id="${field}"]`) as HTMLElement;
+    if (headerElement) {
+      setFilterSubmenuOpen(field);
+      setFilterSubmenuTrigger(headerElement);
+    }
+  };
+
+  // Column Header Click Handler
+  const handleHeaderClick = (columnId: string, element: HTMLElement) => {
+    setColumnDropdownOpen(columnId);
+    setColumnDropdownTrigger(element);
+  };
+
+  // Column Type Mapping
+  const getColumnType = (columnId: string): ColumnType => {
+    if (columnId === 'status') return 'status';
+    if (columnId === 'responsible_person') return 'person';
+    if (columnId === 'storage_location') return 'location';
+    if (columnId === 'publication_date' || columnId === 'updated_at') return 'date';
+    return 'text';
+  };
+
+  const getFilterType = (columnId: string): FilterType => {
+    if (columnId === 'status') return 'status';
+    if (columnId === 'responsible_person') return 'person';
+    if (columnId === 'storage_location') return 'location';
+    if (columnId === 'publication_date' || columnId === 'updated_at') return 'date';
+    return 'status'; // fallback
+  };
+
+  const canFilterColumn = (columnId: string): boolean => {
+    // Nur bestimmte Spalten können gefiltert werden
+    return ['status', 'responsible_person', 'storage_location', 'publication_date', 'updated_at'].includes(columnId);
+  };
+
+  // Field Labels für schöne Anzeige
+  const fieldLabels: Record<string, string> = {
+    title: 'Name',
+    status: 'Status',
+    publication_date: 'Veröffentlichung',
+    responsible_person: 'Verantwortlich',
+    storage_location: 'Speicherort',
+    inspiration_source: 'Inspiration',
+    description: 'Beschreibung',
+    updated_at: 'Aktualisiert'
   };
 
   // Column Settings Handlers
@@ -1081,50 +1310,118 @@ export default function VideosPage() {
   // Get active view filters (activeView ist bereits oben definiert)
   const viewFilters = activeView?.filters || {};
 
-  // Filter videos based on search term, status filter, and view filters
-  const filteredVideos = videos.filter(video => {
-    // Status filter (from filter button)
-    if (statusFilter && video.status !== statusFilter) {
-      return false;
-    }
-    
-    // View filters (from active view)
-    if (activeViewId && Object.keys(viewFilters).length > 0) {
-      for (const [key, value] of Object.entries(viewFilters)) {
-        if (value === null || value === undefined || value === '') continue;
+  // Filter and Sort videos with useMemo for performance
+  const filteredVideos = React.useMemo(() => {
+    let result = [...videos];
+
+    // 1. Apply active filters
+    Object.entries(activeFilters).forEach(([field, value]) => {
+      if (!value) return;
+
+      result = result.filter(video => {
+        if (field === 'status') {
+          // Array von Status-Werten
+          return Array.isArray(value) && value.includes(video.status);
+        }
         
-        // Status filter from view
-        if (key === 'status' && video.status !== value) {
-          return false;
+        if (field === 'responsible_person') {
+          // Array von Person IDs
+          if (!Array.isArray(value)) return true;
+          if (value.includes('unassigned') && !video.responsible_person) return true;
+          return video.responsible_person && value.includes(video.responsible_person);
         }
-        // Responsible person filter from view
-        if (key === 'responsible_person' && video.responsible_person !== value) {
-          return false;
+        
+        if (field === 'storage_location') {
+          // Array von Locations
+          return Array.isArray(value) && video.storage_location && value.includes(video.storage_location);
         }
-        // Add more filter types as needed
-      }
+        
+        if (field === 'publication_date' || field === 'updated_at') {
+          // Datum Range
+          if (typeof value !== 'object') return true;
+          const videoDate = new Date(video[field as keyof Video] as string);
+          if (value.from && videoDate < new Date(value.from)) return false;
+          if (value.to && videoDate > new Date(value.to)) return false;
+          return true;
+        }
+        
+        return true;
+      });
+    });
+
+    // 2. Legacy Status Filter (from filter button - wird später durch neue Filter ersetzt)
+    if (statusFilter) {
+      result = result.filter(video => video.status === statusFilter);
     }
     
-    // Search filter
-    if (!searchTerm.trim()) return true; // Show all videos if search is empty
+    // 3. View filters (from active view - legacy support)
+    if (activeViewId && Object.keys(viewFilters).length > 0) {
+      result = result.filter(video => {
+        for (const [key, value] of Object.entries(viewFilters)) {
+          if (value === null || value === undefined || value === '') continue;
+          
+          if (key === 'status' && video.status !== value) {
+            return false;
+          }
+          if (key === 'responsible_person' && video.responsible_person !== value) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
     
-    const searchLower = searchTerm.toLowerCase();
-    const videoName = video.name || video.title || '';
-    const matches = (
-      videoName.toLowerCase().includes(searchLower) ||
-      video.status.toLowerCase().includes(searchLower) ||
-      (video.responsible_person && video.responsible_person.toLowerCase().includes(searchLower)) ||
-      (video.description && video.description.toLowerCase().includes(searchLower)) ||
-      (video.inspiration_source && video.inspiration_source.toLowerCase().includes(searchLower))
-    );
-    
-    // Debug log
+    // 4. Search filter
     if (searchTerm.trim()) {
-      console.log(`Search: "${searchTerm}" -> Video: "${videoName}" -> Match: ${matches}`);
+      const searchLower = searchTerm.toLowerCase();
+      result = result.filter(video => {
+        const videoName = video.name || video.title || '';
+        return (
+          videoName.toLowerCase().includes(searchLower) ||
+          video.status.toLowerCase().includes(searchLower) ||
+          (video.responsible_person && video.responsible_person.toLowerCase().includes(searchLower)) ||
+          (video.description && video.description.toLowerCase().includes(searchLower)) ||
+          (video.inspiration_source && video.inspiration_source.toLowerCase().includes(searchLower))
+        );
+      });
     }
-    
-    return matches;
-  });
+
+    // 5. Apply sorts (in priority order)
+    if (activeSorts.length > 0) {
+      const sortedSorts = [...activeSorts].sort((a, b) => a.priority - b.priority);
+      
+      result.sort((a, b) => {
+        for (const sort of sortedSorts) {
+          const aVal = a[sort.field as keyof Video];
+          const bVal = b[sort.field as keyof Video];
+          
+          // Handle null/undefined
+          if (aVal == null && bVal == null) continue;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+          
+          // Compare based on type
+          let comparison = 0;
+          if (typeof aVal === 'string' && typeof bVal === 'string') {
+            comparison = aVal.localeCompare(bVal);
+          } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+            comparison = aVal - bVal;
+          } else if (aVal instanceof Date || bVal instanceof Date) {
+            comparison = new Date(aVal as any).getTime() - new Date(bVal as any).getTime();
+          } else {
+            comparison = String(aVal).localeCompare(String(bVal));
+          }
+          
+          if (comparison !== 0) {
+            return sort.direction === 'asc' ? comparison : -comparison;
+          }
+        }
+        return 0;
+      });
+    }
+
+    return result;
+  }, [videos, activeFilters, activeSorts, statusFilter, viewFilters, activeViewId, searchTerm]);
 
   // Helper function for date formatting with leading zeros
   const formatDate = (dateString: string | null | undefined): string => {
@@ -1772,6 +2069,24 @@ export default function VideosPage() {
               </div>
             </div>
 
+            {/* Active Filters & Sorts Bar */}
+            <ActiveFiltersBar
+              filters={activeFilters}
+              sorts={activeSorts}
+              onRemoveFilter={handleRemoveFilter}
+              onRemoveSort={handleRemoveSort}
+              onUpdateSortPriority={handleUpdateSortPriority}
+              onEditFilter={handleEditFilter}
+              fieldLabels={fieldLabels}
+              personMap={Object.fromEntries(
+                workspaceMembers.map(m => [m.user_id, { 
+                  firstname: m.user?.firstname || '', 
+                  lastname: m.user?.lastname || '', 
+                  email: m.user?.email || m.invitation_email || '' 
+                }])
+              )}
+            />
+
             {/* Tabellen-Content - sieht aus wie Fortsetzung */}
             <div className={`bg-neutral-900/50 backdrop-blur-md ${isHeaderSticky ? 'rounded-3xl border mt-2' : 'rounded-b-3xl border border-t-0'} border-neutral-700`}>
             {filteredVideos.length === 0 ? (
@@ -1817,6 +2132,9 @@ export default function VideosPage() {
                       }}
                       onColumnResize={handleColumnResize}
                       columnWidths={columnWidths}
+                      onHeaderClick={handleHeaderClick}
+                      activeFilters={activeFilters}
+                      activeSorts={activeSorts}
                     >
                       {(column) => (
                         <>
@@ -2437,8 +2755,58 @@ export default function VideosPage() {
         }}
         onSave={handleSaveView}
         editView={editingView}
-        currentFilters={{ status: statusFilter, search: searchTerm }}
+        currentFilters={activeFilters}
+        currentSort={activeSorts}
       />
+
+      {/* Column Header Dropdown */}
+      {columnDropdownOpen && columnDropdownTrigger && (
+        <ColumnHeaderDropdown
+          columnId={columnDropdownOpen}
+          columnLabel={fieldLabels[columnDropdownOpen] || columnDropdownOpen}
+          columnType={getColumnType(columnDropdownOpen)}
+          isOpen={true}
+          onClose={() => {
+            setColumnDropdownOpen(null);
+            setColumnDropdownTrigger(null);
+          }}
+          triggerRef={{ current: columnDropdownTrigger }}
+          onSort={(direction) => handleAddSort(columnDropdownOpen, direction)}
+          onFilter={() => {
+            setFilterSubmenuOpen(columnDropdownOpen);
+            setFilterSubmenuTrigger(columnDropdownTrigger);
+          }}
+          onHide={() => toggleColumnVisibility(columnDropdownOpen)}
+          canFilter={canFilterColumn(columnDropdownOpen)}
+        />
+      )}
+
+      {/* Filter Submenu */}
+      {filterSubmenuOpen && filterSubmenuTrigger && (
+        <FilterSubmenu
+          isOpen={true}
+          onClose={() => {
+            setFilterSubmenuOpen(null);
+            setFilterSubmenuTrigger(null);
+          }}
+          triggerRef={{ current: filterSubmenuTrigger }}
+          filterType={getFilterType(filterSubmenuOpen)}
+          columnLabel={fieldLabels[filterSubmenuOpen] || filterSubmenuOpen}
+          currentValue={activeFilters[filterSubmenuOpen]}
+          onApply={(value) => handleAddFilter(filterSubmenuOpen, value)}
+          statusOptions={['Idee', 'Warten auf Aufnahme', 'In Bearbeitung', 'Schnitt abgeschlossen', 'Hochgeladen']}
+          personOptions={[
+            ...(workspaceOwner ? [{ id: user?.id || '', ...workspaceOwner }] : []),
+            ...workspaceMembers.map(m => ({
+              id: m.user_id,
+              firstname: m.user?.firstname || '',
+              lastname: m.user?.lastname || '',
+              email: m.user?.email || m.invitation_email || ''
+            }))
+          ]}
+          locationOptions={Array.from(new Set(videos.map(v => v.storage_location).filter(Boolean) as string[]))}
+        />
+      )}
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onClose={removeToast} />

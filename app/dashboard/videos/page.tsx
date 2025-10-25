@@ -1548,94 +1548,102 @@ export default function VideosPage() {
         {showSkeleton ? (
           <VideoTableSkeleton />
         ) : (
-          <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-visible">
-            <div className="sticky top-16 z-10 bg-neutral-900/95 backdrop-blur-md px-6 py-4 border-b border-neutral-700 flex items-center justify-between transition-all duration-300 ease-in-out">
-              <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
+          <>
+            {/* Sticky Header - außerhalb des rounded Containers */}
+            <div className="sticky top-16 z-20 bg-neutral-900/95 backdrop-blur-md transition-all duration-300 ease-in-out">
+              <div className="bg-neutral-900/50 backdrop-blur-md rounded-t-3xl border border-b-0 border-neutral-700 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
 
-              {/* Action Buttons - Rechts mit neuer Reihenfolge */}
-              <div className="flex items-center gap-2">
-                {/* Desktop Search - Jetzt rechts */}
-                <div className="hidden md:flex relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 text-neutral-400" />
+                {/* Action Buttons - Rechts mit neuer Reihenfolge */}
+                <div className="flex items-center gap-2">
+                  {/* Desktop Search - Jetzt rechts */}
+                  <div className="hidden md:flex relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="h-4 w-4 text-neutral-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="bg-neutral-800/50 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white pl-10 pr-3 py-2 w-64 placeholder-neutral-400"
+                      placeholder="Videos suchen..."
+                    />
                   </div>
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="bg-neutral-800/50 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white pl-10 pr-3 py-2 w-64 placeholder-neutral-400"
-                    placeholder="Videos suchen..."
-                  />
+
+                  {/* Spalten-Einstellungen */}
+                  <Tooltip content="Spalten anpassen" position="left">
+                    <button
+                      onClick={() => setShowColumnsModal(true)}
+                      className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
+                    >
+                      <Settings className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+
+                  {/* Mehrfachbearbeitung */}
+                  <Tooltip content={isBulkEditMode ? "Bearbeitung deaktivieren" : "Mehrfachbearbeitung"} position="left">
+                    <button
+                      onClick={handleToggleBulkMode}
+                      className={`p-2 rounded-lg transition-all ${
+                        isBulkEditMode
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500'
+                          : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700'
+                      }`}
+                    >
+                      {isBulkEditMode ? <CheckSquare className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
+                    </button>
+                  </Tooltip>
+
+                  {/* Neues Video - Blau wie Tabs */}
+                  <Tooltip content="Neues Video erstellen" position="left">
+                    <button
+                      onClick={() => {
+                        if (permissions.canCreateVideos) {
+                          setShowAddModal(true);
+                        } else {
+                          setPermissionErrorAction('Video erstellen');
+                          setShowPermissionError(true);
+                        }
+                      }}
+                      className={`p-2 rounded-lg transition-all ${
+                        permissions.canCreateVideos 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-sm' 
+                          : 'bg-neutral-700 text-neutral-400 border border-neutral-600 cursor-not-allowed'
+                      }`}
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+
+                  {/* Loading Indicator */}
+                  {isFetching && !isLoading && (
+                    <div className="flex items-center text-neutral-400 text-sm ml-2">
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                {/* Spalten-Einstellungen */}
-                <Tooltip content="Spalten anpassen" position="left">
-                  <button
-                    onClick={() => setShowColumnsModal(true)}
-                    className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </button>
-                </Tooltip>
-
-                {/* Mehrfachbearbeitung */}
-                <Tooltip content={isBulkEditMode ? "Bearbeitung deaktivieren" : "Mehrfachbearbeitung"} position="left">
-                  <button
-                    onClick={handleToggleBulkMode}
-                    className={`p-2 rounded-lg transition-all ${
-                      isBulkEditMode
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500'
-                        : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700'
-                    }`}
-                  >
-                    {isBulkEditMode ? <CheckSquare className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
-                  </button>
-                </Tooltip>
-
-                {/* Neues Video - Blau wie Tabs */}
-                <Tooltip content="Neues Video erstellen" position="left">
-                  <button
-                    onClick={() => {
-                      if (permissions.canCreateVideos) {
-                        setShowAddModal(true);
-                      } else {
-                        setPermissionErrorAction('Video erstellen');
-                        setShowPermissionError(true);
-                      }
-                    }}
-                    className={`p-2 rounded-lg transition-all ${
-                      permissions.canCreateVideos 
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-sm' 
-                        : 'bg-neutral-700 text-neutral-400 border border-neutral-600 cursor-not-allowed'
-                    }`}
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </Tooltip>
-
-                {/* Loading Indicator */}
-                {isFetching && !isLoading && (
-                  <div className="flex items-center text-neutral-400 text-sm ml-2">
-                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  </div>
-                )}
+              {/* View Tabs - auch im Sticky Bereich */}
+              <div className="bg-neutral-900/50 backdrop-blur-md border-x border-neutral-700 px-6">
+                <ViewTabs
+                  activeViewId={activeViewId}
+                  views={workspaceViews}
+                  onViewChange={handleViewChange}
+                  onCreateView={handleCreateView}
+                  onEditView={handleEditView}
+                  onDeleteView={handleDeleteView}
+                  onSetDefault={handleSetDefaultView}
+                  canManageViews={permissions.canCreateVideos}
+                />
               </div>
             </div>
 
-            {/* View Tabs */}
-            <ViewTabs
-              activeViewId={activeViewId}
-              views={workspaceViews}
-              onViewChange={handleViewChange}
-              onCreateView={handleCreateView}
-              onEditView={handleEditView}
-              onDeleteView={handleDeleteView}
-              onSetDefault={handleSetDefaultView}
-              canManageViews={permissions.canCreateVideos}
-            />
+            {/* Table Content - jetzt ohne Header */}
+            <div className="bg-neutral-900/50 backdrop-blur-md rounded-b-3xl border border-t-0 border-neutral-700 overflow-hidden">
 
             {filteredVideos.length === 0 ? (
             <div className="text-center py-12">
@@ -1930,7 +1938,8 @@ export default function VideosPage() {
               </div>
             </>
             )}
-          </div>
+            </div>
+          </>
         )}
       </motion.main>
 

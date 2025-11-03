@@ -24,6 +24,7 @@ import ResponsiblePersonDropdownSimple from '@/components/ResponsiblePersonDropd
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import BulkEditBar from '@/components/BulkEditBar';
 import { FileUploadModal } from '@/components/FileUploadModal';
+import { VideoPreviewPlayer } from '@/components/VideoPreviewPlayer';
 import { Tooltip } from '@/components/Tooltip';
 import { TableColumnsSettings, type ColumnConfig } from '@/components/TableColumnsSettings';
 import { ViewTabs } from '@/components/ViewTabs';
@@ -2540,10 +2541,27 @@ export default function VideosPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="bg-neutral-900/95 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
+              className="bg-neutral-900/95 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-5xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
               onClick={(e) => e.stopPropagation()}
             >
             <h3 className="text-xl font-semibold mb-6 text-white">✏️ Video bearbeiten</h3>
+            
+            {/* Layout: Player links (bei entsprechendem Status), Form rechts */}
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Video Preview Player - nur bei Status "Schnitt abgeschlossen" oder "Hochgeladen" */}
+              {(editingVideo.status === 'Schnitt abgeschlossen' || editingVideo.status === 'Hochgeladen') && (
+                <div className="lg:w-1/3 flex-shrink-0">
+                  <VideoPreviewPlayer
+                    videoId={editingVideo.id}
+                    videoName={editingVideo.name}
+                    storageLocation={editingVideo.storage_location}
+                    status={editingVideo.status}
+                  />
+                </div>
+              )}
+              
+              {/* Edit Form */}
+              <div className="flex-1">
             <form onSubmit={handleUpdateVideo}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Video Titel */}
@@ -2653,6 +2671,8 @@ export default function VideosPage() {
                 </button>
               </div>
             </form>
+              </div>
+            </div>
             </motion.div>
           </motion.div>
         )}

@@ -75,8 +75,9 @@ export function VideoPreviewPlayer({ videoId, storageLocation, status }: VideoPr
 
   // Lade Streaming-URL für ausgewählte Datei
   useEffect(() => {
-    const currentFile = selectedFile;
-    if (!currentFile) return;
+    if (!selectedFile) return;
+
+    const filename = selectedFile.filename;
 
     async function loadStreamUrl() {
       setLoading(true);
@@ -97,7 +98,7 @@ export function VideoPreviewPlayer({ videoId, storageLocation, status }: VideoPr
           },
           body: JSON.stringify({
             videoId,
-            filename: currentFile.filename
+            filename
           })
         });
 

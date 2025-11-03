@@ -104,7 +104,7 @@ export async function POST(request: Request) {
         const storageUrl = new URL(video.storage_location);
         const dirMatch = storageUrl.searchParams.get('dir') || storageUrl.pathname;
         basePath = dirMatch.replace(/^\/+/, '');
-      } catch (e) {
+      } catch {
         return NextResponse.json(
           { error: 'Kein gültiger Speicherort vorhanden' },
           { status: 400 }
@@ -242,7 +242,7 @@ async function getExistingShare(
     }
 
     // Finde den ersten öffentlichen Share (shareType 3)
-    const publicShare = data.ocs.data.find((share: any) => share.share_type === 3);
+    const publicShare = data.ocs.data.find((share: { share_type: number; url: string; token: string }) => share.share_type === 3);
     
     if (!publicShare) {
       return null;

@@ -6,7 +6,6 @@ import { supabase } from '@/utils/supabase';
 
 interface VideoPreviewPlayerProps {
   videoId: string;
-  videoName: string;
   storageLocation?: string;
   status: string;
 }
@@ -17,7 +16,7 @@ interface FinishedFile {
   size?: number;
 }
 
-export function VideoPreviewPlayer({ videoId, videoName, storageLocation, status }: VideoPreviewPlayerProps) {
+export function VideoPreviewPlayer({ videoId, storageLocation, status }: VideoPreviewPlayerProps) {
   const [files, setFiles] = useState<FinishedFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<FinishedFile | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);

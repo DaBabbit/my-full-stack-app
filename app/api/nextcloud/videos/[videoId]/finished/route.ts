@@ -163,7 +163,7 @@ export async function GET(
     const xmlData = await response.text();
     
     // Parse XML und extrahiere MP4-Dateien
-    const mp4Files = parsePropfindResponse(xmlData, finishedVideoPath);
+    const mp4Files = parsePropfindResponse(xmlData);
 
     return NextResponse.json({ 
       files: mp4Files,
@@ -182,7 +182,7 @@ export async function GET(
 /**
  * Parst PROPFIND XML Response und extrahiert MP4-Dateien
  */
-function parsePropfindResponse(xml: string, basePath: string): Array<{ filename: string; path: string; size?: number }> {
+function parsePropfindResponse(xml: string): Array<{ filename: string; path: string; size?: number }> {
   const files: Array<{ filename: string; path: string; size?: number }> = [];
   
   // Einfaches Regex-basiertes Parsing (für Produktion: xml2js verwenden)

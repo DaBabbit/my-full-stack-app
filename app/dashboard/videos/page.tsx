@@ -2553,7 +2553,6 @@ export default function VideosPage() {
                 <div className="lg:w-1/3 flex-shrink-0">
                   <VideoPreviewPlayer
                     videoId={editingVideo.id}
-                    videoName={editingVideo.name}
                     storageLocation={editingVideo.storage_location}
                     status={editingVideo.status}
                   />

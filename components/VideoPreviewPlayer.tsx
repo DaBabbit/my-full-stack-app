@@ -75,7 +75,8 @@ export function VideoPreviewPlayer({ videoId, storageLocation, status }: VideoPr
 
   // Lade Streaming-URL für ausgewählte Datei
   useEffect(() => {
-    if (!selectedFile) return;
+    const currentFile = selectedFile;
+    if (!currentFile) return;
 
     async function loadStreamUrl() {
       setLoading(true);
@@ -96,7 +97,7 @@ export function VideoPreviewPlayer({ videoId, storageLocation, status }: VideoPr
           },
           body: JSON.stringify({
             videoId,
-            filename: selectedFile.filename
+            filename: currentFile.filename
           })
         });
 
@@ -115,7 +116,7 @@ export function VideoPreviewPlayer({ videoId, storageLocation, status }: VideoPr
     }
 
     loadStreamUrl();
-  }, [videoId, selectedFile]);
+  }, [videoId, selectedFile?.filename]);
 
   // Formatiere Dateigröße
   const formatFileSize = (bytes?: number): string => {

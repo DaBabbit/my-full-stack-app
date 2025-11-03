@@ -9,10 +9,10 @@ import { createClient } from '@supabase/supabase-js';
  */
 export async function GET(
   request: Request,
-  { params }: { params: { videoId: string } }
+  { params }: { params: Promise<{ videoId: string }> }
 ) {
   try {
-    const videoId = params.videoId;
+    const { videoId } = await params;
 
     // Environment Variables prüfen
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

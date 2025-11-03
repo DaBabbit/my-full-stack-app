@@ -177,7 +177,7 @@ export async function POST(request: Request) {
     
     // OCS API gibt XML oder JSON zurück (abhängig von Accept Header)
     // Wir nutzen JSON Format
-    if (shareData.ocs?.meta?.status !== 'ok') {
+    if (shareData.ocs?.meta?.statuscode !== 200 && shareData.ocs?.meta?.status !== 'ok') {
       console.error('[Share API] OCS API Fehler:', shareData.ocs?.meta);
       return NextResponse.json(
         { error: 'Share-Erstellung fehlgeschlagen' },

@@ -138,26 +138,37 @@ export function DateRangePicker({ value, onChange, onClose }: DateRangePickerPro
       const today = isToday(date);
       const currentMonthDay = isCurrentMonth(date);
 
+      // Bestimme die CSS-Klassen für die visuelle Darstellung
+      let dateClasses = 'h-10 w-10 text-sm font-medium transition-all relative flex items-center justify-center';
+      
+      // Basis-Styling
+      if (!currentMonthDay) {
+        dateClasses += ' text-neutral-600';
+      } else {
+        dateClasses += ' text-white';
+      }
+      
+      // Range-Styling
+      if (isStart) {
+        dateClasses += ' bg-blue-600 text-white font-semibold rounded-full z-10';
+      } else if (isEnd) {
+        dateClasses += ' bg-blue-600 text-white font-semibold rounded-full z-10';
+      } else if (inRange) {
+        dateClasses += ' bg-blue-500/30 text-white rounded-none';
+      } else if (isHoverRange) {
+        dateClasses += ' bg-blue-500/20 text-white rounded-none';
+      } else if (today) {
+        dateClasses += ' bg-neutral-700/30 text-white rounded-full';
+      } else {
+        dateClasses += ' hover:bg-neutral-700/50 rounded-full';
+      }
+
       return (
         <button
           key={day}
           onClick={() => handleDateClick(day)}
           onMouseEnter={() => handleDateHover(day)}
-          className={`
-            h-10 w-10 rounded-full text-sm font-medium transition-all relative
-            ${!currentMonthDay ? 'text-neutral-600' : 'text-white'}
-            ${isStart || isEnd 
-              ? 'bg-blue-600 text-white font-semibold z-10' 
-              : inRange || isHoverRange
-                ? 'bg-blue-500/20 text-white'
-                : today
-                  ? 'bg-neutral-700/50 text-white'
-                  : 'hover:bg-neutral-700/50'
-            }
-            ${inRange && !isStart && !isEnd ? 'rounded-none' : ''}
-            ${isStart && selectedTo ? 'rounded-l-full rounded-r-none' : ''}
-            ${isEnd && selectedFrom ? 'rounded-r-full rounded-l-none' : ''}
-          `}
+          className={dateClasses}
         >
           {day}
         </button>

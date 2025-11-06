@@ -192,7 +192,7 @@ export function DateRangePicker({ value, onChange, onClose }: DateRangePickerPro
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-neutral-900/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

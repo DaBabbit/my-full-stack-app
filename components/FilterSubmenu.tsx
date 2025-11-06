@@ -172,18 +172,20 @@ export function FilterSubmenu({
           filterType === 'date' ? 'w-[380px] overflow-visible' : 'w-[300px] overflow-hidden'
         }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-700">
-          <h3 className="text-sm font-medium text-white">
-            {columnLabel} filtern
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-white transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Header - Nur anzeigen wenn kein Datums-Filter (Kalender hat eigenen Header) */}
+        {filterType !== 'date' && (
+          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-700">
+            <h3 className="text-sm font-medium text-white">
+              {columnLabel} filtern
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-neutral-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         <div className={`${filterType === 'date' ? 'p-0 overflow-visible' : 'p-4 max-h-[400px] overflow-y-auto'}`}>

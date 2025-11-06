@@ -139,7 +139,8 @@ export async function POST(request: Request) {
       console.log('[Share API] Bestehender Share gefunden:', existingShare.token);
       return NextResponse.json({
         shareUrl: existingShare.url,
-        downloadUrl: existingShare.downloadUrl,
+        streamUrl: existingShare.streamUrl, // Für Video-Player (mit /download)
+        downloadUrl: existingShare.downloadUrl, // Für Download-Button (mit /download)
         token: existingShare.token,
         cached: true
       });

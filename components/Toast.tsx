@@ -27,21 +27,14 @@ export interface ToastProps {
  */
 export function Toast({ id, type, title, message, duration = 3000, onClose, onClick, actionLabel }: ToastProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(duration);
 
   useEffect(() => {
     if (duration > 0 && !isHovered) {
-      const timer = setInterval(() => {
-        setRemainingTime((prev) => {
-          if (prev <= 100) {
-            onClose(id);
-            return 0;
-          }
-          return prev - 100;
-        });
-      }, 100);
+      const timer = setTimeout(() => {
+        onClose(id);
+      }, duration);
 
-      return () => clearInterval(timer);
+      return () => clearTimeout(timer);
     }
   }, [id, duration, onClose, isHovered]);
 

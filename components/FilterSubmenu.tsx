@@ -73,9 +73,9 @@ export function FilterSubmenu({
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       
-      // Dropdown Breite (größer für Kalender)
-      const dropdownWidth = filterType === 'date' ? 360 : 300;
-      const dropdownHeight = filterType === 'date' ? 500 : 400; // Größer für Kalender
+      // Dropdown Breite (größer für Kalender - keine Scrollbar)
+      const dropdownWidth = filterType === 'date' ? 380 : 300;
+      const dropdownHeight = filterType === 'date' ? 450 : 400; // Feste Höhe für Kalender
       
       let left = rect.left;
       let top = rect.bottom + 4;
@@ -134,6 +134,7 @@ export function FilterSubmenu({
     } else if (filterType === 'location') {
       onApply(selectedLocations.length > 0 ? selectedLocations : null);
     } else if (filterType === 'date') {
+      // Für Datums-Filter wird onApply direkt vom DateRangePicker aufgerufen
       onApply((dateRange.from || dateRange.to) ? dateRange : null);
     }
     onClose();
@@ -167,7 +168,9 @@ export function FilterSubmenu({
           left: `${position.left}px`,
           zIndex: 9999
         }}
-        className="bg-neutral-900/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[300px]"
+        className={`bg-neutral-900/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl ${
+          filterType === 'date' ? 'w-[380px] overflow-visible' : 'w-[300px] overflow-hidden'
+        }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-700">
@@ -183,7 +186,7 @@ export function FilterSubmenu({
         </div>
 
         {/* Content */}
-        <div className="p-4 max-h-[400px] overflow-y-auto">
+        <div className={`${filterType === 'date' ? 'p-0 overflow-visible' : 'p-4 max-h-[400px] overflow-y-auto'}`}>
           {/* Status Filter */}
           {filterType === 'status' && (
             <div className="space-y-2">
@@ -304,15 +307,18 @@ export function FilterSubmenu({
 
           {/* Date Filter - Visueller Kalender mit Range-Selection */}
           {filterType === 'date' && (
-            <div className="space-y-4">
+            <div className="w-full">
               <DateRangePicker
                 value={dateRange}
                 onChange={(range) => {
+                  // Aktualisiere State
                   setDateRange(range);
-                  // Wenn beide Daten gesetzt sind, automatisch anwenden
+                  // Wenn beide Daten gesetzt sind, Filter direkt anwenden
                   if (range.from && range.to) {
+                    // Wende Filter direkt an (ohne handleApply, da wir die Werte bereits haben)
+                    onApply(range);
                     setTimeout(() => {
-                      handleApply();
+                      onClose();
                     }, 200);
                   }
                 }}

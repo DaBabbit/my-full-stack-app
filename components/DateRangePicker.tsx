@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface DateRangePickerProps {
@@ -20,6 +20,12 @@ export function DateRangePicker({ value, onChange, onClose }: DateRangePickerPro
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   // selectingFrom: true wenn noch kein "Von" gesetzt ist
   const selectingFrom = !selectedFrom;
+
+  // Synchronisiere mit externen value-Änderungen
+  useEffect(() => {
+    setSelectedFrom(value.from ? new Date(value.from) : null);
+    setSelectedTo(value.to ? new Date(value.to) : null);
+  }, [value.from, value.to]);
 
   // Monats-Namen
   const monthNames = [
@@ -186,7 +192,7 @@ export function DateRangePicker({ value, onChange, onClose }: DateRangePickerPro
   };
 
   return (
-    <div className="bg-neutral-900/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl p-4 w-[320px]">
+    <div className="w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

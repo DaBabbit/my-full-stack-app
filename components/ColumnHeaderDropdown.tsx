@@ -106,6 +106,7 @@ export function ColumnHeaderDropdown({
           onMouseLeave={() => setShowSortSubmenu(false)}
         >
           <button
+            onClick={() => setShowSortSubmenu(!showSortSubmenu)}
             className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
           >
             <div className="flex items-center gap-2">
@@ -122,7 +123,9 @@ export function ColumnHeaderDropdown({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.1 }}
-              className="absolute left-full top-0 ml-1 bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px]"
+              className="absolute left-full top-0 ml-1 bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px] z-[10000]"
+              onMouseEnter={() => setShowSortSubmenu(true)}
+              onMouseLeave={() => setShowSortSubmenu(false)}
             >
               <button
                 onClick={() => {

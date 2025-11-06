@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import ResponsiblePersonAvatar from './ResponsiblePersonAvatar';
+import { DateRangePicker } from './DateRangePicker';
 import type { FilterValue } from '@/hooks/useWorkspaceViews';
 
 export type FilterType = 'status' | 'person' | 'location' | 'date';
@@ -60,11 +61,6 @@ export function FilterSubmenu({
   const [dateRange, setDateRange] = useState<{ from?: string; to?: string }>(
     currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue) ? currentValue : {}
   );
-  // Initialisiere dateRangeMode: wenn bereits "from" gesetzt ist, starte mit "to"
-  const [dateRangeMode, setDateRangeMode] = useState<'from' | 'to'>(() => {
-    const initialRange = currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue) ? currentValue : {};
-    return initialRange.from ? 'to' : 'from';
-  });
 
   useEffect(() => {
     setMounted(true);
@@ -77,9 +73,9 @@ export function FilterSubmenu({
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       
-      // Dropdown Breite
-      const dropdownWidth = 300;
-      const dropdownHeight = 400; // Geschätzt
+      // Dropdown Breite (größer für Kalender)
+      const dropdownWidth = filterType === 'date' ? 360 : 300;
+      const dropdownHeight = filterType === 'date' ? 500 : 400; // Größer für Kalender
       
       let left = rect.left;
       let top = rect.bottom + 4;
@@ -152,7 +148,6 @@ export function FilterSubmenu({
       setSelectedLocations([]);
     } else if (filterType === 'date') {
       setDateRange({});
-      setDateRangeMode('from');
     }
   };
 
@@ -307,84 +302,43 @@ export function FilterSubmenu({
             </div>
           )}
 
-          {/* Date Filter - Ein Kalender mit zwei Klicks */}
+          {/* Date Filter - Visueller Kalender mit Range-Selection */}
           {filterType === 'date' && (
             <div className="space-y-4">
-              <div className="text-xs text-neutral-400 mb-2">
-                {dateRangeMode === 'from' 
-                  ? 'Klicken Sie auf ein Datum für "Von"'
-                  : dateRange.from 
-                    ? `Von: ${new Date(dateRange.from).toLocaleDateString('de-DE')} - Klicken Sie auf ein Datum für "Bis"`
-                    : 'Klicken Sie auf ein Datum für "Von"'}
-              </div>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={dateRangeMode === 'from' ? (dateRange.from || '') : (dateRange.to || '')}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
-                    if (dateRangeMode === 'from') {
-                      setDateRange({ from: selectedDate, to: dateRange.to });
-                      // Nach "von" automatisch zu "bis" wechseln
-                      setDateRangeMode('to');
-                    } else {
-                      // "bis" wurde ausgewählt - Filter anwenden und schließen
-                      setDateRange({ from: dateRange.from, to: selectedDate });
-                      // Automatisch anwenden wenn beide Daten gesetzt sind
-                      if (dateRange.from && selectedDate) {
-                        setTimeout(() => {
-                          handleApply();
-                        }, 100);
-                      }
-                    }
-                  }}
-                  min={dateRangeMode === 'to' && dateRange.from ? dateRange.from : undefined}
-                  className="w-full bg-neutral-800 border border-neutral-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-                  autoFocus
-                />
-              </div>
-              {(dateRange.from || dateRange.to) && (
-                <div className="flex items-center gap-2 text-xs">
-                  {dateRange.from && (
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded">
-                      Von: {new Date(dateRange.from).toLocaleDateString('de-DE')}
-                    </span>
-                  )}
-                  {dateRange.to && (
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded">
-                      Bis: {new Date(dateRange.to).toLocaleDateString('de-DE')}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => {
-                      setDateRange({});
-                      setDateRangeMode('from');
-                    }}
-                    className="text-neutral-400 hover:text-white transition-colors"
-                  >
-                    Zurücksetzen
-                  </button>
-                </div>
-              )}
+              <DateRangePicker
+                value={dateRange}
+                onChange={(range) => {
+                  setDateRange(range);
+                  // Wenn beide Daten gesetzt sind, automatisch anwenden
+                  if (range.from && range.to) {
+                    setTimeout(() => {
+                      handleApply();
+                    }, 200);
+                  }
+                }}
+                onClose={onClose}
+              />
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-700 bg-neutral-800/50">
-          <button
-            onClick={handleClear}
-            className="text-sm text-neutral-400 hover:text-white transition-colors"
-          >
-            Zurücksetzen
-          </button>
-          <button
-            onClick={handleApply}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium transition-colors"
-          >
-            Anwenden
-          </button>
-        </div>
+        {/* Footer - Nur anzeigen wenn kein Datums-Filter (Kalender hat eigenen Footer) */}
+        {filterType !== 'date' && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-700 bg-neutral-800/50">
+            <button
+              onClick={handleClear}
+              className="text-sm text-neutral-400 hover:text-white transition-colors"
+            >
+              Zurücksetzen
+            </button>
+            <button
+              onClick={handleApply}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium transition-colors"
+            >
+              Anwenden
+            </button>
+          </div>
+        )}
       </motion.div>
     </AnimatePresence>,
     document.body

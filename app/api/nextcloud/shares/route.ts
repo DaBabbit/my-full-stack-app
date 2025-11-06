@@ -236,7 +236,7 @@ async function getExistingShare(
   username: string,
   password: string,
   path: string
-): Promise<{ url: string; downloadUrl: string; token: string } | null> {
+): Promise<{ url: string; streamUrl: string; downloadUrl: string; token: string } | null> {
   try {
     const ocsUrl = `${baseUrl}/ocs/v2.php/apps/files_sharing/api/v1/shares?path=${encodeURIComponent(`/${path}`)}&format=json`;
     

@@ -159,7 +159,8 @@ export async function POST(request: Request) {
       headers: {
         'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
         'OCS-APIRequest': 'true',
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json' // Stelle sicher, dass wir JSON zurückbekommen
       },
       body: formData.toString()
     });
@@ -168,19 +169,29 @@ export async function POST(request: Request) {
       const errorText = await shareResponse.text();
       console.error('[Share API] Fehler beim Erstellen des Shares:', shareResponse.status, errorText);
       return NextResponse.json(
-        { error: 'Share konnte nicht erstellt werden' },
+        { error: `Share konnte nicht erstellt werden: ${shareResponse.status}` },
         { status: 500 }
       );
     }
 
-    const shareData = await shareResponse.json();
+    let shareData;
+    try {
+      shareData = await shareResponse.json();
+    } catch (parseError) {
+      const responseText = await shareResponse.text();
+      console.error('[Share API] JSON Parse Fehler:', parseError, 'Response:', responseText);
+      return NextResponse.json(
+        { error: 'Ungültige Antwort von Nextcloud API' },
+        { status: 500 }
+      );
+    }
     
     // OCS API gibt XML oder JSON zurück (abhängig von Accept Header)
     // Wir nutzen JSON Format
     if (shareData.ocs?.meta?.statuscode !== 200 && shareData.ocs?.meta?.status !== 'ok') {
       console.error('[Share API] OCS API Fehler:', shareData.ocs?.meta);
       return NextResponse.json(
-        { error: 'Share-Erstellung fehlgeschlagen' },
+        { error: `Share-Erstellung fehlgeschlagen: ${shareData.ocs?.meta?.message || 'Unbekannter Fehler'}` },
         { status: 500 }
       );
     }
@@ -189,15 +200,21 @@ export async function POST(request: Request) {
     const shareUrl = share.url;
     const shareToken = share.token;
     
-    // Download-URL für direktes Streaming
-    // Format: https://nextcloud.com/s/{token}/download
-    const downloadUrl = `${shareUrl}/download`;
+    // Für Video-Streaming: /download anhängen (laut Nextcloud-Dokumentation)
+    // Format: https://cloud.example.com/s/token/download
+    // Dies ermöglicht direktes Streaming mit korrektem Content-Type
+    const streamUrl = `${shareUrl}/download`; // Für Video-Player (Streaming)
+    const downloadUrl = `${shareUrl}/download`; // Für Download-Button (gleiche URL)
 
     console.log('[Share API] Share erfolgreich erstellt:', shareToken);
+    console.log('[Share API] Share URL:', shareUrl);
+    console.log('[Share API] Stream URL:', streamUrl);
+    console.log('[Share API] Download URL:', downloadUrl);
 
     return NextResponse.json({
       shareUrl,
-      downloadUrl,
+      streamUrl, // Für Video-Player (mit /download)
+      downloadUrl, // Für Download-Button (mit /download)
       token: shareToken,
       cached: false
     });
@@ -227,7 +244,8 @@ async function getExistingShare(
       method: 'GET',
       headers: {
         'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
-        'OCS-APIRequest': 'true'
+        'OCS-APIRequest': 'true',
+        'Accept': 'application/json' // Stelle sicher, dass wir JSON zurückbekommen
       }
     });
 
@@ -250,7 +268,8 @@ async function getExistingShare(
 
     return {
       url: publicShare.url,
-      downloadUrl: `${publicShare.url}/download`,
+      streamUrl: `${publicShare.url}/download`, // Für Video-Player (mit /download)
+      downloadUrl: `${publicShare.url}/download`, // Für Download (mit /download)
       token: publicShare.token
     };
 

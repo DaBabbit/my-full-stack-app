@@ -22,6 +22,7 @@ export function VideoPreviewPlayer({ videoId, storageLocation, status }: VideoPr
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Nur anzeigen bei Status "Schnitt abgeschlossen" oder "Hochgeladen"
@@ -107,7 +108,8 @@ export function VideoPreviewPlayer({ videoId, storageLocation, status }: VideoPr
         }
 
         const data = await response.json();
-        setStreamUrl(data.downloadUrl);
+        // Verwende streamUrl für Video-Player (mit /download für Streaming)
+        setStreamUrl(data.streamUrl || data.downloadUrl);
       } catch (err) {
         console.error('[VideoPreview] Error loading stream URL:', err);
         setError(err instanceof Error ? err.message : 'Fehler beim Laden der Stream-URL');
@@ -200,14 +202,37 @@ export function VideoPreviewPlayer({ videoId, storageLocation, status }: VideoPr
       {/* Video Player */}
       {streamUrl && !error && (
         <div className="space-y-3">
-          <div className="relative bg-black rounded-lg overflow-hidden border border-neutral-700">
+          <div 
+            className="relative bg-black rounded-lg overflow-hidden border border-neutral-700"
+            style={{
+              // Dynamisches Aspect Ratio basierend auf Video-Dimensionen
+              aspectRatio: videoAspectRatio ? `${videoAspectRatio}` : '16/9',
+              maxHeight: videoAspectRatio && videoAspectRatio > 1 ? 'none' : '600px' // Hochformat: max Höhe
+            }}
+          >
             <video
               ref={videoRef}
               src={streamUrl}
               controls
-              className="w-full h-auto"
+              className="w-full h-full object-contain"
               playsInline
               preload="metadata"
+              onLoadedMetadata={(e) => {
+                const video = e.currentTarget;
+                if (video.videoWidth && video.videoHeight) {
+                  const aspectRatio = video.videoWidth / video.videoHeight;
+                  setVideoAspectRatio(aspectRatio);
+                  console.log('[VideoPreview] Video-Dimensionen:', {
+                    width: video.videoWidth,
+                    height: video.videoHeight,
+                    aspectRatio
+                  });
+                }
+              }}
+              onError={(e) => {
+                console.error('[VideoPreview] Video-Fehler:', e);
+                setError('Video konnte nicht geladen werden. Bitte prüfen Sie die URL oder CORS-Einstellungen.');
+              }}
             >
               Ihr Browser unterstützt das Video-Element nicht.
             </video>

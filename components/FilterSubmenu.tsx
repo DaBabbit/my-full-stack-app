@@ -60,6 +60,11 @@ export function FilterSubmenu({
   const [dateRange, setDateRange] = useState<{ from?: string; to?: string }>(
     currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue) ? currentValue : {}
   );
+  // Initialisiere dateRangeMode: wenn bereits "from" gesetzt ist, starte mit "to"
+  const [dateRangeMode, setDateRangeMode] = useState<'from' | 'to'>(() => {
+    const initialRange = currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue) ? currentValue : {};
+    return initialRange.from ? 'to' : 'from';
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -147,6 +152,7 @@ export function FilterSubmenu({
       setSelectedLocations([]);
     } else if (filterType === 'date') {
       setDateRange({});
+      setDateRangeMode('from');
     }
   };
 
@@ -301,27 +307,65 @@ export function FilterSubmenu({
             </div>
           )}
 
-          {/* Date Filter */}
+          {/* Date Filter - Ein Kalender mit zwei Klicks */}
           {filterType === 'date' && (
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-neutral-400 mb-2">Von</label>
+              <div className="text-xs text-neutral-400 mb-2">
+                {dateRangeMode === 'from' 
+                  ? 'Klicken Sie auf ein Datum für "Von"'
+                  : dateRange.from 
+                    ? `Von: ${new Date(dateRange.from).toLocaleDateString('de-DE')} - Klicken Sie auf ein Datum für "Bis"`
+                    : 'Klicken Sie auf ein Datum für "Von"'}
+              </div>
+              <div className="relative">
                 <input
                   type="date"
-                  value={dateRange.from || ''}
-                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                  value={dateRangeMode === 'from' ? (dateRange.from || '') : (dateRange.to || '')}
+                  onChange={(e) => {
+                    const selectedDate = e.target.value;
+                    if (dateRangeMode === 'from') {
+                      setDateRange({ from: selectedDate, to: dateRange.to });
+                      // Nach "von" automatisch zu "bis" wechseln
+                      setDateRangeMode('to');
+                    } else {
+                      // "bis" wurde ausgewählt - Filter anwenden und schließen
+                      setDateRange({ from: dateRange.from, to: selectedDate });
+                      // Automatisch anwenden wenn beide Daten gesetzt sind
+                      if (dateRange.from && selectedDate) {
+                        setTimeout(() => {
+                          handleApply();
+                        }, 100);
+                      }
+                    }
+                  }}
+                  min={dateRangeMode === 'to' && dateRange.from ? dateRange.from : undefined}
                   className="w-full bg-neutral-800 border border-neutral-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                  autoFocus
                 />
               </div>
-              <div>
-                <label className="block text-xs text-neutral-400 mb-2">Bis</label>
-                <input
-                  type="date"
-                  value={dateRange.to || ''}
-                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                  className="w-full bg-neutral-800 border border-neutral-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              {(dateRange.from || dateRange.to) && (
+                <div className="flex items-center gap-2 text-xs">
+                  {dateRange.from && (
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded">
+                      Von: {new Date(dateRange.from).toLocaleDateString('de-DE')}
+                    </span>
+                  )}
+                  {dateRange.to && (
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded">
+                      Bis: {new Date(dateRange.to).toLocaleDateString('de-DE')}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setDateRange({});
+                      setDateRangeMode('from');
+                    }}
+                    className="text-neutral-400 hover:text-white transition-colors"
+                  >
+                    Zurücksetzen
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

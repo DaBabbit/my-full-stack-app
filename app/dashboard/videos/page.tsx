@@ -998,7 +998,10 @@ export default function VideosPage() {
   };
 
   // Filter & Sort Handlers
-  const handleAddSort = (field: string, direction: 'asc' | 'desc') => {
+  const handleAddSort = (columnId: string, direction: 'asc' | 'desc') => {
+    // Mappe Spalten-ID zu Video-Feld-Name
+    const field = columnToFieldMap[columnId] || columnId;
+    
     // Prüfe ob bereits sortiert
     const existingIndex = activeSorts.findIndex(s => s.field === field);
     
@@ -1020,7 +1023,7 @@ export default function VideosPage() {
     addToast({
       type: 'success',
       title: 'Sortierung hinzugefügt',
-      message: `Sortiert nach ${fieldLabels[field] || field}`,
+      message: `Sortiert nach ${fieldLabels[columnId] || columnId} (${direction === 'asc' ? 'aufsteigend' : 'absteigend'})`,
       duration: 2000
     });
   };
@@ -1125,7 +1128,21 @@ export default function VideosPage() {
     storage_location: 'Speicherort',
     inspiration_source: 'Inspiration',
     description: 'Beschreibung',
-    updated_at: 'Aktualisiert'
+    updated_at: 'Aktualisiert',
+    last_updated: 'Aktualisiert'
+  };
+
+  // Mapping von Spalten-IDs zu Video-Feld-Namen für Sortierung
+  const columnToFieldMap: Record<string, string> = {
+    title: 'title', // Spalten-ID 'title' -> Video-Feld 'title'
+    status: 'status',
+    publication_date: 'publication_date',
+    responsible_person: 'responsible_person',
+    storage_location: 'storage_location',
+    inspiration_source: 'inspiration_source',
+    description: 'description',
+    updated_at: 'last_updated', // Spalten-ID 'updated_at' -> Video-Feld 'last_updated'
+    last_updated: 'last_updated'
   };
 
   // Column Settings Handlers
@@ -1403,8 +1420,14 @@ export default function VideosPage() {
           
           // Compare based on type
           let comparison = 0;
-          if (typeof aVal === 'string' && typeof bVal === 'string') {
-            comparison = aVal.localeCompare(bVal);
+          
+          // Spezielle Behandlung für Datum-Felder
+          if (sort.field === 'publication_date' || sort.field === 'last_updated' || sort.field === 'updated_at' || sort.field === 'created_at') {
+            const aDate = aVal ? new Date(aVal as string).getTime() : 0;
+            const bDate = bVal ? new Date(bVal as string).getTime() : 0;
+            comparison = aDate - bDate;
+          } else if (typeof aVal === 'string' && typeof bVal === 'string') {
+            comparison = aVal.localeCompare(bVal, 'de', { sensitivity: 'base' });
           } else if (typeof aVal === 'number' && typeof bVal === 'number') {
             comparison = aVal - bVal;
           } else if (aVal instanceof Date || bVal instanceof Date) {
@@ -2078,7 +2101,20 @@ export default function VideosPage() {
               onRemoveSort={handleRemoveSort}
               onUpdateSortPriority={handleUpdateSortPriority}
               onEditFilter={handleEditFilter}
-              fieldLabels={fieldLabels}
+              fieldLabels={(() => {
+                // Erstelle Reverse-Mapping: Video-Feld -> Spalten-ID -> Label
+                const reverseMap: Record<string, string> = {};
+                Object.entries(columnToFieldMap).forEach(([columnId, field]) => {
+                  reverseMap[field] = fieldLabels[columnId] || columnId;
+                });
+                // Füge direkte Mappings hinzu für Felder die gleich sind
+                Object.keys(fieldLabels).forEach(key => {
+                  if (!reverseMap[key]) {
+                    reverseMap[key] = fieldLabels[key];
+                  }
+                });
+                return reverseMap;
+              })()}
               personMap={Object.fromEntries(
                 workspaceMembers.map(m => [m.user_id, { 
                   firstname: m.user?.firstname || '', 

@@ -124,13 +124,17 @@ export default function EditableDate({
   if (!isEditing) {
     return (
       <div
-        onClick={() => setIsEditing(true)}
+        onClick={(e) => {
+          e.stopPropagation(); // Verhindere dass Row-Click das Edit-Modal öffnet
+          setIsEditing(true);
+        }}
         className="group relative cursor-pointer hover:bg-neutral-800/30 px-3 py-2 rounded-lg transition-all duration-200 min-h-[44px] flex items-center gap-2"
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
+            e.stopPropagation();
             setIsEditing(true);
           }
         }}
@@ -155,6 +159,7 @@ export default function EditableDate({
         onChange={handleChange}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
+        onClick={(e) => e.stopPropagation()} // Verhindere dass Row-Click das Edit-Modal öffnet
         className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all min-h-[44px]"
         disabled={isSaving || isLoading}
       />

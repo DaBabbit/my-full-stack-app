@@ -136,13 +136,13 @@ export function ActiveFiltersBar({
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`group flex items-center gap-2 px-3 py-1.5 bg-purple-600/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 transition-all ${
-                            snapshot.isDragging ? 'shadow-xl ring-2 ring-purple-500' : ''
+                          className={`group flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 rounded-lg text-xs text-blue-300 transition-all ${
+                            snapshot.isDragging ? 'shadow-xl ring-2 ring-blue-500' : ''
                           }`}
                         >
                           <div
                             {...provided.dragHandleProps}
-                            className="cursor-grab active:cursor-grabbing text-purple-400/60 hover:text-purple-400"
+                            className="cursor-grab active:cursor-grabbing text-blue-400/60 hover:text-blue-400"
                           >
                             <GripVertical className="w-3 h-3" />
                           </div>
@@ -153,7 +153,7 @@ export function ActiveFiltersBar({
                           ) : (
                             <ArrowDown className="w-3 h-3" />
                           )}
-                          <span className="px-1.5 py-0.5 bg-purple-500/20 rounded text-purple-200 font-medium">
+                          <span className="px-1.5 py-0.5 bg-blue-500/20 rounded text-blue-200 font-medium">
                             {index + 1}
                           </span>
                           <button

@@ -18,6 +18,7 @@ interface ColumnHeaderDropdownProps {
   onFilter: () => void;
   onHide: () => void;
   canFilter?: boolean; // Einige Spalten können nicht gefiltert werden
+  canSort?: boolean; // Einige Spalten können nicht sortiert werden
 }
 
 export function ColumnHeaderDropdown({
@@ -28,6 +29,7 @@ export function ColumnHeaderDropdown({
   onFilter,
   onHide,
   canFilter = true,
+  canSort = true,
 }: ColumnHeaderDropdownProps) {
   const [mounted, setMounted] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -114,7 +116,8 @@ export function ColumnHeaderDropdown({
         }}
         className="bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[200px]"
       >
-        {/* Sortieren mit Submenu */}
+        {/* Sortieren mit Submenu - Nur anzeigen wenn canSort true */}
+        {canSort && (
         <div className="relative">
           <button
             ref={sortButtonRef}
@@ -177,6 +180,7 @@ export function ColumnHeaderDropdown({
             document.body
           )}
         </div>
+        )}
 
         {/* Filtern */}
         {canFilter && (

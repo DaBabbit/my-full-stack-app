@@ -997,8 +997,24 @@ export default function VideosPage() {
     }
   };
 
+  // Prüfe ob Spalte sortierbar ist (nur Name und Veröffentlichung)
+  const canSortColumn = (columnId: string): boolean => {
+    return columnId === 'title' || columnId === 'publication_date';
+  };
+
   // Filter & Sort Handlers
   const handleAddSort = (columnId: string, direction: 'asc' | 'desc') => {
+    // Prüfe ob Spalte sortierbar ist
+    if (!canSortColumn(columnId)) {
+      addToast({
+        type: 'warning',
+        title: 'Sortierung nicht verfügbar',
+        message: 'Sortierung ist nur für "Name" und "Veröffentlichung" verfügbar.',
+        duration: 2000
+      });
+      return;
+    }
+
     // Mappe Spalten-ID zu Video-Feld-Name
     const field = columnToFieldMap[columnId] || columnId;
     
@@ -2833,6 +2849,7 @@ export default function VideosPage() {
           }}
           onHide={() => toggleColumnVisibility(columnDropdownOpen)}
           canFilter={canFilterColumn(columnDropdownOpen)}
+          canSort={canSortColumn(columnDropdownOpen)}
         />
       )}
 

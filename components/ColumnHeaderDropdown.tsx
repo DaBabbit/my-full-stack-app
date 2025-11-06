@@ -32,7 +32,9 @@ export function ColumnHeaderDropdown({
   const [mounted, setMounted] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const [showSortSubmenu, setShowSortSubmenu] = useState(false);
+  const [sortSubmenuPosition, setSortSubmenuPosition] = useState<{ top: number; left: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const sortButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -48,6 +50,19 @@ export function ColumnHeaderDropdown({
       });
     }
   }, [isOpen, triggerRef]);
+
+  // Berechne Position für Sort-Submenu
+  useEffect(() => {
+    if (showSortSubmenu && sortButtonRef.current) {
+      const rect = sortButtonRef.current.getBoundingClientRect();
+      setSortSubmenuPosition({
+        top: rect.top,
+        left: rect.right + 4
+      });
+    } else {
+      setSortSubmenuPosition(null);
+    }
+  }, [showSortSubmenu]);
 
   // Click outside zum Schließen
   useEffect(() => {
@@ -100,22 +115,14 @@ export function ColumnHeaderDropdown({
         className="bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[200px]"
       >
         {/* Sortieren mit Submenu */}
-        <div
-          className="relative"
-          onMouseEnter={() => setShowSortSubmenu(true)}
-          onMouseLeave={(e) => {
-            // Nur schließen wenn Maus wirklich das gesamte Element verlässt
-            const relatedTarget = e.relatedTarget as HTMLElement;
-            if (!dropdownRef.current?.contains(relatedTarget)) {
-              setShowSortSubmenu(false);
-            }
-          }}
-        >
+        <div className="relative">
           <button
+            ref={sortButtonRef}
             onClick={(e) => {
               e.stopPropagation();
               setShowSortSubmenu(!showSortSubmenu);
             }}
+            onMouseEnter={() => setShowSortSubmenu(true)}
             className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
           >
             <div className="flex items-center gap-2">
@@ -125,43 +132,49 @@ export function ColumnHeaderDropdown({
             <ChevronRight className="w-4 h-4 text-neutral-400" />
           </button>
 
-          {/* Sortieren Submenu */}
-          {showSortSubmenu && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.1 }}
-              className="absolute left-full top-0 ml-1 bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px] z-[10000]"
-              onMouseEnter={() => setShowSortSubmenu(true)}
-              onMouseLeave={(e) => {
-                const relatedTarget = e.relatedTarget as HTMLElement;
-                if (!dropdownRef.current?.contains(relatedTarget)) {
-                  setShowSortSubmenu(false);
-                }
-              }}
-            >
-              <button
-                onClick={() => {
-                  onSort('asc');
-                  onClose();
+          {/* Sortieren Submenu - Portal für bessere Positionierung */}
+          {showSortSubmenu && sortSubmenuPosition && createPortal(
+            <AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.15 }}
+                style={{
+                  position: 'fixed',
+                  top: `${sortSubmenuPosition.top}px`,
+                  left: `${sortSubmenuPosition.left}px`,
+                  zIndex: 10000
                 }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
+                className="bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px]"
+                onMouseEnter={() => setShowSortSubmenu(true)}
+                onMouseLeave={() => setShowSortSubmenu(false)}
               >
-                <ArrowUp className="w-4 h-4" />
-                <span>Aufsteigend</span>
-              </button>
-              <button
-                onClick={() => {
-                  onSort('desc');
-                  onClose();
-                }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
-              >
-                <ArrowDown className="w-4 h-4" />
-                <span>Absteigend</span>
-              </button>
-            </motion.div>
+                <button
+                  onClick={() => {
+                    onSort('asc');
+                    setShowSortSubmenu(false);
+                    onClose();
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
+                >
+                  <ArrowUp className="w-4 h-4" />
+                  <span>Aufsteigend</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onSort('desc');
+                    setShowSortSubmenu(false);
+                    onClose();
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
+                >
+                  <ArrowDown className="w-4 h-4" />
+                  <span>Absteigend</span>
+                </button>
+              </motion.div>
+            </AnimatePresence>,
+            document.body
           )}
         </div>
 

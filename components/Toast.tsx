@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, XCircle, X, AlertCircle } from 'lucide-react';
 
@@ -26,15 +26,24 @@ export interface ToastProps {
  * - Position: Top-right
  */
 export function Toast({ id, type, title, message, duration = 3000, onClose, onClick, actionLabel }: ToastProps) {
-  useEffect(() => {
-    if (duration > 0) {
-      const timer = setTimeout(() => {
-        onClose(id);
-      }, duration);
+  const [isHovered, setIsHovered] = useState(false);
+  const [remainingTime, setRemainingTime] = useState(duration);
 
-      return () => clearTimeout(timer);
+  useEffect(() => {
+    if (duration > 0 && !isHovered) {
+      const timer = setInterval(() => {
+        setRemainingTime((prev) => {
+          if (prev <= 100) {
+            onClose(id);
+            return 0;
+          }
+          return prev - 100;
+        });
+      }, 100);
+
+      return () => clearInterval(timer);
     }
-  }, [id, duration, onClose]);
+  }, [id, duration, onClose, isHovered]);
 
   const icon = type === 'success' ? (
     <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
@@ -54,10 +63,17 @@ export function Toast({ id, type, title, message, duration = 3000, onClose, onCl
     <motion.div
       initial={{ opacity: 0, y: -20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      exit={{ 
+        opacity: 0, 
+        y: -20, 
+        scale: 0.95,
+        transition: { duration: 0.4, ease: 'easeInOut' }
+      }}
       transition={{ duration: 0.2 }}
       className={`${bgColor} border backdrop-blur-md rounded-xl p-4 shadow-lg max-w-md w-full ${onClick ? 'cursor-pointer hover:shadow-xl transition-shadow' : ''}`}
       onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex items-start gap-3">
         {icon}

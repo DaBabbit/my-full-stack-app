@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface DateRangePickerProps {
   value: { from?: string; to?: string };
@@ -145,19 +144,19 @@ export function DateRangePicker({ value, onChange, onClose }: DateRangePickerPro
           onClick={() => handleDateClick(day)}
           onMouseEnter={() => handleDateHover(day)}
           className={`
-            h-10 w-10 rounded-lg text-sm font-medium transition-all
+            h-10 w-10 rounded-full text-sm font-medium transition-all relative
             ${!currentMonthDay ? 'text-neutral-600' : 'text-white'}
             ${isStart || isEnd 
-              ? 'bg-blue-600 text-white font-semibold' 
+              ? 'bg-blue-600 text-white font-semibold z-10' 
               : inRange || isHoverRange
-                ? 'bg-blue-500/30 text-white'
+                ? 'bg-blue-500/20 text-white'
                 : today
-                  ? 'bg-neutral-700 text-white'
-                  : 'hover:bg-neutral-700'
+                  ? 'bg-neutral-700/50 text-white'
+                  : 'hover:bg-neutral-700/50'
             }
-            ${isStart ? 'rounded-l-lg rounded-r-none' : ''}
-            ${isEnd ? 'rounded-r-lg rounded-l-none' : ''}
             ${inRange && !isStart && !isEnd ? 'rounded-none' : ''}
+            ${isStart && selectedTo ? 'rounded-l-full rounded-r-none' : ''}
+            ${isEnd && selectedFrom ? 'rounded-r-full rounded-l-none' : ''}
           `}
         >
           {day}

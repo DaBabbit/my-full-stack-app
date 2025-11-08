@@ -129,8 +129,7 @@ export function ViewTabs({
           )}
 
         </div>
-        );
-      })}
+      ))}
 
       {/* Context Menu Portal - Render outside the normal DOM flow */}
       {mounted && contextMenuViewId && menuPosition && createPortal(

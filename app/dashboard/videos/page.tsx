@@ -153,10 +153,6 @@ export default function VideosPage() {
     email: user.email || ''
   } : undefined;
   
-  console.log('[VideosPage] 👤 Workspace Owner Info:', workspaceOwner);
-  console.log('[VideosPage] 👤 User metadata:', user?.user_metadata);
-  console.log('[VideosPage] 👥 Workspace Members:', workspaceMembers);
-  
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [
     {

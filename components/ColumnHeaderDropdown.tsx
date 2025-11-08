@@ -137,50 +137,44 @@ export function ColumnHeaderDropdown({
 
           {/* Sortieren Submenu - Portal für bessere Positionierung */}
           {showSortSubmenu && sortSubmenuPosition && createPortal(
-            <AnimatePresence>
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.15 }}
-                style={{
-                  position: 'fixed',
-                  top: `${sortSubmenuPosition.top}px`,
-                  left: `${sortSubmenuPosition.left}px`,
-                  zIndex: 10000
+            <div
+              style={{
+                position: 'fixed',
+                top: `${sortSubmenuPosition.top}px`,
+                left: `${sortSubmenuPosition.left}px`,
+                zIndex: 10000
+              }}
+              className="bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px]"
+              onMouseEnter={() => setShowSortSubmenu(true)}
+              onMouseLeave={() => setShowSortSubmenu(false)}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('[ColumnHeaderDropdown] Aufsteigend clicked');
+                  onSort('asc');
+                  setShowSortSubmenu(false);
+                  onClose();
                 }}
-                className="bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px]"
-                onMouseEnter={() => setShowSortSubmenu(true)}
-                onMouseLeave={() => setShowSortSubmenu(false)}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
               >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('[ColumnHeaderDropdown] Aufsteigend clicked');
-                    onSort('asc');
-                    setShowSortSubmenu(false);
-                    onClose();
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
-                >
-                  <ArrowUp className="w-4 h-4" />
-                  <span>Aufsteigend</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('[ColumnHeaderDropdown] Absteigend clicked');
-                    onSort('desc');
-                    setShowSortSubmenu(false);
-                    onClose();
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
-                >
-                  <ArrowDown className="w-4 h-4" />
-                  <span>Absteigend</span>
-                </button>
-              </motion.div>
-            </AnimatePresence>,
+                <ArrowUp className="w-4 h-4" />
+                <span>Aufsteigend</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('[ColumnHeaderDropdown] Absteigend clicked');
+                  onSort('desc');
+                  setShowSortSubmenu(false);
+                  onClose();
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
+              >
+                <ArrowDown className="w-4 h-4" />
+                <span>Absteigend</span>
+              </button>
+            </div>,
             document.body
           )}
         </div>

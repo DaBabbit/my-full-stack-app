@@ -47,17 +47,10 @@ export function ViewTabs({
     setMounted(true);
   }, []);
 
-  console.log('[ViewTabs] 🚀 Component rendered');
-  console.log('[ViewTabs] 📋 Views:', views.length, 'views');
-  console.log('[ViewTabs] 🔑 canManageViews:', canManageViews);
-  console.log('[ViewTabs] 📍 contextMenuViewId state:', contextMenuViewId);
-  console.log('[ViewTabs] 📍 menuPosition:', menuPosition);
-
   // ESC key to close menu
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && contextMenuViewId) {
-        console.log('[ViewTabs] ⌨️ ESC pressed, closing menu');
         setContextMenuViewId(null);
         setMenuPosition(null);
       }
@@ -89,9 +82,7 @@ export function ViewTabs({
       </button>
 
       {/* Custom Views */}
-      {views.map((view) => {
-        console.log('[ViewTabs] 🔄 Rendering view:', view.name, 'id:', view.id);
-        return (
+      {views.map((view) => (
         <div key={view.id} className="relative">
           <button
             onClick={() => onViewChange(view.id)}
@@ -115,38 +106,17 @@ export function ViewTabs({
               ref={contextMenuViewId === view.id ? buttonRef : undefined}
               onClick={(e) => {
                 e.stopPropagation();
-                console.log('[ViewTabs] 🔘 Button clicked for view:', view.name, view.id);
-                console.log('[ViewTabs] 📊 Current contextMenuViewId:', contextMenuViewId);
                 
                 if (contextMenuViewId === view.id) {
-                  // Close menu
-                  console.log('[ViewTabs] 🚫 Closing menu');
                   setContextMenuViewId(null);
                   setMenuPosition(null);
                 } else {
-                  // Open menu and calculate position
-                  console.log('[ViewTabs] ✨ Opening menu');
                   const buttonRect = e.currentTarget.getBoundingClientRect();
-                  
-                  // Calculate position relative to viewport
                   const viewportWidth = window.innerWidth;
-                  
-                  // Position menu directly below the button, aligned to its right edge
                   const position = {
-                    top: buttonRect.bottom + 4, // 4px below button for tighter spacing
-                    right: viewportWidth - buttonRect.right // align right edge with button
+                    top: buttonRect.bottom + 4,
+                    right: viewportWidth - buttonRect.right
                   };
-                  
-                  console.log('[ViewTabs] 📍 Button position:', {
-                    top: buttonRect.top,
-                    bottom: buttonRect.bottom,
-                    left: buttonRect.left,
-                    right: buttonRect.right,
-                    width: buttonRect.width,
-                    height: buttonRect.height
-                  });
-                  console.log('[ViewTabs] 📍 Calculated menu position:', position);
-                  console.log('[ViewTabs] 📍 Viewport width:', viewportWidth);
                   
                   setMenuPosition(position);
                   setContextMenuViewId(view.id);
@@ -169,7 +139,6 @@ export function ViewTabs({
           <div 
             className="fixed inset-0 bg-transparent z-[9998]"
             onClick={() => {
-              console.log('[ViewTabs] 🚫 Backdrop clicked, closing menu');
               setContextMenuViewId(null);
               setMenuPosition(null);
             }}
@@ -199,7 +168,6 @@ export function ViewTabs({
                   <>
                     <button
                       onClick={() => {
-                        console.log('[ViewTabs] ⭐ Set default clicked');
                         onSetDefault(activeView.is_default ? null : activeView.id);
                         setContextMenuViewId(null);
                         setMenuPosition(null);
@@ -212,7 +180,6 @@ export function ViewTabs({
 
                     <button
                       onClick={() => {
-                        console.log('[ViewTabs] ✏️ Edit clicked');
                         onEditView(activeView);
                         setContextMenuViewId(null);
                         setMenuPosition(null);
@@ -225,7 +192,6 @@ export function ViewTabs({
 
                     <button
                       onClick={() => {
-                        console.log('[ViewTabs] 🗑️ Delete clicked');
                         if (confirm(`Möchtest du die Ansicht "${activeView.name}" wirklich löschen?`)) {
                           onDeleteView(activeView.id);
                           setContextMenuViewId(null);

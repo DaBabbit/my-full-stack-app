@@ -1006,6 +1006,9 @@ export default function VideosPage() {
 
   // Filter & Sort Handlers
   const handleAddSort = (columnId: string, direction: 'asc' | 'desc') => {
+    console.log('[handleAddSort] Aufgerufen mit columnId:', columnId, 'direction:', direction);
+    console.log('[handleAddSort] canSortColumn:', canSortColumn(columnId));
+    
     // Prüfe ob Spalte sortierbar ist
     if (!canSortColumn(columnId)) {
       addToast({
@@ -1019,14 +1022,17 @@ export default function VideosPage() {
 
     // Mappe Spalten-ID zu Video-Feld-Name
     const field = columnToFieldMap[columnId] || columnId;
+    console.log('[handleAddSort] Mapped field:', field);
     
     // Prüfe ob bereits sortiert
     const existingIndex = activeSorts.findIndex(s => s.field === field);
+    console.log('[handleAddSort] Existing index:', existingIndex);
     
     if (existingIndex >= 0) {
       // Aktualisiere bestehende Sortierung
       const newSorts = [...activeSorts];
       newSorts[existingIndex] = { ...newSorts[existingIndex], direction };
+      console.log('[handleAddSort] Updating existing sort:', newSorts);
       setActiveSorts(newSorts);
     } else {
       // Füge neue Sortierung hinzu mit höchster Priorität
@@ -1035,6 +1041,7 @@ export default function VideosPage() {
         direction,
         priority: activeSorts.length
       };
+      console.log('[handleAddSort] Adding new sort:', newSort);
       setActiveSorts([...activeSorts, newSort]);
     }
 

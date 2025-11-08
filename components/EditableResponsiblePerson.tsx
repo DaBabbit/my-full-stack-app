@@ -87,13 +87,7 @@ export default function EditableResponsiblePerson({
     }
   }, [isOpen]);
 
-  // Build options list
-  console.log('[EditableResponsiblePerson] 🔍 Building options with:', {
-    workspaceOwner,
-    workspaceMembersCount: workspaceMembers?.length || 0,
-    workspaceMembers
-  });
-
+  // Build options list (ohne Console-Logs für Performance)
   const options: ResponsiblePersonOption[] = [
     {
       id: 'kosmamedia',
@@ -104,9 +98,7 @@ export default function EditableResponsiblePerson({
 
   // Add workspace owner
   if (workspaceOwner) {
-    // Nur hinzufügen wenn mindestens firstname ODER lastname vorhanden ist
     const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
-    console.log('[EditableResponsiblePerson] 👤 Owner name:', ownerName);
     if (ownerName) {
       options.push({
         id: 'owner',
@@ -118,17 +110,10 @@ export default function EditableResponsiblePerson({
   }
 
   // Add workspace members
-  console.log('[EditableResponsiblePerson] 👥 Processing', workspaceMembers?.length || 0, 'members');
-  (workspaceMembers || []).forEach((member, index) => {
-    console.log(`[EditableResponsiblePerson] 👥 Member ${index}:`, member);
-    
-    // Prüfe ob user-Daten vorhanden sind
+  (workspaceMembers || []).forEach((member) => {
     if (member.user) {
-      // Versuche Name zu bilden, fallback auf E-Mail
       const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
       const displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
-      
-      console.log(`[EditableResponsiblePerson] 👥 Member ${index} name:`, displayName);
       
       options.push({
         id: member.id,
@@ -136,13 +121,8 @@ export default function EditableResponsiblePerson({
         type: 'member',
         email: member.user.email
       });
-      console.log(`[EditableResponsiblePerson] ✅ Added member ${index} to options`);
-    } else {
-      console.log(`[EditableResponsiblePerson] ❌ Member ${index} skipped - no user data`);
     }
   });
-
-  console.log('[EditableResponsiblePerson] 📋 Final options:', options);
 
   const handleSelect = async (option: ResponsiblePersonOption) => {
     setIsOpen(false);
@@ -151,13 +131,11 @@ export default function EditableResponsiblePerson({
 
     setSelectedValue(option.name);
     setIsSaving(true);
-    console.log('[EditableResponsiblePerson] 💾 Saving:', option.name);
 
     try {
       await onSave(videoId, 'responsible_person', option.name);
-      console.log('[EditableResponsiblePerson] ✅ Save successful');
     } catch (error) {
-      console.error('[EditableResponsiblePerson] ❌ Save failed:', error);
+      console.error('[EditableResponsiblePerson] Save failed:', error);
       // Revert on error
       setSelectedValue(value || '');
     } finally {

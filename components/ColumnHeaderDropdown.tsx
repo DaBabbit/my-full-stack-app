@@ -154,7 +154,9 @@ export function ColumnHeaderDropdown({
                 onMouseLeave={() => setShowSortSubmenu(false)}
               >
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('[ColumnHeaderDropdown] Aufsteigend clicked');
                     onSort('asc');
                     setShowSortSubmenu(false);
                     onClose();
@@ -165,7 +167,9 @@ export function ColumnHeaderDropdown({
                   <span>Aufsteigend</span>
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('[ColumnHeaderDropdown] Absteigend clicked');
                     onSort('desc');
                     setShowSortSubmenu(false);
                     onClose();

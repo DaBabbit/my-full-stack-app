@@ -30,7 +30,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function ProfileContent() {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const { subscription, currentSubscription, isLoading: isLoadingSubscription, fetchSubscription } = useSubscription();
   const router = useRouter();
   const searchParams = useSearchParams();

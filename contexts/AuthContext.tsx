@@ -237,6 +237,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
+
+      // Handle referral code if present
+      if (data?.user && !error) {
+        const referralCode = localStorage.getItem('referral_code');
+        if (referralCode) {
+          try {
+            console.log('[AuthContext] Claiming referral code:', referralCode);
+            const response = await fetch('/api/referrals/claim', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                referralCode,
+                userId: data.user.id
+              })
+            });
+
+            if (response.ok) {
+              console.log('[AuthContext] Successfully claimed referral');
+              localStorage.removeItem('referral_code'); // Clean up
+            } else {
+              console.error('[AuthContext] Failed to claim referral:', await response.text());
+            }
+          } catch (claimError) {
+            console.error('[AuthContext] Error claiming referral:', claimError);
+          }
+        }
+      }
       if (error) throw error;
       return { data, error };
     },

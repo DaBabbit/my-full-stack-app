@@ -2,14 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LoginForm } from '@/components/LoginForm';
 
 export default function LoginPage() {
   const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, supabase } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Handle referral code from URL
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      // Store referral code in localStorage for later use during signup
+      localStorage.setItem('referral_code', refCode);
+      console.log('[Login] Referral code stored:', refCode);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const checkUserProfile = async () => {

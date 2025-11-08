@@ -23,7 +23,8 @@ import {
   ExternalLink,
   ArrowRight,
   Lock,
-  FileText
+  FileText,
+  Users
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -586,6 +587,15 @@ function ProfileContent() {
                     <p className="text-xs text-neutral-400">
                       Teile diesen Link mit Freunden. Du erhältst 250€ Rabatt, sobald sie ihr erstes Abo bezahlt haben.
                     </p>
+                    
+                    {/* Button zu Geworbene Freunde Seite */}
+                    <button
+                      onClick={() => router.push('/profile/referrals')}
+                      className="w-full mt-3 p-3 bg-neutral-800/50 hover:bg-neutral-700 text-white rounded-2xl transition-all duration-300 font-medium flex items-center justify-center gap-2 border border-neutral-700 hover:border-neutral-600"
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>Geworbene Freunde anzeigen</span>
+                    </button>
                   </div>
                 )}
               </motion.div>

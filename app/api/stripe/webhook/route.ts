@@ -203,85 +203,101 @@ export const POST = withCors(async function POST(request: NextRequest) {
 
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice;
+        logWebhookEvent('Invoice paid received', {
+          invoiceId: invoice.id,
+          customerId: invoice.customer,
+          subscriptionId: invoice.subscription,
+          billingReason: invoice.billing_reason
+        });
         
-        // Check if this is the first payment for a referred customer
+        // Check if this is the first payment for a subscription
         if (invoice.subscription && invoice.billing_reason === 'subscription_create') {
-          // Get customer to check for referral metadata
-          const customer = await stripe.customers.retrieve(invoice.customer as string);
+          logWebhookEvent('First subscription payment detected');
           
-          if (customer && !customer.deleted && customer.metadata?.referral_code) {
-            const referralCode = customer.metadata.referral_code;
-            
-            // Get the referral from database
-            const { data: referral, error: referralError } = await supabaseAdmin
-              .from('referrals')
-              .select('*')
-              .eq('referral_code', referralCode)
-              .eq('status', 'pending')
-              .single();
-            
-            if (!referralError && referral) {
-              // Get user_id from subscription
-              const { data: subscription } = await supabaseAdmin
-                .from('subscriptions')
-                .select('user_id')
-                .eq('stripe_subscription_id', invoice.subscription as string)
-                .single();
-              
-              if (subscription?.user_id) {
-                // Update referral - mark first payment as received
-                await supabaseAdmin
-                  .from('referrals')
-                  .update({
-                    referred_user_id: subscription.user_id,
-                    first_payment_received: true,
-                    status: 'completed',
-                    completed_at: new Date().toISOString(),
-                  })
-                  .eq('id', referral.id);
-                
-                // Create coupon for referrer (250€ discount on next invoice)
-                const rewardCoupon = await stripe.coupons.create({
-                  amount_off: 25000, // 250€ in cents
-                  currency: 'eur',
-                  duration: 'once',
-                  name: `Empfehlungsbonus - ${referralCode}`,
-                  metadata: {
-                    referral_id: referral.id,
-                    referrer_user_id: referral.referrer_user_id,
-                  },
-                });
-                
-                // Get referrer's Stripe customer ID
-                const { data: referrerSub } = await supabaseAdmin
-                  .from('subscriptions')
-                  .select('stripe_customer_id')
-                  .eq('user_id', referral.referrer_user_id)
-                  .single();
-                
-                if (referrerSub?.stripe_customer_id) {
-                  // Apply coupon to referrer's next invoice
-                  await stripe.customers.update(referrerSub.stripe_customer_id, {
-                    coupon: rewardCoupon.id,
-                  });
-                  
-                  // Update referral status to rewarded
-                  await supabaseAdmin
-                    .from('referrals')
-                    .update({
-                      status: 'rewarded',
-                      rewarded_at: new Date().toISOString(),
-                    })
-                    .eq('id', referral.id);
-                  
-                  logWebhookEvent('Referral reward applied', {
-                    referralCode,
-                    referrerId: referral.referrer_user_id,
-                    couponId: rewardCoupon.id,
-                  });
-                }
+          // Get user_id from subscription via our database
+          const { data: subscription, error: subError } = await supabaseAdmin
+            .from('subscriptions')
+            .select('user_id, stripe_customer_id')
+            .eq('stripe_subscription_id', invoice.subscription as string)
+            .single();
+          
+          if (subError || !subscription) {
+            logWebhookEvent('Subscription not found in database', { error: subError });
+            break;
+          }
+
+          // Check if this user was referred
+          const { data: referral, error: referralError } = await supabaseAdmin
+            .from('referrals')
+            .select('*')
+            .eq('referred_user_id', subscription.user_id)
+            .in('status', ['pending', 'completed'])
+            .single();
+          
+          if (referralError || !referral) {
+            logWebhookEvent('No referral found for this user');
+            break;
+          }
+
+          logWebhookEvent('Referral found, processing reward', {
+            referralId: referral.id,
+            referralCode: referral.referral_code,
+            referrerId: referral.referrer_user_id
+          });
+          
+          // Update referral - mark first payment as received
+          await supabaseAdmin
+            .from('referrals')
+            .update({
+              first_payment_received: true,
+              status: 'completed',
+              completed_at: new Date().toISOString(),
+            })
+            .eq('id', referral.id);
+          
+          // Get referrer's Stripe customer ID
+          const { data: referrerSub } = await supabaseAdmin
+            .from('subscriptions')
+            .select('stripe_customer_id')
+            .eq('user_id', referral.referrer_user_id)
+            .single();
+          
+          if (referrerSub?.stripe_customer_id) {
+            // Create Customer Balance Transaction (Credit)
+            // Negative amount = Credit that will be applied to next invoice
+            const balanceTransaction = await stripe.customers.createBalanceTransaction(
+              referrerSub.stripe_customer_id,
+              {
+                amount: -25000, // -250€ = Credit
+                currency: 'eur',
+                description: `Empfehlungsbonus für ${referral.referral_code}`,
+                metadata: {
+                  referral_id: referral.id,
+                  referral_code: referral.referral_code,
+                  referred_user_id: subscription.user_id,
+                },
               }
-            }
+            );
+            
+            // Update referral status to rewarded
+            await supabaseAdmin
+              .from('referrals')
+              .update({
+                status: 'rewarded',
+                rewarded_at: new Date().toISOString(),
+              })
+              .eq('id', referral.id);
+            
+            logWebhookEvent('Referral reward applied successfully', {
+              referralCode: referral.referral_code,
+              referrerId: referral.referrer_user_id,
+              balanceTransactionId: balanceTransaction.id,
+              amount: -25000,
+            });
+          } else {
+            logWebhookEvent('Referrer has no Stripe customer ID', {
+              referrerId: referral.referrer_user_id
+            });
           }
         }
         break;

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/utils/supabase-admin';
 import Stripe from 'stripe';
 
@@ -6,14 +7,39 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
 });
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const supabase = supabaseAdmin;
+    // Get authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      console.error('[Referrals Generate] No authorization header');
+      return NextResponse.json(
+        { error: 'Unauthorized - No token provided' },
+        { status: 401 }
+      );
+    }
 
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    // Extract token
+    const token = authHeader.replace('Bearer ', '');
+
+    // Create Supabase client with user token
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader
+          }
+        }
+      }
+    );
+
+    // Verify user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
     if (authError || !user) {
+      console.error('[Referrals Generate] Auth error:', authError);
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -21,7 +47,7 @@ export async function POST() {
     }
 
     // Check if user already has an active referral code
-    const { data: existingReferral } = await supabase
+    const { data: existingReferral } = await supabaseAdmin
       .from('referrals')
       .select('*')
       .eq('referrer_user_id', user.id)
@@ -30,7 +56,8 @@ export async function POST() {
 
     if (existingReferral) {
       // Return existing referral link
-      const referralLink = `${process.env.NEXT_PUBLIC_APP_URL}/signup?ref=${existingReferral.referral_code}`;
+      const referralLink = `${process.env.NEXT_PUBLIC_APP_URL}/login?ref=${existingReferral.referral_code}`;
+      console.log('[Referrals Generate] Returning existing referral:', existingReferral.referral_code);
       return NextResponse.json({ 
         referralLink,
         referralCode: existingReferral.referral_code 
@@ -39,6 +66,7 @@ export async function POST() {
 
     // Generate unique referral code
     const referralCode = `REF-${user.id.slice(0, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+    console.log('[Referrals Generate] Generating new referral code:', referralCode);
 
     // Create Stripe Coupon (250€ off)
     const coupon = await stripe.coupons.create({
@@ -52,6 +80,8 @@ export async function POST() {
       },
     });
 
+    console.log('[Referrals Generate] Stripe coupon created:', coupon.id);
+
     // Create Promotion Code in Stripe
     const promotionCode = await stripe.promotionCodes.create({
       coupon: coupon.id,
@@ -62,8 +92,10 @@ export async function POST() {
       },
     });
 
+    console.log('[Referrals Generate] Stripe promotion code created:', promotionCode.id);
+
     // Store referral in database
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabaseAdmin
       .from('referrals')
       .insert({
         referrer_user_id: user.id,
@@ -74,14 +106,16 @@ export async function POST() {
       });
 
     if (insertError) {
-      console.error('Failed to store referral:', insertError);
+      console.error('[Referrals Generate] Failed to store referral:', insertError);
       return NextResponse.json(
         { error: 'Failed to create referral' },
         { status: 500 }
       );
     }
 
-    const referralLink = `${process.env.NEXT_PUBLIC_APP_URL}/signup?ref=${referralCode}`;
+    const referralLink = `${process.env.NEXT_PUBLIC_APP_URL}/login?ref=${referralCode}`;
+
+    console.log('[Referrals Generate] Referral created successfully:', referralCode);
 
     return NextResponse.json({ 
       referralLink,

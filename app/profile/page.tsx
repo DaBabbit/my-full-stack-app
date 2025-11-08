@@ -208,9 +208,23 @@ function ProfileContent() {
     
     setIsGeneratingReferral(true);
     try {
+      // Get current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Keine aktive Session', {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "dark"
+        });
+        return;
+      }
+
       const response = await fetch('/api/referrals/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
       });
 
       if (response.ok) {
@@ -222,6 +236,8 @@ function ProfileContent() {
           theme: "dark"
         });
       } else {
+        const errorData = await response.json();
+        console.error('[Profile] Referral generation failed:', errorData);
         toast.error('Fehler beim Erstellen des Links', {
           position: "top-right",
           autoClose: 3000,
@@ -229,7 +245,7 @@ function ProfileContent() {
         });
       }
     } catch (err: unknown) {
-      console.error('Referral generation error:', err);
+      console.error('[Profile] Referral generation error:', err);
       toast.error('Netzwerkfehler', {
         position: "top-right",
         autoClose: 3000,

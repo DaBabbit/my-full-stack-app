@@ -46,12 +46,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get the correct base URL from request or env
+    // Get the correct base URL from the request host
+    // This ensures we always use the actual domain the user is accessing
     const host = request.headers.get('host') || '';
     const protocol = host.includes('localhost') ? 'http' : 'https';
-    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL 
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    const baseUrl = `${protocol}://${host}`;
 
     // Check if user already has an active referral code
     const { data: existingReferral } = await supabaseAdmin

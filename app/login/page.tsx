@@ -11,6 +11,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasReferralCode, setHasReferralCode] = useState(false);
 
   // Handle referral code from URL
   useEffect(() => {
@@ -18,6 +19,7 @@ export default function LoginPage() {
     if (refCode) {
       // Store referral code in localStorage for later use during signup
       localStorage.setItem('referral_code', refCode);
+      setHasReferralCode(true);
       console.log('[Login] Referral code stored:', refCode);
     }
   }, [searchParams]);
@@ -104,6 +106,7 @@ export default function LoginPage() {
           onGoogleSignIn={signInWithGoogle}
           isLoading={isLoading}
           error={error}
+          defaultToSignUp={hasReferralCode}
         />
       </div>
     </div>

@@ -8,15 +8,17 @@ interface LoginFormProps {
   onGoogleSignIn: () => Promise<void>;
   isLoading: boolean;
   error?: string;
+  defaultToSignUp?: boolean;
 }
 
 export function LoginForm({ 
   onSubmit, 
   onGoogleSignIn, 
   isLoading, 
-  error 
+  error,
+  defaultToSignUp = false
 }: LoginFormProps) {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(defaultToSignUp);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 

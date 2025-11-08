@@ -118,14 +118,13 @@ export function ColumnHeaderDropdown({
       >
         {/* Sortieren mit Submenu - Nur anzeigen wenn canSort true */}
         {canSort && (
-        <div className="relative">
+        <div 
+          className="relative"
+          onMouseEnter={() => setShowSortSubmenu(true)}
+          onMouseLeave={() => setShowSortSubmenu(false)}
+        >
           <button
             ref={sortButtonRef}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowSortSubmenu(!showSortSubmenu);
-            }}
-            onMouseEnter={() => setShowSortSubmenu(true)}
             className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
           >
             <div className="flex items-center gap-2">
@@ -142,14 +141,16 @@ export function ColumnHeaderDropdown({
                 position: 'fixed',
                 top: `${sortSubmenuPosition.top}px`,
                 left: `${sortSubmenuPosition.left}px`,
-                zIndex: 10000
+                zIndex: 10000,
+                pointerEvents: 'auto'
               }}
               className="bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px]"
               onMouseEnter={() => setShowSortSubmenu(true)}
               onMouseLeave={() => setShowSortSubmenu(false)}
             >
               <button
-                onClick={(e) => {
+                onMouseDown={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   console.log('[ColumnHeaderDropdown] Aufsteigend clicked');
                   onSort('asc');
@@ -162,7 +163,8 @@ export function ColumnHeaderDropdown({
                 <span>Aufsteigend</span>
               </button>
               <button
-                onClick={(e) => {
+                onMouseDown={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   console.log('[ColumnHeaderDropdown] Absteigend clicked');
                   onSort('desc');

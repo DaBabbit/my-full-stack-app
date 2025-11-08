@@ -290,15 +290,17 @@ export default function VideosPage() {
     console.log('[Table] Visible columns:', visibleColumns.map(c => c.id));
   }, [visibleColumns]);
 
-  // Toast helpers
-  const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
-    const id = Math.random().toString(36).substring(7);
-    setToasts(prev => [...prev, { ...toast, id, onClose: removeToast }]);
-  };
-
-  const removeToast = (id: string) => {
+  // Toast helpers - useCallback für stabile Referenzen
+  const removeToast = React.useCallback((id: string) => {
+    console.log('[VideosPage] removeToast aufgerufen für ID:', id);
     setToasts(prev => prev.filter(t => t.id !== id));
-  };
+  }, []);
+
+  const addToast = React.useCallback((toast: Omit<ToastProps, 'id' | 'onClose'>) => {
+    const id = Math.random().toString(36).substring(7);
+    console.log('[VideosPage] addToast aufgerufen, neue ID:', id, 'duration:', toast.duration);
+    setToasts(prev => [...prev, { ...toast, id, onClose: removeToast }]);
+  }, [removeToast]);
 
   // Status-Icons und Farben
   const getStatusIcon = (status: string) => {

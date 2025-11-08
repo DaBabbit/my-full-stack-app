@@ -29,16 +29,21 @@ export interface ToastProps {
 export function Toast({ id, type, title, message, duration = 3000, onClose, onClick, actionLabel }: ToastProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Auto-Dismiss Timer
+  // Auto-Dismiss Timer - entferne onClose aus dependencies um Re-Render Probleme zu vermeiden
   useEffect(() => {
     if (duration > 0 && !isHovered) {
+      console.log(`[Toast ${id}] Timer gestartet für ${duration}ms`);
       const timer = setTimeout(() => {
+        console.log(`[Toast ${id}] Timer abgelaufen, schließe Toast`);
         onClose(id);
       }, duration);
 
-      return () => clearTimeout(timer);
+      return () => {
+        console.log(`[Toast ${id}] Timer cleared`);
+        clearTimeout(timer);
+      };
     }
-  }, [id, duration, onClose, isHovered]);
+  }, [id, duration, isHovered]); // onClose absichtlich entfernt
 
   const icon = type === 'success' ? (
     <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-400 flex-shrink-0" />

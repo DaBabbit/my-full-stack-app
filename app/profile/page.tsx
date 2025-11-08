@@ -26,8 +26,7 @@ import {
   FileText,
   Users
 } from 'lucide-react';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, ToastProps } from '@/components/Toast';
 
 function ProfileContent() {
   const { user, supabase } = useAuth();
@@ -44,6 +43,17 @@ function ProfileContent() {
   const [referralLink, setReferralLink] = useState<string>('');
   const [isGeneratingReferral, setIsGeneratingReferral] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
+  const [toasts, setToasts] = useState<ToastProps[]>([]);
+
+  // Toast helpers
+  const removeToast = React.useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const addToast = React.useCallback((toast: Omit<ToastProps, 'id' | 'onClose'>) => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts(prev => [...prev, { ...toast, id, onClose: removeToast }]);
+  }, [removeToast]);
 
   // Check if user has active subscription (including trial)
   // Use currentSubscription from Stripe if available, otherwise fall back to subscription from Supabase
@@ -141,10 +151,10 @@ function ProfileContent() {
       });
 
       if (response.ok) {
-        toast.success('Abonnement erfolgreich gekündigt!', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'success',
+          title: 'Erfolgreich',
+          message: 'Abonnement erfolgreich gekündigt!'
         });
         await fetchSubscription();
         setIsCancelModalOpen(false);
@@ -178,10 +188,10 @@ function ProfileContent() {
       });
 
       if (response.ok) {
-        toast.success('Abonnement erfolgreich wiederhergestellt!', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'success',
+          title: 'Erfolgreich',
+          message: 'Abonnement erfolgreich wiederhergestellt!'
         });
         await fetchSubscription();
         setIsReactivateModalOpen(false);
@@ -192,12 +202,20 @@ function ProfileContent() {
       } else {
         const data = await response.json();
         setError(data.error || 'Failed to reactivate subscription');
-        toast.error('Fehler beim Wiederherstellen des Abonnements');
+        addToast({
+          type: 'error',
+          title: 'Fehler',
+          message: 'Fehler beim Wiederherstellen des Abonnements'
+        });
       }
     } catch (err) {
       console.error('Reactivate subscription error:', err);
       setError('Failed to reactivate subscription');
-      toast.error('Fehler beim Wiederherstellen des Abonnements');
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Fehler beim Wiederherstellen des Abonnements'
+      });
     } finally {
       setIsReactivating(false);
     }
@@ -211,10 +229,10 @@ function ProfileContent() {
       // Get current session token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error('Keine aktive Session', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'error',
+          title: 'Fehler',
+          message: 'Keine aktive Session'
         });
         return;
       }
@@ -230,26 +248,26 @@ function ProfileContent() {
       if (response.ok) {
         const data = await response.json();
         setReferralLink(data.referralLink);
-        toast.success('Empfehlungslink erstellt!', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'success',
+          title: 'Erfolgreich',
+          message: 'Empfehlungslink erstellt!'
         });
       } else {
         const errorData = await response.json();
         console.error('[Profile] Referral generation failed:', errorData);
-        toast.error('Fehler beim Erstellen des Links', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'error',
+          title: 'Fehler',
+          message: 'Fehler beim Erstellen des Links'
         });
       }
     } catch (err: unknown) {
       console.error('[Profile] Referral generation error:', err);
-      toast.error('Netzwerkfehler', {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "dark"
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Netzwerkfehler'
       });
     } finally {
       setIsGeneratingReferral(false);
@@ -260,10 +278,11 @@ function ProfileContent() {
     if (referralLink) {
       navigator.clipboard.writeText(referralLink);
       setReferralCopied(true);
-      toast.success('Link kopiert!', {
-        position: "top-right",
-        autoClose: 2000,
-        theme: "dark"
+      addToast({
+        type: 'success',
+        title: 'Kopiert',
+        message: 'Link kopiert!',
+        duration: 2000
       });
       setTimeout(() => setReferralCopied(false), 2000);
     }
@@ -603,17 +622,17 @@ function ProfileContent() {
                     <p className="text-xs text-neutral-400">
                       Teile diesen Link mit Freunden. Du erhältst 250€ Rabatt, sobald sie ihr erstes Abo bezahlt haben.
                     </p>
-                    
-                    {/* Button zu Geworbene Freunde Seite */}
-                    <button
-                      onClick={() => router.push('/profile/referrals')}
-                      className="w-full mt-3 p-3 bg-neutral-800/50 hover:bg-neutral-700 text-white rounded-2xl transition-all duration-300 font-medium flex items-center justify-center gap-2 border border-neutral-700 hover:border-neutral-600"
-                    >
-                      <Users className="w-4 h-4" />
-                      <span>Geworbene Freunde anzeigen</span>
-                    </button>
                   </div>
                 )}
+                
+                {/* Button zu Geworbene Freunde Seite - Immer sichtbar */}
+                <button
+                  onClick={() => router.push('/profile/referrals')}
+                  className="w-full mt-3 p-3 bg-neutral-800/50 hover:bg-neutral-700 text-white rounded-2xl transition-all duration-300 font-medium flex items-center justify-center gap-2 border border-neutral-700 hover:border-neutral-600"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Geworbene Freunde anzeigen</span>
+                </button>
               </motion.div>
             )}
 
@@ -718,40 +737,9 @@ function ProfileContent() {
           </motion.div>
         </div>
       )}
-      <ToastContainer
-        position="top-right"
-        autoClose={2000}
-        hideProgressBar={false}
-        newestOnTop={true}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-        toastStyle={{
-          background: '#1f2937',
-          color: '#f9fafb',
-          border: '1px solid #374151'
-        }}
-      />
-      <ToastContainer
-        position="top-right"
-        autoClose={2000}
-        hideProgressBar={false}
-        newestOnTop={true}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-        toastStyle={{
-          background: '#1f2937',
-          color: '#f9fafb',
-          border: '1px solid #374151'
-        }}
-      />
+      
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
 }

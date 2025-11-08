@@ -46,6 +46,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get the correct base URL from request or env
+    const host = request.headers.get('host') || '';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL 
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+
     // Check if user already has an active referral code
     const { data: existingReferral } = await supabaseAdmin
       .from('referrals')
@@ -56,8 +63,9 @@ export async function POST(request: Request) {
 
     if (existingReferral) {
       // Return existing referral link
-      const referralLink = `${process.env.NEXT_PUBLIC_APP_URL}/login?ref=${existingReferral.referral_code}`;
+      const referralLink = `${baseUrl}/login?ref=${existingReferral.referral_code}`;
       console.log('[Referrals Generate] Returning existing referral:', existingReferral.referral_code);
+      console.log('[Referrals Generate] Referral link:', referralLink);
       return NextResponse.json({ 
         referralLink,
         referralCode: existingReferral.referral_code 
@@ -113,9 +121,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const referralLink = `${process.env.NEXT_PUBLIC_APP_URL}/login?ref=${referralCode}`;
+    const referralLink = `${baseUrl}/login?ref=${referralCode}`;
 
     console.log('[Referrals Generate] Referral created successfully:', referralCode);
+    console.log('[Referrals Generate] Referral link:', referralLink);
 
     return NextResponse.json({ 
       referralLink,

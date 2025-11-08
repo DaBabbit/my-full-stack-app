@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import TopBar from '@/components/TopBar';
 import { 
   ArrowLeft, 
   Users, 
@@ -149,17 +150,19 @@ export default function ReferralsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={() => router.push('/profile')}
-            className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Zurück zum Profil
-          </button>
+    <div className="min-h-screen bg-black text-white">
+      <TopBar />
+      <div className="p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <button
+              onClick={() => router.push('/profile')}
+              className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-4"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Zurück zum Profil
+            </button>
 
           <div className="flex items-center gap-3 mb-4">
             <Users className="w-8 h-8 text-blue-500" />
@@ -275,6 +278,7 @@ export default function ReferralsPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

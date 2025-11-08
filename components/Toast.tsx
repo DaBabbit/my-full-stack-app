@@ -24,10 +24,12 @@ export interface ToastProps {
  * - Optional Click-Handler (z.B. für "Aktualisieren" Action)
  * - Framer Motion Animations
  * - Position: Top-right
+ * - Mobile-optimiert
  */
 export function Toast({ id, type, title, message, duration = 3000, onClose, onClick, actionLabel }: ToastProps) {
   const [isHovered, setIsHovered] = useState(false);
 
+  // Auto-Dismiss Timer
   useEffect(() => {
     if (duration > 0 && !isHovered) {
       const timer = setTimeout(() => {
@@ -39,11 +41,11 @@ export function Toast({ id, type, title, message, duration = 3000, onClose, onCl
   }, [id, duration, onClose, isHovered]);
 
   const icon = type === 'success' ? (
-    <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+    <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-400 flex-shrink-0" />
   ) : type === 'error' ? (
-    <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+    <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-400 flex-shrink-0" />
   ) : (
-    <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+    <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-yellow-400 flex-shrink-0" />
   );
 
   const bgColor = type === 'success'
@@ -54,29 +56,30 @@ export function Toast({ id, type, title, message, duration = 3000, onClose, onCl
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      layout
+      initial={{ opacity: 0, x: 300, scale: 0.9 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ 
         opacity: 0, 
-        y: -20, 
-        scale: 0.95,
-        transition: { duration: 0.4, ease: 'easeInOut' }
+        x: 300,
+        scale: 0.8,
+        transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
       }}
-      transition={{ duration: 0.2 }}
-      className={`${bgColor} border backdrop-blur-md rounded-xl p-4 shadow-lg max-w-md w-full ${onClick ? 'cursor-pointer hover:shadow-xl transition-shadow' : ''}`}
+      transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+      className={`${bgColor} border backdrop-blur-md rounded-lg md:rounded-xl p-3 md:p-4 shadow-lg w-full ${onClick ? 'cursor-pointer hover:shadow-xl transition-shadow' : ''}`}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2 md:gap-3">
         {icon}
         <div className="flex-1 min-w-0">
-          <h4 className="text-white font-medium text-sm">{title}</h4>
+          <h4 className="text-white font-medium text-xs md:text-sm">{title}</h4>
           {message && (
-            <p className="text-neutral-400 text-sm mt-1">{message}</p>
+            <p className="text-neutral-400 text-xs md:text-sm mt-0.5 md:mt-1 line-clamp-2">{message}</p>
           )}
           {onClick && actionLabel && (
-            <button className="text-yellow-400 hover:text-yellow-300 text-sm font-medium mt-2 inline-block">
+            <button className="text-yellow-400 hover:text-yellow-300 text-xs md:text-sm font-medium mt-1 md:mt-2 inline-block">
               {actionLabel}
             </button>
           )}
@@ -89,7 +92,7 @@ export function Toast({ id, type, title, message, duration = 3000, onClose, onCl
           className="text-neutral-400 hover:text-white transition-colors flex-shrink-0"
           aria-label="Close"
         >
-          <X className="w-4 h-4" />
+          <X className="w-3 h-3 md:w-4 md:h-4" />
         </button>
       </div>
     </motion.div>
@@ -98,18 +101,23 @@ export function Toast({ id, type, title, message, duration = 3000, onClose, onCl
 
 /**
  * Toast Container für Position und Stacking
+ * Mobile-optimiert mit kleinerer Größe und besserem Stacking
  */
 export function ToastContainer({ toasts, onClose }: { 
   toasts: ToastProps[]; 
   onClose: (id: string) => void;
 }) {
   return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
-      <AnimatePresence mode="popLayout">
+    <div className="fixed top-2 right-2 md:top-4 md:right-4 z-[9999] flex flex-col gap-2 pointer-events-none w-[calc(100vw-1rem)] md:w-auto max-w-[400px]">
+      <AnimatePresence mode="popLayout" initial={false}>
         {toasts.map((toast) => (
-          <div key={toast.id} className="pointer-events-auto">
+          <motion.div 
+            key={toast.id} 
+            className="pointer-events-auto"
+            layout
+          >
             <Toast {...toast} onClose={onClose} />
-          </div>
+          </motion.div>
         ))}
       </AnimatePresence>
     </div>

@@ -57,7 +57,7 @@ export default function SignUpPage() {
     checkUserProfile();
   }, [user, router, supabase]);
 
-  const handleSubmit = async (email: string, password: string, isSignUp: boolean) => {
+  const handleSubmit = async (email: string, password: string) => {
     setError('');
     setIsLoading(true);
 

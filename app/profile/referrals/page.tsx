@@ -84,21 +84,21 @@ export default function ReferralsPage() {
         border: 'border-yellow-500/30',
         text: 'text-yellow-300',
         icon: Clock,
-        label: 'Wartet auf Registrierung'
+        label: 'Link erstellt - Wartet auf Registrierung'
       },
       completed: {
-        bg: 'bg-green-500/10',
-        border: 'border-green-500/30',
-        text: 'text-green-300',
-        icon: CheckCircle,
-        label: 'Erfolgreich! Wartet auf Belohnung'
-      },
-      rewarded: {
         bg: 'bg-blue-500/10',
         border: 'border-blue-500/30',
         text: 'text-blue-300',
+        icon: CheckCircle,
+        label: 'Registriert - Abo-Abschluss ausstehend'
+      },
+      rewarded: {
+        bg: 'bg-green-500/10',
+        border: 'border-green-500/30',
+        text: 'text-green-300',
         icon: Gift,
-        label: 'Rabatt wird bei nächster Rechnung angewendet'
+        label: '250€ Rabatt wird bei nächster Rechnung angewendet'
       },
       expired: {
         bg: 'bg-neutral-500/10',
@@ -266,9 +266,14 @@ export default function ReferralsPage() {
 
                     <div className="flex flex-col items-end gap-2">
                       {getStatusBadge(referral.status)}
+                      {referral.status === 'completed' && referral.referredUser && (
+                        <div className="text-xs text-neutral-400 text-right max-w-[200px]">
+                          Sobald <span className="text-white">{referral.referredUser.name.split(' ')[0]}</span> ein Abo abschließt, erhältst du 250€ Rabatt
+                        </div>
+                      )}
                       {referral.status === 'rewarded' && (
-                        <div className="text-sm text-blue-400 font-medium">
-                          +{formatAmount(referral.rewardAmount)} Rabatt
+                        <div className="text-sm text-green-400 font-medium">
+                          +{formatAmount(referral.rewardAmount)} Rabatt erhalten!
                         </div>
                       )}
                     </div>

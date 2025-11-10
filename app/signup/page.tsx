@@ -81,18 +81,33 @@ export default function SignUpPage() {
         
         if (referralCode) {
           console.log('[SignUp] Storing referral code in DB for user:', data.user.id);
-          const { error: updateError } = await supabase
-            .from('users')
-            .update({ pending_referral_code: referralCode })
-            .eq('id', data.user.id);
           
-          if (updateError) {
-            console.error('[SignUp] Failed to store referral code in DB:', updateError);
-          } else {
-            console.log('[SignUp] Successfully stored referral code in DB');
-            // Clean up localStorage - code is now in database
-            localStorage.removeItem('referral_code');
-            console.log('[SignUp] Cleaned up localStorage');
+          try {
+            // Use API route with service role to bypass RLS
+            const response = await fetch('/api/users/pending-referral', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: data.user.id,
+                referralCode: referralCode
+              })
+            });
+
+            const result = await response.json();
+            console.log('[SignUp] API response:', result);
+
+            if (response.ok && result.success) {
+              console.log('[SignUp] Successfully stored referral code in DB');
+              // Clean up localStorage - code is now in database
+              localStorage.removeItem('referral_code');
+              console.log('[SignUp] Cleaned up localStorage');
+            } else {
+              console.error('[SignUp] Failed to store referral code via API:', result.error);
+              // Keep in localStorage as fallback
+            }
+          } catch (apiError) {
+            console.error('[SignUp] Error calling API:', apiError);
+            // Keep in localStorage as fallback
           }
         } else {
           console.log('[SignUp] No referral code to store');

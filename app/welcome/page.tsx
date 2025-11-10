@@ -103,73 +103,31 @@ export default function WelcomePage() {
       if (user) {
         console.log('[Welcome] Checking for pending referral code for user:', user.id);
         
-        // Check both DB and localStorage (fallback)
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('pending_referral_code')
-          .eq('id', user.id)
-          .single();
+        try {
+          // Use API route to claim pending referral (bypasses RLS)
+          const response = await fetch('/api/referrals/claim-pending', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id })
+          });
 
-        console.log('[Welcome] User data query result:', { userData, error: userError });
+          const result = await response.json();
+          console.log('[Welcome] Claim pending API response:', result);
 
-        // Try DB first, then localStorage as fallback
-        let referralCodeToUse = userData?.pending_referral_code;
-        let isFromLocalStorage = false;
+          if (response.ok && result.success) {
+            console.log('[Welcome] ✅ Successfully claimed referral:', result.referralId);
+          } else {
+            console.log('[Welcome] No referral to claim or already claimed:', result.message);
+          }
 
-        if (!referralCodeToUse) {
+          // Always clean up localStorage as fallback
           const localStorageCode = localStorage.getItem('referral_code');
           if (localStorageCode) {
-            console.log('[Welcome] Found referral code in localStorage:', localStorageCode);
-            referralCodeToUse = localStorageCode;
-            isFromLocalStorage = true;
+            localStorage.removeItem('referral_code');
+            console.log('[Welcome] Cleaned up referral code from localStorage');
           }
-        }
-
-        if (referralCodeToUse) {
-          console.log('[Welcome] Found referral code:', referralCodeToUse, 'from:', isFromLocalStorage ? 'localStorage' : 'DB');
-          
-          try {
-            // Claim the referral
-            const response = await fetch('/api/referrals/claim', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                referralCode: referralCodeToUse,
-                userId: user.id
-              })
-            });
-
-            const responseText = await response.text();
-            console.log('[Welcome] Referral claim response:', { status: response.status, body: responseText });
-
-            if (response.ok) {
-              console.log('[Welcome] Successfully claimed referral');
-              
-              // Clean up pending_referral_code from DB
-              const { error: cleanupError } = await supabase
-                .from('users')
-                .update({ pending_referral_code: null })
-                .eq('id', user.id);
-
-              if (cleanupError) {
-                console.error('[Welcome] Failed to cleanup pending_referral_code:', cleanupError);
-              } else {
-                console.log('[Welcome] Successfully cleaned up pending_referral_code');
-              }
-
-              // Clean up localStorage if it was used
-              if (isFromLocalStorage) {
-                localStorage.removeItem('referral_code');
-                console.log('[Welcome] Cleaned up referral code from localStorage');
-              }
-            } else {
-              console.error('[Welcome] Failed to claim referral:', responseText);
-            }
-          } catch (claimError) {
-            console.error('[Welcome] Error claiming referral:', claimError);
-          }
-        } else {
-          console.log('[Welcome] No pending referral code found in DB or localStorage');
+        } catch (claimError) {
+          console.error('[Welcome] Error claiming referral:', claimError);
         }
       }
       

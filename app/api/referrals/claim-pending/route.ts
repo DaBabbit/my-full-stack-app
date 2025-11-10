@@ -108,7 +108,7 @@ export async function POST(request: Request) {
       message: 'Referral claimed successfully'
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API Claim Pending] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

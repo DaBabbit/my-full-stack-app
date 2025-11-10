@@ -9,6 +9,7 @@ interface LoginFormProps {
   isLoading: boolean;
   error?: string;
   defaultToSignUp?: boolean;
+  hideToggle?: boolean;
 }
 
 export function LoginForm({ 
@@ -16,7 +17,8 @@ export function LoginForm({
   onGoogleSignIn, 
   isLoading, 
   error,
-  defaultToSignUp = false
+  defaultToSignUp = false,
+  hideToggle = false
 }: LoginFormProps) {
   const [isSignUp, setIsSignUp] = useState(defaultToSignUp);
   const [email, setEmail] = useState('');
@@ -123,15 +125,17 @@ export function LoginForm({
           </span>
         </button>
 
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-neutral-400 hover:text-white transition-colors font-medium"
-          >
-            {isSignUp ? 'Bereits ein Konto? Anmelden' : 'Noch kein Konto? Registrieren'}
-          </button>
-        </div>
+        {!hideToggle && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-neutral-400 hover:text-white transition-colors font-medium"
+            >
+              {isSignUp ? 'Bereits ein Konto? Anmelden' : 'Noch kein Konto? Registrieren'}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

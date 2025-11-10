@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     if (existingReferral) {
       // Return existing referral link
-      const referralLink = `${baseUrl}/login?ref=${existingReferral.referral_code}`;
+      const referralLink = `${baseUrl}/signup?ref=${existingReferral.referral_code}`;
       console.log('[Referrals Generate] Returning existing referral:', existingReferral.referral_code);
       console.log('[Referrals Generate] Referral link:', referralLink);
       return NextResponse.json({ 
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const referralLink = `${baseUrl}/login?ref=${referralCode}`;
+    const referralLink = `${baseUrl}/signup?ref=${referralCode}`;
 
     console.log('[Referrals Generate] Referral created successfully:', referralCode);
     console.log('[Referrals Generate] Referral link:', referralLink);

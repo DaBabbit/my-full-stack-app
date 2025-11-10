@@ -8,12 +8,13 @@ import { User, Sparkles, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 
 export default function WelcomePage() {
-  const { user, updateUserProfile } = useAuth();
+  const { user, updateUserProfile, supabase } = useAuth();
   const router = useRouter();
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [referrerName, setReferrerName] = useState<string | null>(null);
 
   useEffect(() => {
     // If no user, redirect to login
@@ -21,6 +22,39 @@ export default function WelcomePage() {
       router.push('/login');
     }
   }, [user, router]);
+
+  // Check for referral information
+  useEffect(() => {
+    const checkReferral = async () => {
+      if (!user) return;
+
+      try {
+        // Check if user was referred
+        const { data: referral, error: refError } = await supabase
+          .from('referrals')
+          .select(`
+            referrer_user_id,
+            referrer:referrer_user_id (
+              firstname,
+              lastname
+            )
+          `)
+          .eq('referred_user_id', user.id)
+          .single();
+
+        if (!refError && referral) {
+          const referrer = referral.referrer as { firstname: string; lastname: string };
+          if (referrer?.firstname && referrer?.lastname) {
+            setReferrerName(`${referrer.firstname} ${referrer.lastname}`);
+          }
+        }
+      } catch (err) {
+        console.error('[Welcome] Error checking referral:', err);
+      }
+    };
+
+    checkReferral();
+  }, [user, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +141,22 @@ export default function WelcomePage() {
               Lass uns mit deinem Namen beginnen
             </p>
           </div>
+
+          {/* Referral Info Box */}
+          {referrerName && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl"
+            >
+              <p className="text-blue-300 text-center">
+                🎉 <strong>Du wurdest durch {referrerName} geworben!</strong>
+              </p>
+              <p className="text-blue-200 text-sm text-center mt-2">
+                Schließe ein Abo ab, um deinem Freund 250€ Rabatt zu ermöglichen.
+              </p>
+            </motion.div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">

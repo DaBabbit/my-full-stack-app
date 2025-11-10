@@ -71,7 +71,7 @@ export default function ReferralsPage() {
   }, [user, router, supabase]);
 
   const copyReferralCode = (code: string) => {
-    const referralLink = `${window.location.origin}/login?ref=${code}`;
+    const referralLink = `${window.location.origin}/signup?ref=${code}`;
     navigator.clipboard.writeText(referralLink);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);

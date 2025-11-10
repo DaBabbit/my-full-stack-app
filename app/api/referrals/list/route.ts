@@ -7,9 +7,12 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function GET(request: Request) {
   try {
+    console.log('[Referral List API] Request received');
+    
     // Get JWT token from Authorization header
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[Referral List API] No auth header');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -21,12 +24,17 @@ export async function GET(request: Request) {
     // Verify JWT and get user
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
+    console.log('[Referral List API] User auth:', { userId: user?.id, hasError: !!authError });
+    
     if (authError || !user) {
+      console.log('[Referral List API] Auth failed:', authError);
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
+
+    console.log('[Referral List API] Fetching referrals for referrer:', user.id);
 
     // Get all referrals for this user with referred user details
     const { data: referrals, error: fetchError } = await supabaseAdmin
@@ -49,6 +57,12 @@ export async function GET(request: Request) {
       `)
       .eq('referrer_user_id', user.id)
       .order('created_at', { ascending: false });
+
+    console.log('[Referral List API] Query result:', { 
+      count: referrals?.length || 0,
+      hasError: !!fetchError,
+      error: fetchError?.message 
+    });
 
     if (fetchError) {
       console.error('[Referral List] Error fetching referrals:', fetchError);
@@ -80,6 +94,9 @@ export async function GET(request: Request) {
         } : null,
       };
     });
+
+    console.log('[Referral List API] Returning referrals:', formattedReferrals.length);
+    console.log('[Referral List API] Referral details:', JSON.stringify(formattedReferrals, null, 2));
 
     return NextResponse.json({
       referrals: formattedReferrals,

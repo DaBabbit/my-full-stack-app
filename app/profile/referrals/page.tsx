@@ -47,21 +47,33 @@ export default function ReferralsPage() {
 
     const fetchReferrals = async () => {
       try {
+        console.log('[Referrals Page] Fetching referrals for user:', user?.id);
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        if (!session) {
+          console.log('[Referrals Page] No session found');
+          return;
+        }
 
+        console.log('[Referrals Page] Calling API...');
         const response = await fetch('/api/referrals/list', {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
           },
         });
 
+        console.log('[Referrals Page] API response status:', response.status);
+
         if (response.ok) {
           const data = await response.json();
+          console.log('[Referrals Page] API data:', data);
+          console.log('[Referrals Page] Referrals count:', data.referrals?.length || 0);
           setReferrals(data.referrals);
+        } else {
+          const errorText = await response.text();
+          console.error('[Referrals Page] API error:', response.status, errorText);
         }
       } catch (error) {
-        console.error('Error fetching referrals:', error);
+        console.error('[Referrals Page] Error fetching referrals:', error);
       } finally {
         setIsLoading(false);
       }

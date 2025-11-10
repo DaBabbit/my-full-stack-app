@@ -43,9 +43,12 @@ export default function WelcomePage() {
           .single();
 
         if (!refError && referral) {
-          const referrer = referral.referrer as { firstname: string; lastname: string };
-          if (referrer?.firstname && referrer?.lastname) {
-            setReferrerName(`${referrer.firstname} ${referrer.lastname}`);
+          const referrerData = Array.isArray(referral.referrer)
+            ? referral.referrer[0]
+            : referral.referrer;
+          
+          if (referrerData && referrerData.firstname && referrerData.lastname) {
+            setReferrerName(`${referrerData.firstname} ${referrerData.lastname}`);
           }
         }
       } catch (err) {

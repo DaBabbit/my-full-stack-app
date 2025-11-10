@@ -29,27 +29,38 @@ export default function WelcomePage() {
       if (!user) return;
 
       try {
+        console.log('[Welcome] Checking referral for user:', user.id);
+        
         // Check if user was referred
         const { data: referral, error: refError } = await supabase
           .from('referrals')
           .select(`
+            id,
             referrer_user_id,
-            referrer:referrer_user_id (
-              firstname,
-              lastname
-            )
+            referral_code,
+            status
           `)
           .eq('referred_user_id', user.id)
           .single();
 
+        console.log('[Welcome] Referral query result:', { referral, error: refError });
+
         if (!refError && referral) {
-          const referrerData = Array.isArray(referral.referrer)
-            ? referral.referrer[0]
-            : referral.referrer;
+          // Now get the referrer's details
+          const { data: referrerData, error: referrerError } = await supabase
+            .from('users')
+            .select('firstname, lastname')
+            .eq('id', referral.referrer_user_id)
+            .single();
+
+          console.log('[Welcome] Referrer data:', { referrerData, error: referrerError });
           
-          if (referrerData && referrerData.firstname && referrerData.lastname) {
+          if (!referrerError && referrerData && referrerData.firstname && referrerData.lastname) {
             setReferrerName(`${referrerData.firstname} ${referrerData.lastname}`);
+            console.log('[Welcome] Referrer name set:', `${referrerData.firstname} ${referrerData.lastname}`);
           }
+        } else if (refError) {
+          console.log('[Welcome] No referral found or error:', refError);
         }
       } catch (err) {
         console.error('[Welcome] Error checking referral:', err);

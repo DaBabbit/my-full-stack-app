@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       .from('referrals')
       .update({
         referred_user_id: userId,
+        status: 'completed',
         completed_at: new Date().toISOString(),
       })
       .eq('id', referral.id);
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('[Referral Claim] Successfully claimed referral:', referral.id);
+    console.log('[Referral Claim] Successfully claimed referral:', referral.id, 'Status set to completed');
 
     return NextResponse.json({
       success: true,

@@ -15,10 +15,18 @@ export default function SignUpPage() {
   // Handle referral code from URL
   useEffect(() => {
     const refCode = searchParams.get('ref');
+    console.log('[SignUp] URL params ref code:', refCode);
+    
     if (refCode) {
       // Store referral code in localStorage for later use during signup
       localStorage.setItem('referral_code', refCode);
-      console.log('[SignUp] Referral code stored:', refCode);
+      console.log('[SignUp] Referral code stored in localStorage:', refCode);
+      
+      // Verify it was stored
+      const stored = localStorage.getItem('referral_code');
+      console.log('[SignUp] Verification - localStorage now contains:', stored);
+    } else {
+      console.log('[SignUp] No referral code in URL');
     }
   }, [searchParams]);
 

@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 function VerifyEmailContent() {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email');
@@ -14,9 +14,25 @@ function VerifyEmailContent() {
 
   // Redirect if user is already verified
   useEffect(() => {
-    if (user?.email_confirmed_at) {
-      router.replace('/dashboard');
-    }
+    const checkAndRedirect = async () => {
+      if (user?.email_confirmed_at) {
+        // Check if user has completed onboarding
+        const { data: userData } = await supabase
+          .from('users')
+          .select('firstname, lastname')
+          .eq('id', user.id)
+          .single();
+
+        // If user doesn't have name, redirect to welcome
+        if (!userData?.firstname || !userData?.lastname) {
+          router.replace('/welcome');
+        } else {
+          router.replace('/dashboard');
+        }
+      }
+    };
+
+    checkAndRedirect();
   }, [user, router]);
 
   // Countdown timer

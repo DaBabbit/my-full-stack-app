@@ -52,36 +52,22 @@ export default function WelcomePage() {
           return;
         }
 
-        // Find the referral by code (not by referred_user_id, as it's still null)
-        const { data: referral, error: refError } = await supabase
-          .from('referrals')
-          .select(`
-            id,
-            referrer_user_id,
-            referral_code,
-            status
-          `)
-          .eq('referral_code', referralCode)
-          .single();
+        // Use API route to get referrer info (bypasses RLS)
+        console.log('[Welcome] Fetching referrer info via API for code:', referralCode);
+        const response = await fetch('/api/referrals/referrer-info', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referralCode })
+        });
 
-        console.log('[Welcome] Referral query result:', { referral, error: refError });
+        const result = await response.json();
+        console.log('[Welcome] Referrer info API response:', result);
 
-        if (!refError && referral) {
-          // Now get the referrer's details
-          const { data: referrerData, error: referrerError } = await supabase
-            .from('users')
-            .select('firstname, lastname')
-            .eq('id', referral.referrer_user_id)
-            .single();
-
-          console.log('[Welcome] Referrer data:', { referrerData, error: referrerError });
-          
-          if (!referrerError && referrerData && referrerData.firstname && referrerData.lastname) {
-            setReferrerName(`${referrerData.firstname} ${referrerData.lastname}`);
-            console.log('[Welcome] Referrer name set:', `${referrerData.firstname} ${referrerData.lastname}`);
-          }
-        } else if (refError) {
-          console.log('[Welcome] No referral found or error:', refError);
+        if (response.ok && result.success && result.referrer) {
+          setReferrerName(result.referrer.fullName);
+          console.log('[Welcome] Referrer name set:', result.referrer.fullName);
+        } else {
+          console.log('[Welcome] No referrer found or error:', result.error);
         }
       } catch (err) {
         console.error('[Welcome] Error checking referral:', err);

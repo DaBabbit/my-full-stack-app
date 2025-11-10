@@ -88,7 +88,62 @@ export default function WelcomePage() {
     setIsLoading(true);
 
     try {
+      // First, update the user profile
       await updateUserProfile(firstname, lastname);
+      console.log('[Welcome] User profile updated successfully');
+      
+      // Now check if there's a pending referral code to claim
+      if (user) {
+        console.log('[Welcome] Checking for pending referral code for user:', user.id);
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('pending_referral_code')
+          .eq('id', user.id)
+          .single();
+
+        console.log('[Welcome] User data query result:', { userData, error: userError });
+
+        if (!userError && userData?.pending_referral_code) {
+          console.log('[Welcome] Found pending referral code:', userData.pending_referral_code);
+          
+          try {
+            // Claim the referral
+            const response = await fetch('/api/referrals/claim', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                referralCode: userData.pending_referral_code,
+                userId: user.id
+              })
+            });
+
+            const responseText = await response.text();
+            console.log('[Welcome] Referral claim response:', { status: response.status, body: responseText });
+
+            if (response.ok) {
+              console.log('[Welcome] Successfully claimed referral');
+              
+              // Clean up pending_referral_code
+              const { error: cleanupError } = await supabase
+                .from('users')
+                .update({ pending_referral_code: null })
+                .eq('id', user.id);
+
+              if (cleanupError) {
+                console.error('[Welcome] Failed to cleanup pending_referral_code:', cleanupError);
+              } else {
+                console.log('[Welcome] Successfully cleaned up pending_referral_code');
+              }
+            } else {
+              console.error('[Welcome] Failed to claim referral:', responseText);
+            }
+          } catch (claimError) {
+            console.error('[Welcome] Error claiming referral:', claimError);
+          }
+        } else {
+          console.log('[Welcome] No pending referral code found');
+        }
+      }
       
       // Success - redirect to dashboard
       router.push('/dashboard');

@@ -74,6 +74,31 @@ export default function SignUpPage() {
       const { data, error } = await signUpWithEmail(email, password);
       if (error) throw error;
       
+      // Store referral code in database for later claiming (after email verification)
+      if (data?.user) {
+        const referralCode = localStorage.getItem('referral_code');
+        console.log('[SignUp] After signup, referral code from localStorage:', referralCode);
+        
+        if (referralCode) {
+          console.log('[SignUp] Storing referral code in DB for user:', data.user.id);
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ pending_referral_code: referralCode })
+            .eq('id', data.user.id);
+          
+          if (updateError) {
+            console.error('[SignUp] Failed to store referral code in DB:', updateError);
+          } else {
+            console.log('[SignUp] Successfully stored referral code in DB');
+            // Clean up localStorage - code is now in database
+            localStorage.removeItem('referral_code');
+            console.log('[SignUp] Cleaned up localStorage');
+          }
+        } else {
+          console.log('[SignUp] No referral code to store');
+        }
+      }
+      
       // Check if the user needs to verify their email
       if (data?.user && !data.user.email_confirmed_at) {
         router.replace(`/verify-email?email=${encodeURIComponent(email)}`);

@@ -238,47 +238,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      // Handle referral code if present
       console.log('[AuthContext] signUpWithEmail completed:', { 
         hasUser: !!data?.user, 
         hasError: !!error,
         userId: data?.user?.id 
       });
       
-      if (data?.user && !error) {
-        const referralCode = localStorage.getItem('referral_code');
-        console.log('[AuthContext] Checking for referral code in localStorage:', referralCode);
-        
-        if (referralCode) {
-          try {
-            console.log('[AuthContext] Claiming referral code:', referralCode, 'for user:', data.user.id);
-            const response = await fetch('/api/referrals/claim', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                referralCode,
-                userId: data.user.id
-              })
-            });
-
-            const responseText = await response.text();
-            console.log('[AuthContext] Claim response:', { status: response.status, body: responseText });
-
-            if (response.ok) {
-              console.log('[AuthContext] Successfully claimed referral');
-              localStorage.removeItem('referral_code'); // Clean up
-            } else {
-              console.error('[AuthContext] Failed to claim referral:', responseText);
-            }
-          } catch (claimError) {
-            console.error('[AuthContext] Error claiming referral:', claimError);
-          }
-        } else {
-          console.log('[AuthContext] No referral code found in localStorage');
-        }
-      } else {
-        console.log('[AuthContext] Skipping referral claim - no user or error present');
-      }
+      // Note: Referral claiming now happens on the welcome page after email verification
+      // The referral code is stored in the database via signup/page.tsx
+      
       if (error) throw error;
       return { data, error };
     },

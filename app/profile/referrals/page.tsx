@@ -10,8 +10,7 @@ import {
   Users, 
   CheckCircle, 
   Clock, 
-  Gift,
-  Copy
+  Gift
 } from 'lucide-react';
 
 interface ReferredUser {
@@ -37,7 +36,6 @@ export default function ReferralsPage() {
   const router = useRouter();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -107,13 +105,6 @@ export default function ReferralsPage() {
       supabase.removeChannel(channel);
     };
   }, [user, router, supabase]);
-
-  const copyReferralCode = (code: string) => {
-    const referralLink = `${window.location.origin}/signup?ref=${code}`;
-    navigator.clipboard.writeText(referralLink);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
-  };
 
   const getStatusBadge = (status: Referral['status']) => {
     const configs = {

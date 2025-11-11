@@ -139,6 +139,46 @@ function ProfileContent() {
     return () => clearTimeout(timeout);
   }, [isLoadingSubscription, fetchSubscription]);
 
+  // Auto-Sync alle 30 Sekunden
+  useEffect(() => {
+    if (!user || !subscription) return;
+    
+    const autoSync = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        
+        const response = await fetch('/api/stripe/auto-sync', {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[Profile] Auto-sync successful:', data);
+          // Trigger re-fetch of subscription
+          fetchSubscription();
+        }
+      } catch (error) {
+        console.error('[Profile] Auto-sync error:', error);
+      }
+    };
+    
+    // Initial sync after 5 seconds
+    const initialTimeout = setTimeout(autoSync, 5000);
+    
+    // Then every 30 seconds
+    const interval = setInterval(autoSync, 30000);
+    
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, [user, subscription, supabase, fetchSubscription]);
+
   const handleCancelSubscription = async () => {
     if (!subscription?.stripe_subscription_id) return;
 

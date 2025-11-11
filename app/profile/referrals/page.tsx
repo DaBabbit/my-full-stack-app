@@ -190,13 +190,13 @@ export default function ReferralsPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       <TopBar />
-      <div className="p-4 md:p-8">
+      <div className="p-4 md:p-8 pt-28">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <button
               onClick={() => router.push('/profile')}
-              className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-4"
+              className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-6"
             >
               <ArrowLeft className="w-4 h-4" />
               Zurück zum Profil
@@ -269,50 +269,47 @@ export default function ReferralsPage() {
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <code className="px-2 py-1 bg-neutral-800 rounded text-sm font-mono">
-                          {referral.referralCode}
-                        </code>
-                        <button
-                          onClick={() => copyReferralCode(referral.referralCode)}
-                          className="p-1 hover:bg-neutral-700 rounded transition-colors"
-                          title="Link kopieren"
-                        >
-                          {copiedCode === referral.referralCode ? (
-                            <CheckCircle className="w-4 h-4 text-green-400" />
-                          ) : (
-                            <Copy className="w-4 h-4 text-neutral-400" />
-                          )}
-                        </button>
-                      </div>
-
                       {referral.referredUser ? (
-                        <div className="text-neutral-400 text-sm mb-2">
-                          Geworben: <span className="text-white">{referral.referredUser.name || referral.referredUser.email}</span>
+                        <div className="text-white font-medium text-lg mb-2">
+                          {referral.referredUser.name || referral.referredUser.email}
                         </div>
                       ) : (
-                        <div className="text-neutral-500 text-sm mb-2">
-                          Noch nicht verwendet
+                        <div className="text-neutral-400 font-medium text-lg mb-2">
+                          Link noch nicht verwendet
                         </div>
                       )}
 
-                      <div className="text-neutral-500 text-xs">
+                      <div className="text-neutral-500 text-sm">
                         Erstellt am {formatDate(referral.createdAt)}
-                        {referral.completedAt && ` • Abgeschlossen am ${formatDate(referral.completedAt)}`}
+                        {referral.completedAt && ` • Registriert am ${formatDate(referral.completedAt)}`}
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      {getStatusBadge(referral.status)}
-                      {referral.status === 'completed' && referral.referredUser && (
-                        <div className="text-xs text-neutral-400 text-right max-w-[200px]">
-                          Sobald <span className="text-white">{referral.referredUser.name.split(' ')[0]}</span> ein Abo abschließt, erhältst du 250€ Rabatt
-                        </div>
-                      )}
-                      {referral.status === 'rewarded' && (
-                        <div className="text-sm text-green-400 font-medium">
-                          +{formatAmount(referral.rewardAmount)} Rabatt erhalten!
-                        </div>
+                      {referral.status === 'rewarded' ? (
+                        <motion.div 
+                          className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3"
+                          animate={{ 
+                            scale: [1, 1.02, 1],
+                            boxShadow: [
+                              '0 0 0 0 rgba(34, 197, 94, 0)',
+                              '0 0 20px 5px rgba(34, 197, 94, 0.3)',
+                              '0 0 0 0 rgba(34, 197, 94, 0)'
+                            ]
+                          }}
+                          transition={{ 
+                            duration: 2,
+                            repeat: Infinity,
+                            repeatType: "reverse"
+                          }}
+                        >
+                          <Gift className="w-6 h-6 text-green-400" />
+                          <span className="text-green-400 font-semibold text-base">
+                            250€ Rabatt wird bei nächster Rechnung angewendet
+                          </span>
+                        </motion.div>
+                      ) : (
+                        getStatusBadge(referral.status)
                       )}
                     </div>
                   </div>

@@ -172,7 +172,8 @@ export const POST = withCors(async function POST(request: NextRequest) {
       case 'customer.subscription.trial_will_end': {
         const subscription = event.data.object as Stripe.Subscription;
         
-        await supabaseAdmin
+        // Update subscription in database
+        const { data: subData } = await supabaseAdmin
           .from('subscriptions')
           .update({
             status: subscription.status,
@@ -180,7 +181,71 @@ export const POST = withCors(async function POST(request: NextRequest) {
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             updated_at: new Date().toISOString()
           })
-          .eq('stripe_subscription_id', subscription.id);
+          .eq('stripe_subscription_id', subscription.id)
+          .select('user_id')
+          .single();
+        
+        // If subscription was just canceled (cancel_at_period_end set to true), revert referral reward
+        if (subscription.cancel_at_period_end && subData?.user_id) {
+          logWebhookEvent('⚠️ Subscription canceled - reverting referral reward', { 
+            userId: subData.user_id,
+            subscriptionId: subscription.id 
+          });
+          
+          // Find any rewarded referrals for this user
+          const { data: referral, error: referralError } = await supabaseAdmin
+            .from('referrals')
+            .select('*')
+            .eq('referred_user_id', subData.user_id)
+            .eq('status', 'rewarded')
+            .single();
+          
+          if (!referralError && referral) {
+            logWebhookEvent('🔄 Found rewarded referral to revert', { referralId: referral.id });
+            
+            // Revert referral status back to completed
+            await supabaseAdmin
+              .from('referrals')
+              .update({
+                status: 'completed',
+                rewarded_at: null
+              })
+              .eq('id', referral.id);
+            
+            // Get referrer's Stripe customer ID to remove credit
+            const { data: referrerSub } = await supabaseAdmin
+              .from('subscriptions')
+              .select('stripe_customer_id')
+              .eq('user_id', referral.referrer_user_id)
+              .single();
+            
+            if (referrerSub?.stripe_customer_id) {
+              try {
+                // Add positive balance transaction to offset the negative credit
+                await stripe.customers.createBalanceTransaction(
+                  referrerSub.stripe_customer_id,
+                  {
+                    amount: 25000, // Positive to remove credit
+                    currency: 'eur',
+                    description: `Empfehlungsbonus zurückgenommen - Abo wurde gekündigt`,
+                    metadata: {
+                      referral_id: referral.id,
+                      referral_code: referral.referral_code,
+                      reason: 'subscription_canceled',
+                    },
+                  }
+                );
+                
+                logWebhookEvent('✅ Referral credit reverted', { 
+                  referralId: referral.id,
+                  customerId: referrerSub.stripe_customer_id 
+                });
+              } catch (stripeError) {
+                logWebhookEvent('❌ Error reverting credit', stripeError);
+              }
+            }
+          }
+        }
         
         break;
       }

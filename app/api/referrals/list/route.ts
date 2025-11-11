@@ -72,11 +72,23 @@ export async function GET(request: Request) {
       );
     }
 
-    // Format the response
-    const formattedReferrals = referrals.map(referral => {
+    // Format the response with subscription status
+    const formattedReferrals = await Promise.all(referrals.map(async (referral) => {
       const referredUserData = Array.isArray(referral.referred_user)
         ? referral.referred_user[0]
         : referral.referred_user;
+
+      // Check if referred user has canceled subscription
+      let referredUserSubscriptionCanceled = false;
+      if (referredUserData?.id) {
+        const { data: sub } = await supabaseAdmin
+          .from('subscriptions')
+          .select('cancel_at_period_end, status')
+          .eq('user_id', referredUserData.id)
+          .single();
+        
+        referredUserSubscriptionCanceled = sub?.cancel_at_period_end === true && sub?.status === 'active';
+      }
 
       return {
         id: referral.id,
@@ -92,8 +104,9 @@ export async function GET(request: Request) {
           name: `${referredUserData.firstname || ''} ${referredUserData.lastname || ''}`.trim(),
           email: referredUserData.email,
         } : null,
+        referredUserSubscriptionCanceled,
       };
-    });
+    }));
 
     console.log('[Referral List API] Returning referrals:', formattedReferrals.length);
     console.log('[Referral List API] Referral details:', JSON.stringify(formattedReferrals, null, 2));

@@ -10,7 +10,8 @@ import {
   Users, 
   CheckCircle, 
   Clock, 
-  Gift
+  Gift,
+  AlertTriangle
 } from 'lucide-react';
 
 interface ReferredUser {
@@ -29,6 +30,7 @@ interface Referral {
   completedAt: string | null;
   rewardedAt: string | null;
   referredUser: ReferredUser | null;
+  referredUserSubscriptionCanceled?: boolean;
 }
 
 export default function ReferralsPage() {
@@ -277,7 +279,14 @@ export default function ReferralsPage() {
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      {referral.status === 'rewarded' ? (
+                      {referral.referredUserSubscriptionCanceled ? (
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3">
+                          <div className="flex items-center gap-2 text-yellow-400 text-sm">
+                            <AlertTriangle className="w-5 h-5" />
+                            <span>Abo wurde gekündigt - Bonus verfällt</span>
+                          </div>
+                        </div>
+                      ) : referral.status === 'rewarded' ? (
                         <motion.div 
                           className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3"
                           animate={{ 

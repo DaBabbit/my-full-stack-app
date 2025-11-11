@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -8,7 +8,6 @@ import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
   CreditCard, 
-  PauseCircle, 
   XCircle,
   ExternalLink,
   AlertTriangle,
@@ -20,13 +19,30 @@ import 'react-toastify/dist/ReactToastify.css';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ManageSubscriptionPage() {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const { subscription, currentSubscription, fetchSubscription } = useSubscription();
   const router = useRouter();
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
-  const [isPausing, setIsPausing] = useState(false);
+  const [hasActiveReferralReward, setHasActiveReferralReward] = useState(false);
+
+  // Check for active referral reward
+  useEffect(() => {
+    const checkReferralReward = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('referred_user_id', user.id)
+        .eq('status', 'rewarded')
+        .single();
+      
+      setHasActiveReferralReward(!!data);
+    };
+    
+    checkReferralReward();
+  }, [user, supabase]);
 
   const handleOpenCustomerPortal = async () => {
     try {
@@ -52,48 +68,6 @@ export default function ManageSubscriptionPage() {
         autoClose: 3000,
         theme: "dark"
       });
-    }
-  };
-
-  const handlePauseSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return;
-
-    setIsPausing(true);
-    try {
-      const response = await fetch('/api/stripe/pause', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscriptionId: subscription.stripe_subscription_id }),
-      });
-
-      if (response.ok) {
-        toast.success('Abonnement erfolgreich pausiert!', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
-        });
-        await fetchSubscription();
-        setIsPauseModalOpen(false);
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        const data = await response.json();
-        toast.error(data.error || 'Fehler beim Pausieren', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
-        });
-      }
-    } catch (err) {
-      console.error('Pause subscription error:', err);
-      toast.error('Netzwerkfehler', {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "dark"
-      });
-    } finally {
-      setIsPausing(false);
     }
   };
 
@@ -229,28 +203,6 @@ export default function ManageSubscriptionPage() {
             </div>
           </motion.div>
 
-          {/* Abo pausieren */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            whileHover={{ scale: 1.02 }}
-            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-yellow-500/50 transition-all duration-300 cursor-pointer"
-            onClick={() => setIsPauseModalOpen(true)}
-          >
-            <div className="p-3 bg-yellow-500/20 rounded-2xl w-fit mb-4">
-              <PauseCircle className="w-6 h-6 text-yellow-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Abo pausieren</h3>
-            <p className="text-neutral-400 mb-4">
-              Pausiere dein Abo vorübergehend ohne es komplett zu kündigen
-            </p>
-            <div className="flex items-center text-yellow-400 text-sm font-medium">
-              <span>Pausieren</span>
-              <RefreshCw className="w-4 h-4 ml-2" />
-            </div>
-          </motion.div>
-
           {/* Abo kündigen */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -295,52 +247,6 @@ export default function ManageSubscriptionPage() {
         </motion.div>
       </div>
 
-      {/* Pause Modal */}
-      {isPauseModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-neutral-900 rounded-3xl p-6 max-w-md w-full border border-yellow-500/20"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-yellow-500/20 rounded-xl">
-                <PauseCircle className="w-6 h-6 text-yellow-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-white">Abo pausieren?</h3>
-            </div>
-            
-            <p className="text-neutral-400 mb-6">
-              Dein Abonnement wird pausiert. Du behältst Zugriff bis zum Ende des aktuellen Abrechnungszeitraums.
-            </p>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsPauseModalOpen(false)}
-                disabled={isPausing}
-                className="flex-1 p-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-2xl transition-all duration-300 disabled:opacity-50"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handlePauseSubscription}
-                disabled={isPausing}
-                className="flex-1 p-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-2xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isPausing ? (
-                  <>
-                    <span className="loading loading-spinner loading-sm"></span>
-                    <span>Pausiere...</span>
-                  </>
-                ) : (
-                  <span>Pausieren</span>
-                )}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
       {/* Cancel Modal */}
       {isCancelModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -356,9 +262,23 @@ export default function ManageSubscriptionPage() {
               <h3 className="text-xl font-semibold text-white">Abo kündigen?</h3>
             </div>
             
-            <p className="text-neutral-400 mb-6">
+            <p className="text-neutral-400 mb-4">
               Bist du sicher, dass du dein Abonnement kündigen möchtest? Du behältst Zugriff bis zum Ende des aktuellen Abrechnungszeitraums.
             </p>
+
+            {hasActiveReferralReward && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-yellow-300 text-sm font-medium mb-1">
+                    Wichtiger Hinweis zum Empfehlungsbonus
+                  </p>
+                  <p className="text-yellow-200/80 text-xs">
+                    Durch die Kündigung verfällt dein 250€ Empfehlungsrabatt. Das Guthaben wird automatisch von deinem Konto entfernt.
+                  </p>
+                </div>
+              </div>
+            )}
             
             <div className="flex gap-3">
               <button

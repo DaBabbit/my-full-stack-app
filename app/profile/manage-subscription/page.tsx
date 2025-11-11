@@ -11,8 +11,7 @@ import {
   XCircle,
   ExternalLink,
   AlertTriangle,
-  CheckCircle,
-  RefreshCw
+  CheckCircle
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';

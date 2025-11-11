@@ -80,6 +80,32 @@ export default function ReferralsPage() {
     };
 
     fetchReferrals();
+
+    // Setup Realtime subscription for referrals updates
+    console.log('[Referrals Page] Setting up Realtime subscription');
+    const channel = supabase
+      .channel('referrals_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'referrals',
+          filter: `referrer_user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[Referrals Page] Realtime update:', payload);
+          // Refetch referrals when any change occurs
+          fetchReferrals();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('[Referrals Page] Cleaning up Realtime subscription');
+      supabase.removeChannel(channel);
+    };
   }, [user, router, supabase]);
 
   const copyReferralCode = (code: string) => {

@@ -203,16 +203,18 @@ export const POST = withCors(async function POST(request: NextRequest) {
 
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice;
-        logWebhookEvent('Invoice paid received', {
+        logWebhookEvent('✅ Invoice paid received', {
           invoiceId: invoice.id,
           customerId: invoice.customer,
           subscriptionId: invoice.subscription,
-          billingReason: invoice.billing_reason
+          billingReason: invoice.billing_reason,
+          amountPaid: invoice.amount_paid,
+          currency: invoice.currency
         });
         
         // Check if this is the first payment for a subscription
         if (invoice.subscription && invoice.billing_reason === 'subscription_create') {
-          logWebhookEvent('First subscription payment detected');
+          logWebhookEvent('🎉 First subscription payment detected - checking for referral');
           
           // Get user_id from subscription via our database
           const { data: subscription, error: subError } = await supabaseAdmin
@@ -222,9 +224,17 @@ export const POST = withCors(async function POST(request: NextRequest) {
             .single();
           
           if (subError || !subscription) {
-            logWebhookEvent('Subscription not found in database', { error: subError });
+            logWebhookEvent('❌ Subscription not found in database', { 
+              error: subError,
+              subscriptionId: invoice.subscription 
+            });
             break;
           }
+
+          logWebhookEvent('✅ Subscription found in DB', {
+            userId: subscription.user_id,
+            customerId: subscription.stripe_customer_id
+          });
 
           // Check if this user was referred
           const { data: referral, error: referralError } = await supabaseAdmin
@@ -235,18 +245,23 @@ export const POST = withCors(async function POST(request: NextRequest) {
             .single();
           
           if (referralError || !referral) {
-            logWebhookEvent('No referral found for this user');
+            logWebhookEvent('ℹ️ No referral found for this user', {
+              userId: subscription.user_id,
+              error: referralError
+            });
             break;
           }
 
-          logWebhookEvent('Referral found, processing reward', {
+          logWebhookEvent('🎯 Referral found! Processing reward...', {
             referralId: referral.id,
             referralCode: referral.referral_code,
-            referrerId: referral.referrer_user_id
+            referrerId: referral.referrer_user_id,
+            referredUserId: subscription.user_id,
+            currentStatus: referral.status
           });
           
           // Update referral - mark first payment as received
-          await supabaseAdmin
+          const { error: updateError1 } = await supabaseAdmin
             .from('referrals')
             .update({
               first_payment_received: true,
@@ -254,15 +269,35 @@ export const POST = withCors(async function POST(request: NextRequest) {
               completed_at: new Date().toISOString(),
             })
             .eq('id', referral.id);
+
+          if (updateError1) {
+            logWebhookEvent('❌ Failed to update referral to completed', updateError1);
+          } else {
+            logWebhookEvent('✅ Referral updated to completed');
+          }
           
           // Get referrer's Stripe customer ID
-          const { data: referrerSub } = await supabaseAdmin
+          const { data: referrerSub, error: refSubError } = await supabaseAdmin
             .from('subscriptions')
             .select('stripe_customer_id')
             .eq('user_id', referral.referrer_user_id)
             .single();
           
-          if (referrerSub?.stripe_customer_id) {
+          if (refSubError || !referrerSub?.stripe_customer_id) {
+            logWebhookEvent('⚠️ Referrer has no Stripe customer ID yet', {
+              referrerId: referral.referrer_user_id,
+              error: refSubError
+            });
+            break;
+          }
+
+          logWebhookEvent('💰 Creating balance credit for referrer...', {
+            customerId: referrerSub.stripe_customer_id,
+            amount: -25000,
+            currency: 'eur'
+          });
+
+          try {
             // Create Customer Balance Transaction (Credit)
             // Negative amount = Credit that will be applied to next invoice
             const balanceTransaction = await stripe.customers.createBalanceTransaction(
@@ -279,8 +314,13 @@ export const POST = withCors(async function POST(request: NextRequest) {
               }
             );
             
+            logWebhookEvent('✅ Balance credit created successfully', {
+              balanceTransactionId: balanceTransaction.id,
+              amount: balanceTransaction.amount
+            });
+
             // Update referral status to rewarded
-            await supabaseAdmin
+            const { error: updateError2 } = await supabaseAdmin
               .from('referrals')
               .update({
                 status: 'rewarded',
@@ -288,17 +328,21 @@ export const POST = withCors(async function POST(request: NextRequest) {
               })
               .eq('id', referral.id);
             
-            logWebhookEvent('Referral reward applied successfully', {
-              referralCode: referral.referral_code,
-              referrerId: referral.referrer_user_id,
-              balanceTransactionId: balanceTransaction.id,
-              amount: -25000,
-            });
-          } else {
-            logWebhookEvent('Referrer has no Stripe customer ID', {
-              referrerId: referral.referrer_user_id
-            });
+            if (updateError2) {
+              logWebhookEvent('❌ Failed to update referral to rewarded', updateError2);
+            } else {
+              logWebhookEvent('🎊 Referral reward applied successfully!', {
+                referralCode: referral.referral_code,
+                referrerId: referral.referrer_user_id,
+                balanceTransactionId: balanceTransaction.id,
+                creditAmount: '250€',
+              });
+            }
+          } catch (stripeError) {
+            logWebhookEvent('❌ Stripe error creating balance transaction', stripeError);
           }
+        } else {
+          logWebhookEvent('ℹ️ Invoice paid but not first payment (billing_reason: ' + invoice.billing_reason + ')');
         }
         break;
       }

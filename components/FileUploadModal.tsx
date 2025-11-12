@@ -70,13 +70,23 @@ export function FileUploadModal({
   };
 
   // Handler für erfolgreichen Upload - zeigt Toast + Automatisierungs-Prompt
-  const handleUploadSuccess = (fileNames: string[]) => {
+  const handleUploadSuccess = async (fileNames: string[]) => {
     // Zeige Toast-Benachrichtigung
     if (onUploadSuccess) {
       onUploadSuccess(fileNames);
     }
-    // Zeige Automatisierungs-Prompt
-    setShowAutomationPrompt(true);
+    
+    // Hole aktuellen Video-Status
+    const { data: video } = await supabase
+      .from('videos')
+      .select('status')
+      .eq('id', videoId)
+      .single();
+    
+    // Zeige Prompt nur, wenn Status NICHT bereits "In Bearbeitung (Schnitt)" ist
+    if (video && video.status !== 'In Bearbeitung (Schnitt)') {
+      setShowAutomationPrompt(true);
+    }
   };
 
   // Trigger Automatisierung: Status auf "In Bearbeitung" + kosmamedia als Zuständig
@@ -285,7 +295,7 @@ export function FileUploadModal({
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     transition={{ type: "spring", duration: 0.5 }}
-                    className="bg-neutral-900/95 border border-neutral-700/50 rounded-2xl p-8 max-w-lg w-full shadow-2xl backdrop-blur-xl"
+                    className="bg-neutral-900/95 border border-neutral-700/50 rounded-2xl p-8 max-w-md w-full shadow-2xl backdrop-blur-xl"
                   >
                     {/* Blitz-Icon */}
                     <div className="w-20 h-20 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/30">
@@ -342,7 +352,7 @@ export function FileUploadModal({
                       <button
                         onClick={onClose}
                         disabled={isTriggering}
-                        className="w-full px-6 py-3 text-neutral-400 hover:text-white transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-6 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Nein danke, fertig
                       </button>

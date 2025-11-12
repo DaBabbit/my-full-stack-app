@@ -28,7 +28,6 @@ export function FileUploadModal({
   onUploadError
 }: FileUploadModalProps) {
   const [showAutomationPrompt, setShowAutomationPrompt] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [isTriggering, setIsTriggering] = useState(false);
 
   // Body scroll lock - Verbesserte Version
@@ -70,7 +69,6 @@ export function FileUploadModal({
 
   // Handler für erfolgreichen Upload - zeigt Automatisierungs-Prompt
   const handleUploadSuccess = (fileNames: string[]) => {
-    setUploadedFiles(fileNames);
     setShowAutomationPrompt(true);
     if (onUploadSuccess) {
       onUploadSuccess(fileNames);

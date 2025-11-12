@@ -53,14 +53,15 @@ export async function POST(request: NextRequest) {
         .eq('status', 'active')
         .single();
 
-      if (!membership || !(membership.permissions as any)?.can_edit) {
+      const permissions = membership?.permissions as { can_edit?: boolean } | null;
+      if (!membership || !permissions?.can_edit) {
         return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 });
       }
     }
 
-    let updates: any = {};
+    const updates: { status?: string; responsible_person?: string; last_updated?: string } = {};
     let notificationMessage = '';
-    let previousResponsible = video.responsible_person;
+    const previousResponsible = video.responsible_person;
 
     // Automatisierung: Alle Dateien hochgeladen → Status "In Bearbeitung"
     if (allFilesUploaded) {

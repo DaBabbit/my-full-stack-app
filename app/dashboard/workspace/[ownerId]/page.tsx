@@ -567,7 +567,6 @@ export default function SharedWorkspacePage() {
 
     // In shared workspaces, creating videos is not supported
     addToast({
-      id: Date.now().toString(),
       type: 'error',
       message: 'Videos können in geteilten Workspaces nicht erstellt werden.'
     });
@@ -587,7 +586,6 @@ export default function SharedWorkspacePage() {
     // Check permissions first
     if (!permissions.can_edit) {
       addToast({
-        id: Date.now().toString(),
         type: 'error',
         message: 'Du hast keine Berechtigung, den Status zu ändern.'
       });
@@ -1666,7 +1664,6 @@ export default function SharedWorkspacePage() {
                     handleEditVideo(video);
                   } else {
                     addToast({
-                      id: Date.now().toString(),
                       type: 'error',
                       message: 'Du hast keine Berechtigung, Videos zu bearbeiten.'
                     });
@@ -2052,7 +2049,6 @@ export default function SharedWorkspacePage() {
                           setShowAddModal(true);
                         } else {
                           addToast({
-                            id: Date.now().toString(),
                             type: 'error',
                             message: 'Du hast keine Berechtigung, Videos zu erstellen.'
                           });
@@ -2232,7 +2228,6 @@ export default function SharedWorkspacePage() {
                                 handleEditVideo(video);
                               } else {
                                 addToast({
-                                  id: Date.now().toString(),
                                   type: 'error',
                                   message: 'Du hast keine Berechtigung, Videos zu bearbeiten.'
                                 });

@@ -23,6 +23,8 @@ export default function ManageSubscriptionPage() {
   const router = useRouter();
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
   const [hasActiveReferralReward, setHasActiveReferralReward] = useState(false);
 
   // Check for active referral reward
@@ -67,6 +69,48 @@ export default function ManageSubscriptionPage() {
         autoClose: 3000,
         theme: "dark"
       });
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    if (!currentSubscription?.stripe_subscription_id) return;
+
+    setIsReactivating(true);
+    try {
+      const response = await fetch('/api/stripe/reactivate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionId: currentSubscription.stripe_subscription_id }),
+      });
+
+      if (response.ok) {
+        toast.success('Abonnement erfolgreich wiederhergestellt!', {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "dark"
+        });
+        await fetchSubscription(true);
+        setIsReactivateModalOpen(false);
+        setTimeout(() => {
+          router.push('/profile');
+        }, 1500);
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Fehler beim Wiederherstellen', {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "dark"
+        });
+      }
+    } catch (err) {
+      console.error('Reactivate subscription error:', err);
+      toast.error('Netzwerkfehler', {
+        position: "top-right",
+        autoClose: 3000,
+        theme: "dark"
+      });
+    } finally {
+      setIsReactivating(false);
     }
   };
 
@@ -202,27 +246,53 @@ export default function ManageSubscriptionPage() {
             </div>
           </motion.div>
 
-          {/* Abo kündigen */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            whileHover={{ scale: 1.02 }}
-            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-red-500/50 transition-all duration-300 cursor-pointer"
-            onClick={() => setIsCancelModalOpen(true)}
-          >
-            <div className="p-3 bg-red-500/20 rounded-2xl w-fit mb-4">
-              <XCircle className="w-6 h-6 text-red-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Abo kündigen</h3>
-            <p className="text-neutral-400 mb-4">
-              Kündige dein Abonnement zum Ende des aktuellen Abrechnungszeitraums
-            </p>
-            <div className="flex items-center text-red-400 text-sm font-medium">
-              <span>Kündigen</span>
-              <AlertTriangle className="w-4 h-4 ml-2" />
-            </div>
-          </motion.div>
+          {/* Abo wiederherstellen (nur wenn gekündigt) */}
+          {currentSubscription?.cancel_at_period_end && currentSubscription?.status === 'active' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              whileHover={{ scale: 1.02 }}
+              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-green-500/50 transition-all duration-300 cursor-pointer"
+              onClick={() => setIsReactivateModalOpen(true)}
+            >
+              <div className="p-3 bg-green-500/20 rounded-2xl w-fit mb-4">
+                <CheckCircle className="w-6 h-6 text-green-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">Abo wiederherstellen</h3>
+              <p className="text-neutral-400 mb-4">
+                Stelle dein Abonnement wieder her und behalte alle Vorteile
+              </p>
+              <div className="flex items-center text-green-400 text-sm font-medium">
+                <span>Wiederherstellen</span>
+                <CheckCircle className="w-4 h-4 ml-2" />
+              </div>
+            </motion.div>
+          )}
+
+          {/* Abo kündigen (nur wenn nicht bereits gekündigt) */}
+          {!currentSubscription?.cancel_at_period_end && currentSubscription?.status === 'active' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              whileHover={{ scale: 1.02 }}
+              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-red-500/50 transition-all duration-300 cursor-pointer"
+              onClick={() => setIsCancelModalOpen(true)}
+            >
+              <div className="p-3 bg-red-500/20 rounded-2xl w-fit mb-4">
+                <XCircle className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">Abo kündigen</h3>
+              <p className="text-neutral-400 mb-4">
+                Kündige dein Abonnement zum Ende des aktuellen Abrechnungszeitraums
+              </p>
+              <div className="flex items-center text-red-400 text-sm font-medium">
+                <span>Kündigen</span>
+                <AlertTriangle className="w-4 h-4 ml-2" />
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Info Box */}
@@ -245,6 +315,52 @@ export default function ManageSubscriptionPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Reactivate Modal */}
+      {isReactivateModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-neutral-900 rounded-3xl p-6 max-w-md w-full border border-green-500/20"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-green-500/20 rounded-xl">
+                <CheckCircle className="w-6 h-6 text-green-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white">Abo wiederherstellen?</h3>
+            </div>
+            
+            <p className="text-neutral-400 mb-6">
+              Möchtest du dein Abonnement wiederherstellen? Dein Abo wird sofort reaktiviert und läuft normal weiter.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsReactivateModalOpen(false)}
+                disabled={isReactivating}
+                className="flex-1 p-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-2xl transition-all duration-300 disabled:opacity-50"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleReactivateSubscription}
+                disabled={isReactivating}
+                className="flex-1 p-3 bg-green-500 hover:bg-green-600 text-white rounded-2xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isReactivating ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    <span>Stelle wieder her...</span>
+                  </>
+                ) : (
+                  <span>Wiederherstellen</span>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Cancel Modal */}
       {isCancelModalOpen && (

@@ -44,6 +44,7 @@ function ProfileContent() {
   const [isGeneratingReferral, setIsGeneratingReferral] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
   const [toasts, setToasts] = useState<ToastProps[]>([]);
+  const [hasRewardedReferralAsReferrer, setHasRewardedReferralAsReferrer] = useState(false);
 
   // Toast helpers
   const removeToast = React.useCallback((id: string) => {
@@ -178,6 +179,24 @@ function ProfileContent() {
       clearInterval(interval);
     };
   }, [user, subscription, supabase, fetchSubscription]);
+
+  // Check if user has rewarded referrals as referrer
+  useEffect(() => {
+    const checkRewardedReferrals = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('referrer_user_id', user.id)
+        .eq('status', 'rewarded')
+        .limit(1);
+      
+      setHasRewardedReferralAsReferrer((data && data.length > 0) || false);
+    };
+    
+    checkRewardedReferrals();
+  }, [user, supabase]);
 
   const handleCancelSubscription = async () => {
     if (!subscription?.stripe_subscription_id) return;
@@ -683,6 +702,37 @@ function ProfileContent() {
                         Teile diesen Link mit Freunden. Du erhältst 250€ Rabatt, sobald sie ihr erstes Abo bezahlt haben.
                       </p>
                     </div>
+                  )}
+
+                  {/* Warning: Canceled subscription with rewarded referral */}
+                  {currentSubscription?.cancel_at_period_end && hasRewardedReferralAsReferrer && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mt-4 p-4 bg-red-500/10 border-2 border-red-500/50 rounded-xl flex items-start gap-3"
+                    >
+                      <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5 animate-pulse" />
+                      <div className="flex-1">
+                        <p className="text-red-300 font-semibold text-sm mb-1">
+                          ⚠️ Wichtig: Dein Empfehlungsrabatt verfällt!
+                        </p>
+                        <p className="text-red-200/90 text-xs leading-relaxed">
+                          Dein Abo wurde gekündigt. Wenn du es nicht bis zum{' '}
+                          <span className="font-bold">
+                            {currentSubscription?.current_period_end 
+                              ? new Date(currentSubscription.current_period_end).toLocaleDateString('de-DE')
+                              : 'nächsten Abrechnungsdatum'}
+                          </span>{' '}
+                          wiederherstellst, verfällt dein 250€ Rabatt und wird automatisch zurückgenommen.
+                        </p>
+                        <button
+                          onClick={() => router.push('/profile/manage-subscription')}
+                          className="mt-3 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-all duration-300"
+                        >
+                          Abo jetzt wiederherstellen
+                        </button>
+                      </div>
+                    </motion.div>
                   )}
                 </>
               ) : (

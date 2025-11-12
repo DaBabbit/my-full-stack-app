@@ -159,7 +159,7 @@ export default function SharedWorkspacePage() {
   } : undefined;
   
   // For now, workspaceMembers is empty - we can load it separately if needed
-  const workspaceMembers: any[] = [];
+  const workspaceMembers: Array<{ user_id: string; email: string; firstname?: string; lastname?: string }> = [];
   
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [

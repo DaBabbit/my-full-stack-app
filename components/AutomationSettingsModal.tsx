@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -62,13 +62,7 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!user || !isOpen) return;
-    
-    loadSettings();
-  }, [user, isOpen]);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -110,7 +104,7 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
       console.log('[AutomationSettings] Members query result:', { members, error: membersError });
       
       if (members && Array.isArray(members)) {
-        members.forEach((member: any) => {
+        members.forEach((member: { user_id: string; users: User[] | User }) => {
           console.log('[AutomationSettings] Processing member object:', member);
           // Supabase returns users as an array with one element
           const userData = Array.isArray(member.users) ? member.users[0] : member.users;
@@ -150,7 +144,13 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !isOpen) return;
+    
+    loadSettings();
+  }, [user, isOpen, loadSettings]);
 
   const handleSave = async () => {
     try {

@@ -91,9 +91,10 @@ export default function AutomationSettingsPage() {
         .eq('status', 'active');
       
       if (members) {
-        members.forEach((member: { users?: User }) => {
-          if (member.users && !users.find(u => u.id === member.users.id)) {
-            users.push(member.users);
+        members.forEach((member: { user_id: string; users: User[] }) => {
+          const userData = member.users?.[0]; // Supabase returns array
+          if (userData && !users.find(u => u.id === userData.id)) {
+            users.push(userData);
           }
         });
       }

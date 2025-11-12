@@ -31,13 +31,13 @@ export function useRealtimeVideos(userId?: string) {
           console.log('[useRealtimeVideos] 📡 Realtime event received:', payload.eventType);
           console.log('[useRealtimeVideos] 📦 Payload:', payload.new || payload.old);
           
-          // Nur Cache invalidieren, NICHT refetchen (React Query macht das automatisch)
+          // Cache invalidieren und automatisch neu laden
           queryClient.invalidateQueries({ 
             queryKey: ['videos', 'own'],
-            refetchType: 'none' // Wichtig: Kein sofortiger Refetch
+            refetchType: 'active' // Automatischer Refetch für aktive Queries
           });
           
-          console.log('[useRealtimeVideos] ✅ Cache invalidated - React Query will refetch when needed');
+          console.log('[useRealtimeVideos] ✅ Cache invalidated - React Query refetching now');
         }
       )
       .subscribe((status) => {
@@ -77,13 +77,13 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
           console.log('[useRealtimeWorkspaceVideos] 📡 Realtime event received:', payload.eventType);
           console.log('[useRealtimeWorkspaceVideos] 📦 Payload:', payload.new || payload.old);
           
-          // Cache invalidieren
+          // Cache invalidieren und automatisch neu laden
           queryClient.invalidateQueries({ 
             queryKey: ['videos', 'workspace', ownerId],
-            refetchType: 'none'
+            refetchType: 'active' // Automatischer Refetch für aktive Queries
           });
           
-          console.log('[useRealtimeWorkspaceVideos] ✅ Workspace cache invalidated');
+          console.log('[useRealtimeWorkspaceVideos] ✅ Workspace cache invalidated - refetching now');
         }
       )
       .subscribe((status) => {

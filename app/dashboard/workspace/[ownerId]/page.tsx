@@ -464,7 +464,8 @@ export default function SharedWorkspacePage() {
           videoIds: videosToUpdate,
           updates: {
             [field]: value || null
-          }
+          },
+          ownerId
         });
         
         const fieldLabels: Record<string, string> = {
@@ -601,7 +602,8 @@ export default function SharedWorkspacePage() {
         // Bulk update
         await bulkUpdateVideosAsync({
           videoIds: videosToUpdate,
-          updates: { status: newStatus }
+          updates: { status: newStatus },
+          ownerId
         });
         
         addToast({

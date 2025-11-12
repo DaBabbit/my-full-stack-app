@@ -8,8 +8,12 @@ import { X, Save, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface AutomationSettings {
   id?: string;
-  trigger_status: string;
-  assigned_person_id: string | null;
+  user_id?: string;
+  workspace_owner_id?: string | null;
+  auto_assign_on_idea: string | null;
+  auto_assign_on_waiting_for_recording: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface User {
@@ -33,15 +37,10 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
   // Available users for assignment
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   
-  // Settings for each trigger status
-  const [ideaSettings, setIdeaSettings] = useState<AutomationSettings>({
-    trigger_status: 'Idee',
-    assigned_person_id: null
-  });
-  
-  const [waitingSettings, setWaitingSettings] = useState<AutomationSettings>({
-    trigger_status: 'Warten auf Aufnahme',
-    assigned_person_id: null
+  // Settings (one row per user)
+  const [settings, setSettings] = useState<AutomationSettings>({
+    auto_assign_on_idea: null,
+    auto_assign_on_waiting_for_recording: null
   });
 
   useEffect(() => {
@@ -90,33 +89,31 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
         .eq('status', 'active');
       
       if (members) {
+        console.log('[AutomationSettings] Loaded members:', members);
         members.forEach((member: { user_id: string; users: User[] }) => {
           const userData = member.users?.[0]; // Supabase returns array
+          console.log('[AutomationSettings] Processing member:', userData);
           if (userData && !users.find(u => u.id === userData.id)) {
             users.push(userData);
           }
         });
       }
       
+      console.log('[AutomationSettings] Available users:', users);
       setAvailableUsers(users);
       
       // 2. Load existing automation settings
-      const { data: settings } = await supabase
+      const { data: existingSettings } = await supabase
         .from('automation_settings')
         .select('*')
         .eq('user_id', user?.id)
-        .is('workspace_owner_id', null);
+        .is('workspace_owner_id', null)
+        .maybeSingle();
       
-      if (settings) {
-        const ideaSetting = settings.find(s => s.trigger_status === 'Idee');
-        const waitingSetting = settings.find(s => s.trigger_status === 'Warten auf Aufnahme');
-        
-        if (ideaSetting) {
-          setIdeaSettings(ideaSetting);
-        }
-        if (waitingSetting) {
-          setWaitingSettings(waitingSetting);
-        }
+      console.log('[AutomationSettings] Existing settings:', existingSettings);
+      
+      if (existingSettings) {
+        setSettings(existingSettings);
       }
       
     } catch (error) {
@@ -131,59 +128,34 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
       setSaving(true);
       setSaved(false);
       
-      // Save or update settings for "Idee"
-      if (ideaSettings.assigned_person_id) {
-        if (ideaSettings.id) {
-          await supabase
-            .from('automation_settings')
-            .update({
-              assigned_person_id: ideaSettings.assigned_person_id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', ideaSettings.id);
-        } else {
-          await supabase
-            .from('automation_settings')
-            .insert({
-              user_id: user?.id,
-              trigger_status: 'Idee',
-              assigned_person_id: ideaSettings.assigned_person_id
-            });
-        }
-      } else if (ideaSettings.id) {
-        // Delete if no person assigned
-        await supabase
+      // Upsert settings (insert or update)
+      if (settings.id) {
+        // Update existing
+        const { error } = await supabase
           .from('automation_settings')
-          .delete()
-          .eq('id', ideaSettings.id);
+          .update({
+            auto_assign_on_idea: settings.auto_assign_on_idea,
+            auto_assign_on_waiting_for_recording: settings.auto_assign_on_waiting_for_recording,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', settings.id);
+        
+        if (error) throw error;
+      } else {
+        // Insert new
+        const { error } = await supabase
+          .from('automation_settings')
+          .insert({
+            user_id: user?.id,
+            workspace_owner_id: null, // null = eigene Videos
+            auto_assign_on_idea: settings.auto_assign_on_idea,
+            auto_assign_on_waiting_for_recording: settings.auto_assign_on_waiting_for_recording
+          });
+        
+        if (error) throw error;
       }
       
-      // Save or update settings for "Warten auf Aufnahme"
-      if (waitingSettings.assigned_person_id) {
-        if (waitingSettings.id) {
-          await supabase
-            .from('automation_settings')
-            .update({
-              assigned_person_id: waitingSettings.assigned_person_id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', waitingSettings.id);
-        } else {
-          await supabase
-            .from('automation_settings')
-            .insert({
-              user_id: user?.id,
-              trigger_status: 'Warten auf Aufnahme',
-              assigned_person_id: waitingSettings.assigned_person_id
-            });
-        }
-      } else if (waitingSettings.id) {
-        // Delete if no person assigned
-        await supabase
-          .from('automation_settings')
-          .delete()
-          .eq('id', waitingSettings.id);
-      }
+      console.log('[AutomationSettings] Settings saved successfully');
       
       setSaved(true);
       setTimeout(() => {
@@ -270,8 +242,8 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
                       Wer soll automatisch zugewiesen werden?
                     </p>
                     <select
-                      value={ideaSettings.assigned_person_id || ''}
-                      onChange={(e) => setIdeaSettings({ ...ideaSettings, assigned_person_id: e.target.value || null })}
+                      value={settings.auto_assign_on_idea || ''}
+                      onChange={(e) => setSettings({ ...settings, auto_assign_on_idea: e.target.value || null })}
                       className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="">Keine Automatisierung</option>
@@ -292,8 +264,8 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
                       Wer soll automatisch zugewiesen werden?
                     </p>
                     <select
-                      value={waitingSettings.assigned_person_id || ''}
-                      onChange={(e) => setWaitingSettings({ ...waitingSettings, assigned_person_id: e.target.value || null })}
+                      value={settings.auto_assign_on_waiting_for_recording || ''}
+                      onChange={(e) => setSettings({ ...settings, auto_assign_on_waiting_for_recording: e.target.value || null })}
                       className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="">Keine Automatisierung</option>

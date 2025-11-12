@@ -66,12 +66,20 @@ export async function POST(
     } 
     // Benutzerdefinierte Automatisierungen für "Idee" und "Warten auf Aufnahme"
     else if (newStatus === 'Idee' || newStatus === 'Warten auf Aufnahme') {
-      const { data: settings } = await supabaseAdmin
+      // Hole Automatisierungs-Einstellungen
+      // Für eigene Videos: workspace_owner_id = user_id AND settings.workspace_owner_id IS NULL
+      const { data: settings, error: settingsError } = await supabaseAdmin
         .from('automation_settings')
         .select('*')
-        .eq('user_id', video.user_id)
-        .eq('workspace_owner_id', video.workspace_owner_id || video.user_id)
-        .single();
+        .eq('user_id', video.workspace_owner_id) // Der Owner der Videos
+        .is('workspace_owner_id', null) // NULL = eigene Videos
+        .maybeSingle();
+
+      console.log('[AutoAssign] Settings query:', { 
+        video_workspace_owner: video.workspace_owner_id, 
+        settings, 
+        error: settingsError 
+      });
 
       if (settings) {
         if (newStatus === 'Idee' && settings.auto_assign_on_idea) {
@@ -83,6 +91,8 @@ export async function POST(
           shouldNotify = true;
           console.log('[AutoAssign] ✅ Benutzer-Automatisierung: Warten auf Aufnahme → User', newResponsiblePerson);
         }
+      } else {
+        console.log('[AutoAssign] ⚠️ Keine Automatisierungs-Einstellungen gefunden');
       }
     }
 

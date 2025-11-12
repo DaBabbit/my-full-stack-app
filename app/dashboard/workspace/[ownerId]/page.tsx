@@ -566,30 +566,37 @@ export default function SharedWorkspacePage() {
     }
 
     try {
-      // Create video directly via Supabase for workspace owner
-      const { data, error } = await supabase
-        .from('videos')
-        .insert([
-          {
-            user_id: ownerId, // Video belongs to workspace owner
-            workspace_owner_id: ownerId,
-            title: trimmedName,
-            status: newVideo.status,
-            publication_date: newVideo.publication_date || null,
-            responsible_person: newVideo.responsible_person || null,
-            storage_location: null,
-            inspiration_source: newVideo.inspiration_source || null,
-            description: newVideo.description || null,
-          }
-        ])
-        .select()
-        .single();
+      // Create video via API route (bypasses RLS)
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
 
-      if (error) {
-        throw error;
+      if (!token) {
+        throw new Error('Nicht authentifiziert');
       }
 
-      console.log('Video erfolgreich erstellt!', data);
+      const response = await fetch(`/api/workspace/${ownerId}/videos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: trimmedName,
+          status: newVideo.status,
+          publication_date: newVideo.publication_date || null,
+          responsible_person: newVideo.responsible_person || null,
+          inspiration_source: newVideo.inspiration_source || null,
+          description: newVideo.description || null,
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Fehler beim Erstellen');
+      }
+
+      const result = await response.json();
+      console.log('Video erfolgreich erstellt!', result.video);
 
       // Refetch videos
       await refetchVideos();

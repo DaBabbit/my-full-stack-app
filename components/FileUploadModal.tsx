@@ -288,14 +288,14 @@ export function FileUploadModal({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 z-50"
+                  className="absolute inset-0 flex items-center justify-center z-50"
                 >
                   <motion.div 
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     transition={{ type: "spring", duration: 0.5 }}
-                    className="bg-neutral-900/95 border border-neutral-700/50 rounded-2xl p-8 max-w-md w-full shadow-2xl backdrop-blur-xl"
+                    className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 border border-slate-700/50 rounded-2xl p-8 max-w-md mx-4 shadow-2xl backdrop-blur-xl"
                   >
                     {/* Blitz-Icon */}
                     <div className="w-20 h-20 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/30">

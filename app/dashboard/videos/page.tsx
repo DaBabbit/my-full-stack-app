@@ -2311,7 +2311,7 @@ export default function VideosPage() {
                       <div>
                         <label className="block text-xs font-medium text-neutral-400 mb-2">Verantwortlich</label>
                         <ResponsiblePersonAvatar 
-                          responsiblePerson={video.responsible_person} 
+                          responsiblePerson={video.responsible_person_name} 
                           size="sm" 
                           showFullName={true}
                         />

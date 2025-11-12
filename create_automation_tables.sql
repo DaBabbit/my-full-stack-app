@@ -90,6 +90,12 @@ ON public.responsibility_notifications
 FOR UPDATE
 USING (auth.uid() = recipient_user_id);
 
+-- User kann eigene Benachrichtigungen löschen
+CREATE POLICY "Users can delete their own responsibility notifications"
+ON public.responsibility_notifications
+FOR DELETE
+USING (auth.uid() = recipient_user_id);
+
 -- System kann Benachrichtigungen erstellen (via Service Role)
 CREATE POLICY "Service role can insert responsibility notifications"
 ON public.responsibility_notifications

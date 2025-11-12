@@ -24,7 +24,8 @@ import {
   ArrowRight,
   Lock,
   FileText,
-  Users
+  Users,
+  Zap
 } from 'lucide-react';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 
@@ -784,6 +785,33 @@ function ProfileContent() {
               >
                 <Users className="w-4 h-4" />
                 <span>Geworbene Freunde anzeigen</span>
+              </button>
+            </motion.div>
+
+            {/* Automatisierungs-Einstellungen */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="bg-gradient-to-br from-cyan-900/30 to-blue-900/30 backdrop-blur-md rounded-3xl p-6 border border-cyan-500/30 hover:border-cyan-400/50 transition-all duration-300"
+            >
+              <div className="flex items-center mb-4">
+                <div className="p-2 bg-cyan-500/20 rounded-xl mr-3">
+                  <Zap className="w-5 h-5 text-cyan-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white">Automatisierung</h3>
+              </div>
+              
+              <p className="text-neutral-300 mb-4">
+                Lege fest, wer automatisch als zuständige Person zugewiesen wird, wenn Videos in bestimmte Status wechseln.
+              </p>
+              
+              <button
+                onClick={() => router.push('/profile/automation')}
+                className="w-full p-3 bg-neutral-800/50 hover:bg-neutral-700 text-white rounded-2xl transition-all duration-300 font-medium flex items-center justify-center gap-2 border border-neutral-700 hover:border-neutral-600"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Automatisierung konfigurieren</span>
               </button>
             </motion.div>
 

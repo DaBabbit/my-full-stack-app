@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
+import { NotificationCenter } from '@/components/NotificationCenter';
 // Removed unused imports: useSubscription, useTrialStatus, BuyMeCoffee, useRouter
 // import { supabase } from '@/utils/supabase';
 
@@ -90,6 +91,9 @@ export default function TopBar() {
           ) : (
             // Show profile for authenticated users
             <>
+              {/* Notification Center */}
+              <NotificationCenter />
+              
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}

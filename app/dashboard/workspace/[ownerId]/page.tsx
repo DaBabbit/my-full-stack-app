@@ -566,28 +566,33 @@ export default function SharedWorkspacePage() {
     }
 
     try {
-      // Create video using React Query mutation - in workspace context
-      await fetch('/api/videos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify({
-          title: trimmedName,
-          status: newVideo.status,
-          publication_date: newVideo.publication_date || null,
-          responsible_person: newVideo.responsible_person || null,
-          inspiration_source: newVideo.inspiration_source || null,
-          description: newVideo.description || null,
-          user_id: ownerId // Create for workspace owner
-        })
-      });
+      // Create video directly via Supabase for workspace owner
+      const { data, error } = await supabase
+        .from('videos')
+        .insert([
+          {
+            user_id: ownerId, // Video belongs to workspace owner
+            workspace_owner_id: ownerId,
+            title: trimmedName,
+            status: newVideo.status,
+            publication_date: newVideo.publication_date || null,
+            responsible_person: newVideo.responsible_person || null,
+            storage_location: null,
+            inspiration_source: newVideo.inspiration_source || null,
+            description: newVideo.description || null,
+          }
+        ])
+        .select()
+        .single();
 
-      console.log('Video erfolgreich erstellt!');
+      if (error) {
+        throw error;
+      }
+
+      console.log('Video erfolgreich erstellt!', data);
 
       // Refetch videos
-      refetchVideos();
+      await refetchVideos();
       
       setShowAddModal(false);
       setNewVideo({

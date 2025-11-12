@@ -15,7 +15,7 @@ function VerifyEmailContent() {
   // Redirect if user is already verified
   useEffect(() => {
     const checkAndRedirect = async () => {
-      if (user?.email_confirmed_at) {
+    if (user?.email_confirmed_at) {
         // Check if user has completed onboarding
         const { data: userData } = await supabase
           .from('users')
@@ -27,8 +27,8 @@ function VerifyEmailContent() {
         if (!userData?.firstname || !userData?.lastname) {
           router.replace('/welcome');
         } else {
-          router.replace('/dashboard');
-        }
+      router.replace('/dashboard');
+    }
       }
     };
 

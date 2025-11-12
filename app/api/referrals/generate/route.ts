@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     // Verify user
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
+    
     if (authError || !user) {
       console.error('[Referrals Generate] Auth error:', authError);
       return NextResponse.json(

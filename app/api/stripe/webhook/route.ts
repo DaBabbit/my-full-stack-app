@@ -320,9 +320,9 @@ export const POST = withCors(async function POST(request: NextRequest) {
               logWebhookEvent('🎉 First payment detected via invoice.finalized');
               // Process referral (same logic as invoice.paid)
               // Check if this user was referred
-              const { data: referral, error: referralError } = await supabaseAdmin
-                .from('referrals')
-                .select('*')
+            const { data: referral, error: referralError } = await supabaseAdmin
+              .from('referrals')
+              .select('*')
                 .eq('referred_user_id', subscription.user_id)
                 .in('status', ['pending', 'completed'])
                 .single();
@@ -366,17 +366,17 @@ export const POST = withCors(async function POST(request: NextRequest) {
                       }
                     );
                     
-                    await supabaseAdmin
-                      .from('referrals')
-                      .update({
-                        status: 'rewarded',
-                        rewarded_at: new Date().toISOString(),
-                      })
-                      .eq('id', referral.id);
-                    
+                  await supabaseAdmin
+                    .from('referrals')
+                    .update({
+                      status: 'rewarded',
+                      rewarded_at: new Date().toISOString(),
+                    })
+                    .eq('id', referral.id);
+                  
                     logWebhookEvent('🎊 Referral reward applied via finalized!', {
                       balanceTransactionId: balanceTransaction.id
-                    });
+                  });
                   } catch (stripeError) {
                     logWebhookEvent('❌ Stripe error in finalized:', stripeError);
                   }

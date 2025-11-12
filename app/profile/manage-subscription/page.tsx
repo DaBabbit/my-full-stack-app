@@ -258,50 +258,50 @@ export default function ManageSubscriptionPage() {
 
           {/* Abo wiederherstellen (nur wenn gekündigt) */}
           {currentSubscription?.cancel_at_period_end && currentSubscription?.status === 'active' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              whileHover={{ scale: 1.02 }}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            whileHover={{ scale: 1.02 }}
               className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-green-500/50 transition-all duration-300 cursor-pointer"
               onClick={() => setIsReactivateModalOpen(true)}
-            >
+          >
               <div className="p-3 bg-green-500/20 rounded-2xl w-fit mb-4">
                 <CheckCircle className="w-6 h-6 text-green-400" />
-              </div>
+            </div>
               <h3 className="text-xl font-semibold text-white mb-2">Abo wiederherstellen</h3>
-              <p className="text-neutral-400 mb-4">
+            <p className="text-neutral-400 mb-4">
                 Stelle dein Abonnement wieder her und behalte alle Vorteile
-              </p>
+            </p>
               <div className="flex items-center text-green-400 text-sm font-medium">
                 <span>Wiederherstellen</span>
                 <CheckCircle className="w-4 h-4 ml-2" />
-              </div>
-            </motion.div>
+            </div>
+          </motion.div>
           )}
 
           {/* Abo kündigen (nur wenn nicht bereits gekündigt) */}
           {!currentSubscription?.cancel_at_period_end && currentSubscription?.status === 'active' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              whileHover={{ scale: 1.02 }}
-              className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-red-500/50 transition-all duration-300 cursor-pointer"
-              onClick={() => setIsCancelModalOpen(true)}
-            >
-              <div className="p-3 bg-red-500/20 rounded-2xl w-fit mb-4">
-                <XCircle className="w-6 h-6 text-red-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Abo kündigen</h3>
-              <p className="text-neutral-400 mb-4">
-                Kündige dein Abonnement zum Ende des aktuellen Abrechnungszeitraums
-              </p>
-              <div className="flex items-center text-red-400 text-sm font-medium">
-                <span>Kündigen</span>
-                <AlertTriangle className="w-4 h-4 ml-2" />
-              </div>
-            </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            whileHover={{ scale: 1.02 }}
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-red-500/50 transition-all duration-300 cursor-pointer"
+            onClick={() => setIsCancelModalOpen(true)}
+          >
+            <div className="p-3 bg-red-500/20 rounded-2xl w-fit mb-4">
+              <XCircle className="w-6 h-6 text-red-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Abo kündigen</h3>
+            <p className="text-neutral-400 mb-4">
+              Kündige dein Abonnement zum Ende des aktuellen Abrechnungszeitraums
+            </p>
+            <div className="flex items-center text-red-400 text-sm font-medium">
+              <span>Kündigen</span>
+              <AlertTriangle className="w-4 h-4 ml-2" />
+            </div>
+          </motion.div>
           )}
         </div>
 

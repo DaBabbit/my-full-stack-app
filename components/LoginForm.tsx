@@ -126,15 +126,15 @@ export function LoginForm({
         </button>
 
         {!hideToggle && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-neutral-400 hover:text-white transition-colors font-medium"
-            >
-              {isSignUp ? 'Bereits ein Konto? Anmelden' : 'Noch kein Konto? Registrieren'}
-            </button>
-          </div>
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="text-neutral-400 hover:text-white transition-colors font-medium"
+          >
+            {isSignUp ? 'Bereits ein Konto? Anmelden' : 'Noch kein Konto? Registrieren'}
+          </button>
+        </div>
         )}
       </form>
     </div>

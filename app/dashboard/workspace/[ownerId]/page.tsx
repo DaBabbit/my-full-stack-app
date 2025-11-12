@@ -7,18 +7,20 @@ import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useSharedWorkspaceVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeWorkspaceVideos } from '@/hooks/useRealtimeVideos';
 import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
-import { supabase } from '@/utils/supabase';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import ErrorModal from '@/components/ErrorModal';
+import EditableCell from '@/components/EditableCell';
 import EditableDescription from '@/components/EditableDescription';
 import EditableDate from '@/components/EditableDate';
 import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
 import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
+import ResponsiblePersonDropdownSimple from '@/components/ResponsiblePersonDropdownSimple';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import BulkEditBar from '@/components/BulkEditBar';
 import { FileUploadModal } from '@/components/FileUploadModal';
+import { VideoPreviewPlayer } from '@/components/VideoPreviewPlayer';
 import { Tooltip } from '@/components/Tooltip';
 import { TableColumnsSettings, type ColumnConfig } from '@/components/TableColumnsSettings';
 import { ViewTabs } from '@/components/ViewTabs';
@@ -26,15 +28,20 @@ import { ViewCreateModal } from '@/components/ViewCreateModal';
 import { DraggableTableHeader, getVisibleColumnOrder } from '@/components/DraggableTableHeader';
 import { useTableSettings } from '@/hooks/useTableSettings';
 import { useWorkspaceViews, type WorkspaceView, type SortConfig, type FilterValue } from '@/hooks/useWorkspaceViews';
+import { ColumnHeaderDropdown, type ColumnType } from '@/components/ColumnHeaderDropdown';
+import { FilterSubmenu, type FilterType } from '@/components/FilterSubmenu';
+import { ActiveFiltersBar } from '@/components/ActiveFiltersBar';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  LayoutDashboard,
-  Video as VideoIcon,
-  Settings,
+import { 
+  LayoutDashboard, 
+  Video as VideoIcon, 
+  Settings, 
+  Plus,
   Menu,
   X,
   Search,
   User,
+  Edit,
   LogOut,
   CreditCard,
   ChevronDown,
@@ -46,6 +53,7 @@ import {
   Check,
   Rocket,
   Trash2,
+  Crown,
   Users,
   Edit3,
   CheckSquare,
@@ -56,12 +64,36 @@ import {
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
 
-interface WorkspacePermissions {
-  can_view: boolean;
-  can_create: boolean;
-  can_edit: boolean;
-  can_delete: boolean;
+// Custom Hook für Sticky Header - Optimiert mit Throttling
+function useStickyHeader(offset = 100) {
+  const [isSticky, setIsSticky] = useState(false);
+  
+  const handleScroll = React.useCallback(() => {
+    const shouldBeSticky = window.scrollY > offset;
+    // Nur State updaten wenn sich der Wert ändert (verhindert unnötige Re-renders)
+    setIsSticky(prev => prev !== shouldBeSticky ? shouldBeSticky : prev);
+  }, [offset]);
+  
+  useEffect(() => {
+    // Passive Event Listener für bessere Scroll-Performance
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [handleScroll]);
+  
+  return isSticky;
 }
+
+const sidebarBottomItems = [
+  {
+    name: 'Settings',
+    icon: Settings,
+    href: '/profile',
+    active: false
+  }
+];
 
 // Default-Spalten-Konfiguration
 const DEFAULT_COLUMNS: ColumnConfig[] = [
@@ -83,101 +115,97 @@ export default function SharedWorkspacePage() {
   const router = useRouter();
   const params = useParams();
   const ownerId = params?.ownerId as string;
-  
-  const { sharedWorkspaces, isLoading: workspacesLoading } = useSharedWorkspaces();
+  const { sharedWorkspaces } = useSharedWorkspaces();
   
   // React Query Hooks - isLoading nur beim ersten Load, nicht bei Background Refetch
   const { 
     data: videos = [], 
-    isLoading,
+    isLoading, 
     isFetching,
-    refetch
+    refetch: refetchVideos
   } = useSharedWorkspaceVideosQuery(ownerId);
   const { 
-    updateWorkspaceVideo, 
-    updateWorkspaceVideoAsync,
-    deleteWorkspaceVideo,
-    bulkUpdateWorkspaceVideosAsync
+    updateWorkspaceVideo: updateVideo, 
+    updateWorkspaceVideoAsync: updateVideoAsync,
+    deleteWorkspaceVideo: deleteVideo,
+    bulkUpdateWorkspaceVideosAsync: bulkUpdateVideosAsync
   } = useVideoMutations();
   
-  // Setup Realtime
+  // Setup Realtime for workspace
   useRealtimeWorkspaceVideos(ownerId);
   
   // 🔥 Force refetch bei Tab-Fokus (zusätzliche Absicherung)
   useTabFocusRefetch();
-
-  // Realtime Change Detection für externe Änderungen (mit Toast-Notification)
-  useEffect(() => {
-    if (!ownerId || !user) return;
-
-    let changesPending = false;
-
-    console.log('[SharedWorkspacePage] 📡 Setting up change detection for external updates');
-    
-    const channel = supabase
-      .channel(`workspace_changes_${ownerId}_${user.id}`)
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'videos', 
-          filter: `user_id=eq.${ownerId}`
-        },
-        (payload: unknown) => {
-          console.log('[SharedWorkspacePage] 📡 Change detected:', payload);
-          
-          // Zeige Toast nur wenn noch keine Änderungen anstehen
-          if (!changesPending) {
-            changesPending = true;
-            
-            addToast({
-              type: 'warning',
-              title: 'Neue Änderungen verfügbar',
-              message: 'Ein Workspace-Mitglied hat Änderungen vorgenommen',
-              actionLabel: '→ Aktualisieren',
-              duration: 0, // Toast bleibt bis zum Click
-              onClick: () => {
-                console.log('[SharedWorkspacePage] 🔄 Refetching data after user click');
-                refetch();
-                changesPending = false;
-              }
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('[SharedWorkspacePage] 🔌 Change detection status:', status);
-      });
-    
-    return () => {
-      console.log('[SharedWorkspacePage] 🧹 Cleaning up change detection');
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId, user, refetch]);
   
   // Nur Skeleton zeigen beim ersten Load, nicht bei Background Refetch
   const showSkeleton = isLoading && !videos.length;
-  // UI States
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorDetails] = useState<{ title: string; message: string; details: string }>({ title: '', message: '', details: '' });
-  const [toasts, setToasts] = useState<ToastProps[]>([]);
   
-  const [workspaceOwnerName, setWorkspaceOwnerName] = useState<string>('');
-  const [workspaceOwnerInfo, setWorkspaceOwnerInfo] = useState<{ firstname: string; lastname: string; email: string } | undefined>(undefined);
-  const [workspaceMembers, setWorkspaceMembers] = useState<Array<{ id: string; user?: { firstname?: string; lastname?: string; email: string } }>>([]);
-  const [permissions, setPermissions] = useState<WorkspacePermissions>({
+  // Get workspace info
+  const currentWorkspace = sharedWorkspaces.find(w => w.workspace_owner_id === ownerId);
+  const workspaceMembers = currentWorkspace?.members || [];
+  const workspaceOwner = currentWorkspace?.owner || undefined;
+  
+  // Get current user's permissions for this workspace
+  const currentMember = currentWorkspace?.members?.find(m => m.user_id === user?.id);
+  const permissions = currentMember?.permissions || {
     can_view: false,
     can_create: false,
     can_edit: false,
     can_delete: false
+  };
+  
+  // Dynamic sidebar items including shared workspaces
+  const sidebarItems = [
+    {
+      name: 'Dashboard',
+      icon: LayoutDashboard,
+      href: '/dashboard',
+      active: false
+    },
+    {
+      name: 'Videos',
+      icon: VideoIcon,
+      href: '/dashboard/videos',
+      active: true
+    },
+    ...sharedWorkspaces.map(workspace => {
+      // Format owner name: prioritize firstname + lastname, fallback to email first part
+      let displayName = workspace.owner_name;
+      if (displayName.includes('@')) {
+        // If it's an email, just use the part before @
+        displayName = displayName.split('@')[0];
+      }
+      
+      return {
+        name: displayName, // Just the name, without "Workspace:" prefix
+        icon: Users,
+        href: `/dashboard/workspace/${workspace.workspace_owner_id}`,
+        active: false
+      };
+    })
+  ];
+  // UI States
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorDetails] = useState({ title: '', message: '', details: '' });
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>(''); // Status filter
+  const [isMobile, setIsMobile] = useState(false);
+  const [toasts, setToasts] = useState<ToastProps[]>([]);
+  const [newVideo, setNewVideo] = useState({
+    name: '',
+    status: 'Idee',
+    publication_date: '',
+    responsible_person: '',
+    inspiration_source: '',
+    description: ''
   });
 
   // Bulk Edit States
@@ -188,13 +216,26 @@ export default function SharedWorkspacePage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalVideo, setUploadModalVideo] = useState<Video | null>(null);
 
+  // Mobile Expanded Card State
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
   // Table Settings & Views States
   const [showColumnsModal, setShowColumnsModal] = useState(false);
   const [showViewCreateModal, setShowViewCreateModal] = useState(false);
   const [editingView, setEditingView] = useState<WorkspaceView | null>(null);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
-  // Table Settings Hook (lädt Settings des Workspace-Owners!)
+  // Filter & Sort States
+  const [activeFilters, setActiveFilters] = useState<Record<string, FilterValue>>({});
+  const [activeSorts, setActiveSorts] = useState<SortConfig[]>([]);
+  
+  // Dropdown States
+  const [columnDropdownOpen, setColumnDropdownOpen] = useState<string | null>(null);
+  const [columnDropdownTrigger, setColumnDropdownTrigger] = useState<HTMLElement | null>(null);
+  const [filterSubmenuOpen, setFilterSubmenuOpen] = useState<string | null>(null);
+  const [filterSubmenuTrigger, setFilterSubmenuTrigger] = useState<HTMLElement | null>(null);
+
+  // Table Settings Hook (lädt Settings des Users)
   const {
     settings: tableSettings,
     updateColumnOrder,
@@ -203,8 +244,8 @@ export default function SharedWorkspacePage() {
     resetSettings
   } = useTableSettings({
     userId: user?.id,
-    workspaceOwnerId: ownerId, // Wichtig: Owner-Settings verwenden
-    context: 'workspace_videos'
+    workspaceOwnerId: user?.id,
+    context: 'own_videos'
   });
 
   // Workspace Views Hook
@@ -214,7 +255,7 @@ export default function SharedWorkspacePage() {
     updateView,
     deleteView,
     setDefaultView
-  } = useWorkspaceViews(ownerId);
+  } = useWorkspaceViews(user?.id);
 
   // Spalten-Konfiguration basierend auf Settings
   // Wenn aktive Ansicht vorhanden und column_settings hat, verwende diese
@@ -241,177 +282,198 @@ export default function SharedWorkspacePage() {
   
   // Log for debugging
   React.useEffect(() => {
-    console.log('[Workspace Table] Visible columns:', visibleColumns.map(c => c.id));
+    console.log('[Table] Visible columns:', visibleColumns.map(c => c.id));
   }, [visibleColumns]);
 
-  // Toast helpers
-  const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
-    const id = Math.random().toString(36).substring(7);
-    setToasts(prev => [...prev, { ...toast, id, onClose: removeToast }]);
-  };
-
-  const removeToast = (id: string) => {
+  // Toast helpers - useCallback für stabile Referenzen
+  const removeToast = React.useCallback((id: string) => {
+    console.log('[VideosPage] removeToast aufgerufen für ID:', id);
     setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const addToast = React.useCallback((toast: Omit<ToastProps, 'id' | 'onClose'>) => {
+    const id = Math.random().toString(36).substring(7);
+    console.log('[VideosPage] addToast aufgerufen, neue ID:', id, 'duration:', toast.duration);
+    setToasts(prev => [...prev, { ...toast, id, onClose: removeToast }]);
+  }, [removeToast]);
+
+  // Status-Icons und Farben
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Idee':
+        return { icon: Lightbulb, color: 'text-gray-400' };
+      case 'Warten auf Aufnahme':
+        return { icon: Clock, color: 'text-red-400' };
+      case 'In Bearbeitung (Schnitt)':
+        return { icon: Scissors, color: 'text-purple-400' };
+      case 'Schnitt abgeschlossen':
+        return { icon: Check, color: 'text-blue-400' };
+      case 'Hochgeladen':
+        return { icon: Rocket, color: 'text-green-400' };
+      default:
+        return { icon: VideoIcon, color: 'text-neutral-400' };
+    }
   };
 
-  // Check authentication
+  // Redirect wenn nicht angemeldet
   useEffect(() => {
     if (!user) {
       router.push('/login');
     }
   }, [user, router]);
 
-  // Get workspace info and permissions
+  // URL-Parameter auslesen und Edit-Modal öffnen
+  const hasProcessedEditParam = useRef(false);
   useEffect(() => {
-    const fetchOwnerInfo = async () => {
-      if (!workspacesLoading && sharedWorkspaces.length > 0) {
-        const workspace = sharedWorkspaces.find(w => w.workspace_owner_id === ownerId);
-        if (workspace) {
-          setWorkspaceOwnerName(workspace.owner_name);
-          setPermissions(workspace.permissions);
-          
-          // Fetch owner user_metadata for firstname/lastname
-          const { supabase } = await import('@/utils/supabase');
-          try {
-            // Try to get owner details via RPC
-            const { data: ownerData, error } = await supabase
-              .rpc('get_workspace_owner_details', { owner_ids: [ownerId] });
-            
-            if (!error && ownerData && ownerData.length > 0) {
-              const owner = ownerData[0];
-              setWorkspaceOwnerInfo({
-                firstname: owner.firstname || '',
-                lastname: owner.lastname || '',
-                email: owner.email || workspace.owner_email
-              });
-            } else {
-              // Fallback: Parse owner_name into firstname/lastname
-              const nameParts = workspace.owner_name.split(' ');
-              if (nameParts.length > 1) {
-                setWorkspaceOwnerInfo({
-                  firstname: nameParts[0],
-                  lastname: nameParts.slice(1).join(' '),
-                  email: workspace.owner_email
-                });
-              }
-            }
-          } catch (err) {
-            console.error('[SharedWorkspacePage] Error fetching owner info:', err);
-            // Use parsed name as fallback
-            const nameParts = workspace.owner_name.split(' ');
-            if (nameParts.length > 1) {
-              setWorkspaceOwnerInfo({
-                firstname: nameParts[0],
-                lastname: nameParts.slice(1).join(' '),
-                email: workspace.owner_email
-              });
-            }
-          }
-        } else {
-          // User doesn't have access to this workspace
-          router.push('/dashboard');
-        }
-      }
-    };
+    // Nur einmal ausführen
+    if (hasProcessedEditParam.current) return;
     
-    fetchOwnerInfo();
-  }, [workspacesLoading, sharedWorkspaces, ownerId, router]);
+    const editVideoId = searchParams?.get('edit');
+    if (editVideoId && videos.length > 0) {
+      const videoToEdit = videos.find(v => v.id === editVideoId);
+      if (videoToEdit) {
+        hasProcessedEditParam.current = true;
+        handleEditVideo(videoToEdit);
+        // URL-Parameter entfernen
+        router.replace('/dashboard/videos', { scroll: false });
+      }
+    }
+  }, [searchParams, videos, router]);
 
-  // Fetch workspace members for the shared workspace
+  // Handle mobile detection and resize
   useEffect(() => {
-    const fetchWorkspaceMembers = async () => {
-      if (!ownerId) return;
-      
-      const { supabase } = await import('@/utils/supabase');
-      try {
-        console.log('[SharedWorkspacePage] Fetching workspace members for owner:', ownerId);
-        
-        // Fetch all active members of this workspace (including owner and collaborators)
-        const { data, error } = await supabase
-          .from('workspace_members')
-          .select(`
-            id,
-            user_id,
-            role,
-            user:user_id (
-              email,
-              firstname,
-              lastname
-            )
-          `)
-          .eq('workspace_owner_id', ownerId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          console.error('[SharedWorkspacePage] Error fetching workspace members:', error);
-          return;
-        }
-        
-        console.log('[SharedWorkspacePage] 📊 Raw workspace members data:', data);
-        console.log('[SharedWorkspacePage] 📊 Data length:', data?.length);
-        
-        // Transform data: user can be array or object depending on Supabase version
-        const transformedMembers = (data || []).map((member) => {
-          console.log('[SharedWorkspacePage] 🔍 Processing member:', member);
-          console.log('[SharedWorkspacePage] 🔍 Member user type:', typeof member.user, Array.isArray(member.user) ? 'is array' : 'is not array');
-          
-          // Handle both array and object formats
-          let userData: { email: string; firstname?: string; lastname?: string } | undefined;
-          if (Array.isArray(member.user) && member.user.length > 0) {
-            userData = member.user[0] as { email: string; firstname?: string; lastname?: string };
-          } else if (member.user && typeof member.user === 'object' && !Array.isArray(member.user)) {
-            userData = member.user as { email: string; firstname?: string; lastname?: string };
-          }
-          
-          console.log('[SharedWorkspacePage] 🔍 Extracted user data:', userData);
-          
-          return {
-            id: member.id as string,
-            user: userData ? {
-              email: userData.email,
-              firstname: userData.firstname,
-              lastname: userData.lastname,
-            } : undefined
-          };
-        });
-        
-        console.log('[SharedWorkspacePage] ✅ Transformed members:', transformedMembers);
-        console.log('[SharedWorkspacePage] ✅ Members with valid user data:', transformedMembers.filter(m => m.user).length);
-        
-        setWorkspaceMembers(transformedMembers);
-      } catch (err) {
-        console.error('[SharedWorkspacePage] Error in fetchWorkspaceMembers:', err);
-      }
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
     };
     
-    fetchWorkspaceMembers();
-  }, [ownerId]);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (userDropdownOpen && !target.closest('.user-dropdown')) {
+        setUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userDropdownOpen]);
+
+  // Body scroll lock for Add/Edit modals - Verbesserte Version
+  useEffect(() => {
+    if (showAddModal || showEditModal) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${scrollY}px`;
+      
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showAddModal, showEditModal]);
+
+  // LocalStorage Persistierung für Filter und Sortierungen
+  useEffect(() => {
+    if (activeViewId) {
+      // Speichere in View
+      const view = workspaceViews.find(v => v.id === activeViewId);
+      if (view) {
+        // Debounced update - nur wenn sich Werte geändert haben
+        const timeoutId = setTimeout(async () => {
+          try {
+            await updateView({
+              id: activeViewId,
+              updates: {
+                filters: activeFilters,
+                sort_config: activeSorts
+              }
+            });
+            console.log('[Filter/Sort] Auto-saved to view:', activeViewId);
+          } catch (error) {
+            console.error('[Filter/Sort] Error auto-saving to view:', error);
+          }
+        }, 1000); // 1 Sekunde Debounce
+        
+        return () => clearTimeout(timeoutId);
+      }
+    } else {
+      // Speichere in localStorage für "Alle Videos"
+      localStorage.setItem('default_view_filters', JSON.stringify(activeFilters));
+      localStorage.setItem('default_view_sorts', JSON.stringify(activeSorts));
+    }
+  }, [activeFilters, activeSorts, activeViewId, workspaceViews, updateView]);
+
+  // Lade initial Filter und Sortierungen beim Mount
+  useEffect(() => {
+    // Nur beim initialen Mount laden
+    if (!activeViewId) {
+      const savedFilters = localStorage.getItem('default_view_filters');
+      const savedSorts = localStorage.getItem('default_view_sorts');
+      
+      if (savedFilters) {
+        try {
+          setActiveFilters(JSON.parse(savedFilters));
+        } catch (e) {
+          console.error('Error parsing saved filters:', e);
+        }
+      }
+      
+      if (savedSorts) {
+        try {
+          setActiveSorts(JSON.parse(savedSorts));
+        } catch (e) {
+          console.error('Error parsing saved sorts:', e);
+        }
+      }
+    }
+  }, []); // Nur beim Mount
+
+  // Helper function: Check if user can edit a specific video
+  const canEditVideo = (video: Video): boolean => {
+    // If it's the user's own video (no workspace_permissions = own video)
+    if (!video.workspace_permissions) {
+      return permissions.can_edit;
+    }
+    // If it's a shared workspace video, check workspace permissions
+    return video.workspace_permissions.can_edit;
+  };
+
+  // Helper function: Check if user can delete a specific video
+  const canDeleteVideo = (video: Video): boolean => {
+    // If it's the user's own video (no workspace_permissions = own video)
+    if (!video.workspace_permissions) {
+      return permissions.can_delete;
+    }
+    // If it's a shared workspace video, check workspace permissions
+    return video.workspace_permissions.can_delete;
+  };
 
   // Handler für Inline-Editing - Generischer Save Handler mit Bulk-Support
   const handleFieldSave = async (videoId: string, field: string, value: string) => {
-    if (!permissions.can_edit) {
-      addToast({
-        type: 'error',
-        title: 'Keine Berechtigung',
-        message: 'Sie haben keine Berechtigung, dieses Video zu bearbeiten'
-      });
-      return;
-    }
-
     // Check if this video is selected and bulk mode is active
     const shouldBulkUpdate = isBulkEditMode && selectedVideoIds.size > 0 && selectedVideoIds.has(videoId);
     const videosToUpdate = shouldBulkUpdate ? Array.from(selectedVideoIds) : [videoId];
-
+    
     try {
       if (videosToUpdate.length > 1) {
         // Bulk update
-        await bulkUpdateWorkspaceVideosAsync({
+        await bulkUpdateVideosAsync({
           videoIds: videosToUpdate,
           updates: {
             [field]: value || null
-          },
-          ownerId
+          }
         });
         
         const fieldLabels: Record<string, string> = {
@@ -430,12 +492,11 @@ export default function SharedWorkspacePage() {
         });
       } else {
         // Single update
-        await updateWorkspaceVideoAsync({
+        await updateVideoAsync({
           id: videoId,
           updates: {
             [field]: value || null
-          },
-          ownerId
+          }
         });
         
         addToast({
@@ -455,92 +516,87 @@ export default function SharedWorkspacePage() {
     }
   };
 
-  // Filter videos by search term
-  // Get active view filters (activeView ist bereits oben definiert)
-  const viewFilters = activeView?.filters || {};
+  const handleAddVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Umfassende Validierung
+    const trimmedName = newVideo.name.trim()
+  
+  
+    ;
+    
+    if (!trimmedName) {
+      alert('Bitte geben Sie einen Videotitel ein.');
+      return;
+    }
 
-  const filteredVideos = videos.filter(video => {
-    // Search filter
-    const videoName = video.name || video.title || '';
-    const matchesSearch = (
-      videoName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      video.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      video.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+   
+    
+    if (trimmedName.length < 3) {
+      alert('Der Videotitel muss mindestens 3 Zeichen lang sein.');
+      return;
+    }
+    
+    if (trimmedName.length > 100) {
+      alert('Der Videotitel darf maximal 100 Zeichen lang sein.');
+      return;
+    }
+    
+    // Prüfung auf nur Leerzeichen oder ungültige Zeichen
+    if (!/^[\w\s\-\.\,\!\?\(\)\[\]äöüÄÖÜß]+$/.test(trimmedName)) {
+      alert('Der Videotitel enthält ungültige Zeichen. Verwenden Sie nur Buchstaben, Zahlen, Leerzeichen und grundlegende Satzzeichen.');
+      return;
+    }
 
-    // View filters
-    let matchesViewFilters = true;
-    if (activeViewId && Object.keys(viewFilters).length > 0) {
-      for (const [key, value] of Object.entries(viewFilters)) {
-        if (value === null || value === undefined || value === '') continue;
-        
-        // Status filter
-        if (key === 'status' && video.status !== value) {
-          matchesViewFilters = false;
-          break;
-        }
-        // Responsible person filter
-        if (key === 'responsible_person' && video.responsible_person !== value) {
-          matchesViewFilters = false;
-          break;
-        }
-        // Add more filter types as needed
+    // Validierung für URLs (optional)
+    if (newVideo.inspiration_source && newVideo.inspiration_source.trim()) {
+      try {
+        new URL(newVideo.inspiration_source);
+      } catch {
+        alert('Bitte geben Sie eine gültige URL für die Inspiration Quelle ein (z.B. https://...).');
+        return;
       }
     }
 
-    return matchesSearch && matchesViewFilters;
-  });
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Idee':
-        return { icon: Lightbulb, color: 'text-gray-400' };
-      case 'Warten auf Aufnahme':
-        return { icon: Clock, color: 'text-red-400' };
-      case 'In Bearbeitung (Schnitt)':
-        return { icon: Scissors, color: 'text-purple-400' };
-      case 'Schnitt abgeschlossen':
-        return { icon: Check, color: 'text-blue-400' };
-      case 'Hochgeladen':
-        return { icon: Rocket, color: 'text-green-400' };
-      default:
-        return { icon: VideoIcon, color: 'text-neutral-400' };
-    }
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('de-DE');
-  };
-
-  const formatRelativeTime = (dateString?: string): string => {
-    if (!dateString) return '-';
-    try {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-      if (diffMinutes < 1) return 'Gerade eben';
-      if (diffMinutes < 60) return `vor ${diffMinutes} Min.`;
-      if (diffHours < 24) return `vor ${diffHours} Std.`;
-      if (diffDays < 4) return `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+    // Validierung für Datum
+    if (newVideo.publication_date && newVideo.publication_date.trim()) {
+      const selectedDate = new Date(newVideo.publication_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       
-      // Ab 4 Tagen: Datum anzeigen
-      return formatDate(dateString);
-    } catch {
-      return '-';
+      if (selectedDate < today) {
+        const confirmPastDate = confirm('Das gewählte Veröffentlichungsdatum liegt in der Vergangenheit. Möchten Sie trotzdem fortfahren?');
+        if (!confirmPastDate) {
+          return;
+        }
+      }
     }
+
+    // In shared workspaces, creating videos is not supported
+    addToast({
+      id: Date.now().toString(),
+      type: 'error',
+      message: 'Videos können in geteilten Workspaces nicht erstellt werden.'
+    });
+    
+    setShowAddModal(false);
+    setNewVideo({
+      name: '',
+      status: 'Idee',
+      publication_date: '',
+      responsible_person: '',
+      inspiration_source: '',
+      description: ''
+    });
   };
 
   const handleUpdateStatus = async (videoId: string, newStatus: string) => {
+    // Check permissions first
     if (!permissions.can_edit) {
       addToast({
+        id: Date.now().toString(),
         type: 'error',
-        title: 'Keine Berechtigung',
-        message: 'Sie haben keine Berechtigung, Videos zu bearbeiten'
+        message: 'Du hast keine Berechtigung, den Status zu ändern.'
       });
       return;
     }
@@ -552,10 +608,9 @@ export default function SharedWorkspacePage() {
     try {
       if (videosToUpdate.length > 1) {
         // Bulk update
-        await bulkUpdateWorkspaceVideosAsync({
+        await bulkUpdateVideosAsync({
           videoIds: videosToUpdate,
-          updates: { status: newStatus },
-          ownerId
+          updates: { status: newStatus }
         });
         
         addToast({
@@ -566,10 +621,9 @@ export default function SharedWorkspacePage() {
         });
       } else {
         // Single update
-        updateWorkspaceVideo({
+        updateVideo({
           id: videoId,
-          updates: { status: newStatus },
-          ownerId
+          updates: { status: newStatus }
         });
         
         console.log('Status erfolgreich aktualisiert!');
@@ -584,24 +638,60 @@ export default function SharedWorkspacePage() {
     }
   };
 
-  const handleDeleteVideo = (video: Video) => {
-    if (!permissions.can_delete) {
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/login');
+  };
+
+  const handleEditVideo = (video: Video) => {
+    setEditingVideo(video);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVideo) return;
+
+    try {
+      updateVideo({
+        id: editingVideo.id,
+        updates: {
+          status: editingVideo.status,
+          publication_date: editingVideo.publication_date || null,
+          responsible_person: editingVideo.responsible_person || null,
+          inspiration_source: editingVideo.inspiration_source || null,
+          description: editingVideo.description || null,
+        }
+      });
+      
+      setShowEditModal(false);
+      setEditingVideo(null);
+      
+      addToast({
+        type: 'success',
+        title: 'Video aktualisiert',
+        message: 'Änderungen wurden erfolgreich gespeichert'
+      });
+    } catch (error) {
+      console.error('Error updating video:', error);
       addToast({
         type: 'error',
-        title: 'Keine Berechtigung',
-        message: 'Sie haben keine Berechtigung, Videos zu löschen'
+        title: 'Video-Update fehlgeschlagen',
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
       });
-      return;
     }
+  };
+
+  const handleDeleteVideo = (video: Video) => {
     setVideoToDelete(video);
     setShowDeleteModal(true);
   };
 
   const confirmDeleteVideo = async () => {
-    if (!videoToDelete || !permissions.can_delete) return;
+    if (!videoToDelete) return;
 
     try {
-      deleteWorkspaceVideo({ id: videoToDelete.id, ownerId });
+      deleteVideo(videoToDelete.id);
       
       setShowDeleteModal(false);
       setVideoToDelete(null);
@@ -623,15 +713,6 @@ export default function SharedWorkspacePage() {
 
   // Bulk Edit Handlers
   const handleToggleBulkMode = () => {
-    if (!permissions.can_edit) {
-      addToast({
-        type: 'error',
-        title: 'Keine Berechtigung',
-        message: 'Sie haben keine Berechtigung, Videos zu bearbeiten'
-      });
-      return;
-    }
-    
     setIsBulkEditMode(!isBulkEditMode);
     if (isBulkEditMode) {
       // Wenn Bulk Mode deaktiviert wird, alle Auswahlen löschen
@@ -661,11 +742,26 @@ export default function SharedWorkspacePage() {
   };
 
   const handleRowClick = (e: React.MouseEvent, videoId: string) => {
-    // Nur wenn Bulk-Edit-Mode aktiv ist UND Strg/Cmd gedrückt ist
+    // Wenn geklickt auf Aktions-Buttons, ignorieren
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('input') || target.closest('select') || target.closest('a')) {
+      return;
+    }
+
+    // Bulk-Edit-Mode mit Strg/Cmd
     if (isBulkEditMode && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       const isSelected = selectedVideoIds.has(videoId);
       handleVideoSelection(videoId, !isSelected);
+      return;
+    }
+
+    // Normaler Klick: Edit-Modal öffnen
+    if (!isBulkEditMode) {
+      const video = filteredVideos.find(v => v.id === videoId);
+      if (video && canEditVideo(video)) {
+        handleEditVideo(video);
+      }
     }
   };
 
@@ -685,13 +781,13 @@ export default function SharedWorkspacePage() {
   // File Upload Modal Handlers
   const handleOpenUploadModal = async (video: Video) => {
     // Vor dem Öffnen: Aktuellste Daten aus Supabase holen
-    console.log('[Workspace Upload] Syncing video data before opening upload modal...');
-    const { data: refetchedVideos } = await refetch();
+    console.log('[Upload] Syncing video data before opening upload modal...');
+    const { data: refetchedVideos } = await refetchVideos();
     
     // Finde das aktualisierte Video
     const updatedVideo = refetchedVideos?.find(v => v.id === video.id) || video;
     
-    console.log('[Workspace Upload] Video data synced:', {
+    console.log('[Upload] Video data synced:', {
       oldNextcloudPath: video.nextcloud_path,
       newNextcloudPath: updatedVideo.nextcloud_path,
       oldStorageLocation: video.storage_location,
@@ -719,13 +815,13 @@ export default function SharedWorkspacePage() {
   // Storage Location Handler mit Sync
   const handleOpenStorageLocation = async (video: Video) => {
     // Vor dem Öffnen: Aktuellste Daten aus Supabase holen
-    console.log('[Workspace Storage] Syncing video data before opening storage location...');
-    const { data: refetchedVideos } = await refetch();
+    console.log('[Storage] Syncing video data before opening storage location...');
+    const { data: refetchedVideos } = await refetchVideos();
     
     // Finde das aktualisierte Video
     const updatedVideo = refetchedVideos?.find(v => v.id === video.id) || video;
     
-    console.log('[Workspace Storage] Video data synced:', {
+    console.log('[Storage] Video data synced:', {
       oldStorageLocation: video.storage_location,
       newStorageLocation: updatedVideo.storage_location
     });
@@ -745,27 +841,56 @@ export default function SharedWorkspacePage() {
   const handleViewChange = async (viewId: string | null) => {
     setActiveViewId(viewId);
     
-    // Lade Spalteneinstellungen der neuen Ansicht
+    // Lade Spalteneinstellungen, Filter und Sortierungen der neuen Ansicht
     if (viewId) {
       const view = workspaceViews.find(v => v.id === viewId);
-      if (view?.column_settings) {
-        // Lade column_settings aus der View
-        if (view.column_settings.order && view.column_settings.order.length > 0) {
-          await updateColumnOrder(view.column_settings.order);
-        }
-        if (view.column_settings.hidden && view.column_settings.hidden.length > 0) {
-          // Update hidden columns
-          for (const columnId of view.column_settings.hidden) {
-            await toggleColumnVisibility(columnId);
+      if (view) {
+        // Lade column_settings
+        if (view.column_settings) {
+          if (view.column_settings.order && view.column_settings.order.length > 0) {
+            await updateColumnOrder(view.column_settings.order);
+          }
+          if (view.column_settings.hidden && view.column_settings.hidden.length > 0) {
+            for (const columnId of view.column_settings.hidden) {
+              await toggleColumnVisibility(columnId);
+            }
           }
         }
+        
+        // Lade Filter und Sortierungen
+        setActiveFilters(view.filters || {});
+        setActiveSorts(view.sort_config || []);
         
         addToast({
           type: 'success',
           title: 'Ansicht geladen',
-          message: `Spalteneinstellungen von "${view.name}" wurden geladen.`,
+          message: `"${view.name}" wurde geladen.`,
           duration: 2000
         });
+      }
+    } else {
+      // "Alle Videos" - Reset zu gespeicherten Werten aus localStorage
+      const savedFilters = localStorage.getItem('default_view_filters');
+      const savedSorts = localStorage.getItem('default_view_sorts');
+      
+      if (savedFilters) {
+        try {
+          setActiveFilters(JSON.parse(savedFilters));
+        } catch (e) {
+          console.error('Error parsing saved filters:', e);
+        }
+      } else {
+        setActiveFilters({});
+      }
+      
+      if (savedSorts) {
+        try {
+          setActiveSorts(JSON.parse(savedSorts));
+        } catch (e) {
+          console.error('Error parsing saved sorts:', e);
+        }
+      } else {
+        setActiveSorts([]);
       }
     }
   };
@@ -849,6 +974,177 @@ export default function SharedWorkspacePage() {
         message: 'Standard-Ansicht konnte nicht gesetzt werden.'
       });
     }
+  };
+
+  // Prüfe ob Spalte sortierbar ist (nur Name und Veröffentlichung)
+  const canSortColumn = (columnId: string): boolean => {
+    return columnId === 'title' || columnId === 'publication_date';
+  };
+
+  // Filter & Sort Handlers
+  const handleAddSort = (columnId: string, direction: 'asc' | 'desc') => {
+    console.log('[handleAddSort] Aufgerufen mit columnId:', columnId, 'direction:', direction);
+    console.log('[handleAddSort] canSortColumn:', canSortColumn(columnId));
+    
+    // Prüfe ob Spalte sortierbar ist
+    if (!canSortColumn(columnId)) {
+      addToast({
+        type: 'warning',
+        title: 'Sortierung nicht verfügbar',
+        message: 'Sortierung ist nur für "Name" und "Veröffentlichung" verfügbar.',
+        duration: 2000
+      });
+      return;
+    }
+
+    // Mappe Spalten-ID zu Video-Feld-Name
+    const field = columnToFieldMap[columnId] || columnId;
+    console.log('[handleAddSort] Mapped field:', field);
+    
+    // Prüfe ob bereits sortiert
+    const existingIndex = activeSorts.findIndex(s => s.field === field);
+    console.log('[handleAddSort] Existing index:', existingIndex);
+    
+    if (existingIndex >= 0) {
+      // Aktualisiere bestehende Sortierung
+      const newSorts = [...activeSorts];
+      newSorts[existingIndex] = { ...newSorts[existingIndex], direction };
+      console.log('[handleAddSort] Updating existing sort:', newSorts);
+      setActiveSorts(newSorts);
+    } else {
+      // Füge neue Sortierung hinzu mit höchster Priorität
+      const newSort: SortConfig = {
+        field,
+        direction,
+        priority: activeSorts.length
+      };
+      console.log('[handleAddSort] Adding new sort:', newSort);
+      setActiveSorts([...activeSorts, newSort]);
+    }
+
+    addToast({
+      type: 'success',
+      title: 'Sortierung hinzugefügt',
+      message: `Sortiert nach ${fieldLabels[columnId] || columnId} (${direction === 'asc' ? 'aufsteigend' : 'absteigend'})`,
+      duration: 2000
+    });
+  };
+
+  const handleRemoveSort = (field: string) => {
+    const newSorts = activeSorts.filter(s => s.field !== field);
+    // Prioritäten neu berechnen
+    const reorderedSorts = newSorts.map((sort, index) => ({
+      ...sort,
+      priority: index
+    }));
+    setActiveSorts(reorderedSorts);
+  };
+
+  const handleUpdateSortPriority = (field: string, newPriority: number) => {
+    const sortedSorts = [...activeSorts].sort((a, b) => a.priority - b.priority);
+    const movedSort = sortedSorts.find(s => s.field === field);
+    if (!movedSort) return;
+
+    const otherSorts = sortedSorts.filter(s => s.field !== field);
+    otherSorts.splice(newPriority, 0, movedSort);
+
+    // Prioritäten neu setzen
+    const reorderedSorts = otherSorts.map((sort, index) => ({
+      ...sort,
+      priority: index
+    }));
+
+    setActiveSorts(reorderedSorts);
+  };
+
+  const handleAddFilter = (field: string, value: FilterValue) => {
+    if (value === null || value === undefined) {
+      // Remove filter
+      const newFilters = { ...activeFilters };
+      delete newFilters[field];
+      setActiveFilters(newFilters);
+    } else {
+      setActiveFilters({
+        ...activeFilters,
+        [field]: value
+      });
+      
+      addToast({
+        type: 'success',
+        title: 'Filter hinzugefügt',
+        message: `Gefiltert nach ${fieldLabels[field] || field}`,
+        duration: 2000
+      });
+    }
+  };
+
+  const handleRemoveFilter = (field: string) => {
+    const newFilters = { ...activeFilters };
+    delete newFilters[field];
+    setActiveFilters(newFilters);
+  };
+
+  const handleEditFilter = (field: string) => {
+    // Öffne Filter-Submenu für dieses Feld
+    const headerElement = document.querySelector(`[data-column-id="${field}"]`) as HTMLElement;
+    if (headerElement) {
+      setFilterSubmenuOpen(field);
+      setFilterSubmenuTrigger(headerElement);
+    }
+  };
+
+  // Column Header Click Handler
+  const handleHeaderClick = (columnId: string, element: HTMLElement) => {
+    setColumnDropdownOpen(columnId);
+    setColumnDropdownTrigger(element);
+  };
+
+  // Column Type Mapping
+  const getColumnType = (columnId: string): ColumnType => {
+    if (columnId === 'status') return 'status';
+    if (columnId === 'responsible_person') return 'person';
+    if (columnId === 'storage_location') return 'location';
+    if (columnId === 'publication_date' || columnId === 'updated_at') return 'date';
+    return 'text';
+  };
+
+  const getFilterType = (columnId: string): FilterType => {
+    if (columnId === 'status') return 'status';
+    if (columnId === 'responsible_person') return 'person';
+    if (columnId === 'storage_location') return 'location';
+    if (columnId === 'publication_date' || columnId === 'updated_at') return 'date';
+    return 'status'; // fallback
+  };
+
+  const canFilterColumn = (columnId: string): boolean => {
+    // Nur bestimmte Spalten können gefiltert werden
+    return ['status', 'responsible_person', 'storage_location', 'publication_date', 'updated_at'].includes(columnId);
+  };
+
+  // Field Labels für schöne Anzeige
+  const fieldLabels: Record<string, string> = {
+    title: 'Name',
+    status: 'Status',
+    publication_date: 'Veröffentlichung',
+    responsible_person: 'Verantwortlich',
+    storage_location: 'Speicherort',
+    inspiration_source: 'Inspiration',
+    description: 'Beschreibung',
+    updated_at: 'Aktualisiert',
+    last_updated: 'Aktualisiert'
+  };
+
+  // Mapping von Spalten-IDs zu Video-Feld-Namen für Sortierung
+  const columnToFieldMap: Record<string, string> = {
+    title: 'title', // Spalten-ID 'title' -> Video-Feld 'title'
+    status: 'status',
+    publication_date: 'publication_date',
+    responsible_person: 'responsible_person',
+    storage_location: 'storage_location',
+    inspiration_source: 'inspiration_source',
+    description: 'description',
+    updated_at: 'last_updated', // Spalten-ID 'updated_at' -> Video-Feld 'last_updated'
+    last_updated: 'last_updated'
   };
 
   // Column Settings Handlers
@@ -994,34 +1290,200 @@ export default function SharedWorkspacePage() {
     }, 500);
   };
 
-  // Dynamic sidebar items
-  const sidebarItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', active: false },
-    { name: 'Videos', icon: VideoIcon, href: '/dashboard/videos', active: false },
-    ...sharedWorkspaces.map(workspace => {
-      // Format owner name: prioritize firstname + lastname, fallback to email first part
-      let displayName = workspace.owner_name;
-      if (displayName.includes('@')) {
-        // If it's an email, just use the part before @
-        displayName = displayName.split('@')[0];
+  // Sticky Header Hook - wird aktiv bei Scroll > 200px (später aktivieren für flüssigere Transition)
+  const isHeaderSticky = useStickyHeader(200);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [showStickyAnimation, setShowStickyAnimation] = useState(false);
+  const wasSticky = useRef(false);
+
+  // Messe die Header-Höhe für den Placeholder
+  useEffect(() => {
+    if (headerRef.current) {
+      setHeaderHeight(headerRef.current.offsetHeight);
+    }
+  }, [isHeaderSticky, workspaceViews.length]);
+
+  // Track Animation - nur abspielen beim Übergang zu sticky (optimiert)
+  useEffect(() => {
+    // Nur State ändern wenn nötig
+    if (isHeaderSticky !== wasSticky.current) {
+      if (isHeaderSticky) {
+        // Wurde gerade sticky
+        wasSticky.current = true;
+        setShowStickyAnimation(true);
+        
+        // Animation nach 300ms entfernen (Animation ist fertig)
+        const timer = setTimeout(() => {
+          setShowStickyAnimation(false);
+        }, 300);
+        
+        return () => clearTimeout(timer);
+      } else {
+        // Ist nicht mehr sticky
+        wasSticky.current = false;
+        setShowStickyAnimation(false);
       }
+    }
+  }, [isHeaderSticky]);
+
+  // Get active view filters (activeView ist bereits oben definiert)
+  const viewFilters = activeView?.filters || {};
+
+  // Filter and Sort videos with useMemo for performance
+  const filteredVideos = React.useMemo(() => {
+    let result = [...videos];
+
+    // 1. Apply active filters
+    Object.entries(activeFilters).forEach(([field, value]) => {
+      if (!value) return;
+
+      result = result.filter(video => {
+        if (field === 'status') {
+          // Array von Status-Werten
+          return Array.isArray(value) && value.includes(video.status);
+        }
+        
+        if (field === 'responsible_person') {
+          // Array von Person IDs
+          if (!Array.isArray(value)) return true;
+          if (value.includes('unassigned') && !video.responsible_person) return true;
+          return video.responsible_person && value.includes(video.responsible_person);
+        }
+        
+        if (field === 'storage_location') {
+          // Array von Locations
+          return Array.isArray(value) && video.storage_location && value.includes(video.storage_location);
+        }
+        
+        if (field === 'publication_date' || field === 'updated_at') {
+          // Datum Range
+          if (typeof value !== 'object' || Array.isArray(value) || value === null) return true;
+          const videoDate = new Date(video[field as keyof Video] as string);
+          if ('from' in value && value.from && videoDate < new Date(value.from)) return false;
+          if ('to' in value && value.to && videoDate > new Date(value.to)) return false;
+          return true;
+        }
+        
+        return true;
+      });
+    });
+
+    // 2. Legacy Status Filter (from filter button - wird später durch neue Filter ersetzt)
+    if (statusFilter) {
+      result = result.filter(video => video.status === statusFilter);
+    }
+    
+    // 3. View filters (from active view - legacy support)
+    if (activeViewId && Object.keys(viewFilters).length > 0) {
+      result = result.filter(video => {
+        for (const [key, value] of Object.entries(viewFilters)) {
+          if (value === null || value === undefined || value === '') continue;
+          
+          if (key === 'status' && video.status !== value) {
+            return false;
+          }
+          if (key === 'responsible_person' && video.responsible_person !== value) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+    
+    // 4. Search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      result = result.filter(video => {
+        const videoName = video.name || video.title || '';
+        return (
+          videoName.toLowerCase().includes(searchLower) ||
+          video.status.toLowerCase().includes(searchLower) ||
+          (video.responsible_person && video.responsible_person.toLowerCase().includes(searchLower)) ||
+          (video.description && video.description.toLowerCase().includes(searchLower)) ||
+          (video.inspiration_source && video.inspiration_source.toLowerCase().includes(searchLower))
+        );
+      });
+    }
+
+    // 5. Apply sorts (in priority order)
+    if (activeSorts.length > 0) {
+      const sortedSorts = [...activeSorts].sort((a, b) => a.priority - b.priority);
       
-      return {
-        name: displayName, // Just the name, without "Workspace:" prefix
-        icon: Users,
-        href: `/dashboard/workspace/${workspace.workspace_owner_id}`,
-        active: workspace.workspace_owner_id === ownerId
-      };
-    })
-  ];
+      result.sort((a, b) => {
+        for (const sort of sortedSorts) {
+          const aVal = a[sort.field as keyof Video];
+          const bVal = b[sort.field as keyof Video];
+          
+          // Handle null/undefined
+          if (aVal == null && bVal == null) continue;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+          
+          // Compare based on type
+          let comparison = 0;
+          
+          // Spezielle Behandlung für Datum-Felder
+          if (sort.field === 'publication_date' || sort.field === 'last_updated' || sort.field === 'updated_at' || sort.field === 'created_at') {
+            const aDate = aVal ? new Date(aVal as string).getTime() : 0;
+            const bDate = bVal ? new Date(bVal as string).getTime() : 0;
+            comparison = aDate - bDate;
+          } else if (typeof aVal === 'string' && typeof bVal === 'string') {
+            comparison = aVal.localeCompare(bVal, 'de', { sensitivity: 'base' });
+          } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+            comparison = aVal - bVal;
+          } else if (aVal instanceof Date || bVal instanceof Date) {
+            comparison = new Date(aVal as string | number | Date).getTime() - new Date(bVal as string | number | Date).getTime();
+          } else {
+            comparison = String(aVal).localeCompare(String(bVal));
+          }
+          
+          if (comparison !== 0) {
+            return sort.direction === 'asc' ? comparison : -comparison;
+          }
+        }
+        return 0;
+      });
+    }
 
-  const sidebarBottomItems = [
-    { name: 'Settings', icon: Settings, href: '/profile', active: false }
-  ];
+    return result;
+  }, [videos, activeFilters, activeSorts, statusFilter, viewFilters, activeViewId, searchTerm]);
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/login');
+  // Helper function for date formatting with leading zeros
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
+    } catch {
+      return '-';
+    }
+  };
+
+  // Helper function for relative time formatting
+  const formatRelativeTime = (dateString: string | null | undefined): string => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffMinutes < 1) return 'Gerade eben';
+      if (diffMinutes < 60) return `vor ${diffMinutes} Min.`;
+      if (diffHours < 24) return `vor ${diffHours} Std.`;
+      if (diffDays < 4) return `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+      
+      // Ab 4 Tagen: Datum anzeigen
+      return formatDate(dateString);
+    } catch {
+      return '-';
+    }
   };
 
   // Cell Rendering Function - Maps column IDs to their respective cell content
@@ -1033,7 +1495,7 @@ export default function SharedWorkspacePage() {
     switch (columnId) {
       case 'checkbox':
         return (
-          <td key={`${video.id}-checkbox`} className="py-4 px-4">
+          <td key={`${video.id}-checkbox`} className="py-4 px-4 border-r border-neutral-800/30">
             <input
               type="checkbox"
               checked={selectedVideoIds.has(video.id)}
@@ -1049,7 +1511,7 @@ export default function SharedWorkspacePage() {
 
       case 'title':
         return (
-          <td key={`${video.id}-title`} className="py-4 px-4">
+          <td key={`${video.id}-title`} className="py-4 px-4 border-r border-neutral-800/30">
             <div className="flex items-center">
               <div className={`p-2 bg-neutral-800 rounded-lg mr-3`}>
                 <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
@@ -1063,7 +1525,7 @@ export default function SharedWorkspacePage() {
 
       case 'status':
         return (
-          <td key={`${video.id}-status`} className="py-4 px-4">
+          <td key={`${video.id}-status`} className="py-4 px-4 border-r border-neutral-800/30">
             {permissions.can_edit ? (
               <CustomDropdown
                 options={[
@@ -1087,7 +1549,7 @@ export default function SharedWorkspacePage() {
 
       case 'publication_date':
         return (
-          <td key={`${video.id}-publication_date`} className="py-4 px-4">
+          <td key={`${video.id}-publication_date`} className="py-4 px-4 border-r border-neutral-800/30">
             <EditableDate
               value={video.publication_date}
               videoId={video.id}
@@ -1100,7 +1562,7 @@ export default function SharedWorkspacePage() {
 
       case 'responsible_person':
         return (
-          <td key={`${video.id}-responsible_person`} className="py-4 px-4">
+          <td key={`${video.id}-responsible_person`} className="py-4 px-4 border-r border-neutral-800/30">
             <EditableResponsiblePerson
               value={video.responsible_person}
               videoId={video.id}
@@ -1108,7 +1570,7 @@ export default function SharedWorkspacePage() {
                 await handleFieldSave(videoId, field, value);
               }}
               editable={permissions.can_edit}
-              workspaceOwner={workspaceOwnerInfo}
+              workspaceOwner={workspaceOwner}
               workspaceMembers={workspaceMembers}
             />
           </td>
@@ -1116,15 +1578,15 @@ export default function SharedWorkspacePage() {
 
       case 'upload':
         return (
-          <td key={`${video.id}-upload`} className="py-4 px-4">
-            {permissions.can_edit && (
-              video.storage_location ? (
+          <td key={`${video.id}-upload`} className="py-4 px-4 border-r border-neutral-800/30">
+            <div className="flex items-center justify-center">
+              {video.storage_location ? (
                 <button
                   onClick={() => handleOpenUploadModal(video)}
-                  className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40"
+                  className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 hover:border-blue-500/40 flex items-center justify-center"
                   title="Dateien hochladen"
                 >
-                  <Upload className="h-5 w-5" />
+                  <Upload className="w-5 h-5" />
                 </button>
               ) : (
                 <Tooltip 
@@ -1134,43 +1596,60 @@ export default function SharedWorkspacePage() {
                 >
                   <button
                     disabled
-                    className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
+                    className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20 flex items-center justify-center"
                   >
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   </button>
                 </Tooltip>
-              )
-            )}
+              )}
+            </div>
           </td>
         );
 
       case 'storage_location':
         return (
-          <td key={`${video.id}-storage_location`} className="py-4 px-4">
-            {video.storage_location ? (
-              <button
-                onClick={() => handleOpenStorageLocation(video)}
-                className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
-                title="Ordner durchsuchen"
-              >
-                <FolderOpen className="h-5 w-5" />
-              </button>
-            ) : (
-              <span className="text-neutral-500 text-sm">-</span>
-            )}
+          <td key={`${video.id}-storage_location`} className="py-4 px-4 border-r border-neutral-800/30">
+            <div className="flex items-center justify-center">
+              {video.storage_location ? (
+                <button
+                  onClick={() => handleOpenStorageLocation(video)}
+                  className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors flex items-center justify-center"
+                  title="Ordner durchsuchen"
+                >
+                  <FolderOpen className="w-5 h-5" />
+                </button>
+              ) : (
+                <span className="text-neutral-500 text-sm">-</span>
+              )}
+            </div>
           </td>
         );
 
       case 'updated_at':
         return (
-          <td key={`${video.id}-updated_at`} className="py-4 px-4 text-neutral-300 text-sm">
-            {formatRelativeTime(video.updated_at)}
+          <td key={`${video.id}-updated_at`} className="py-4 px-4 text-neutral-300 text-sm border-r border-neutral-800/30">
+            {formatRelativeTime(video.last_updated || video.updated_at)}
+          </td>
+        );
+
+      case 'inspiration_source':
+        return (
+          <td key={`${video.id}-inspiration_source`} className="py-4 px-4 border-r border-neutral-800/30">
+            <EditableCell
+              value={video.inspiration_source}
+              videoId={video.id}
+              field="inspiration_source"
+              onSave={handleFieldSave}
+              editable={permissions.can_edit}
+              type="url"
+              placeholder="URL hinzufügen"
+            />
           </td>
         );
 
       case 'description':
         return (
-          <td key={`${video.id}-description`} className="py-4 px-4 max-w-xs">
+          <td key={`${video.id}-description`} className="py-4 px-4 max-w-xs border-r border-neutral-800/30">
             <EditableDescription
               value={video.description}
               videoId={video.id}
@@ -1184,14 +1663,36 @@ export default function SharedWorkspacePage() {
       case 'actions':
         return (
           <td key={`${video.id}-actions`} className="py-4 px-4">
-            <div className="flex items-center space-x-2">
-              {permissions.can_delete && (
+            <div className="flex items-center justify-center space-x-2">
+              <button
+                onClick={() => {
+                  if (canEditVideo(video)) {
+                    handleEditVideo(video);
+                  } else {
+                    addToast({
+                      id: Date.now().toString(),
+                      type: 'error',
+                      message: 'Du hast keine Berechtigung, Videos zu bearbeiten.'
+                    });
+                  }
+                }}
+                className={`transition-colors ${
+                  canEditVideo(video)
+                    ? 'text-white hover:text-neutral-300' 
+                    : 'text-neutral-600 hover:text-neutral-500 cursor-pointer'
+                }`}
+                title={canEditVideo(video) ? 'Video bearbeiten' : 'Keine Berechtigung'}
+              >
+                <Edit className="w-5 h-5" />
+              </button>
+              
+              {canDeleteVideo(video) && (
                 <button
                   onClick={() => handleDeleteVideo(video)}
                   className="text-red-400 hover:text-red-300 transition-colors"
                   title="Video löschen"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="w-5 h-5" />
                 </button>
               )}
             </div>
@@ -1199,366 +1700,239 @@ export default function SharedWorkspacePage() {
         );
 
       default:
-        return <td key={`${video.id}-${columnId}`} className="py-4 px-4"></td>;
+        return <td key={`${video.id}-${columnId}`} className="py-4 px-4 border-r border-neutral-800/30"></td>;
     }
   }, [
     selectedVideoIds,
     permissions,
-    workspaceOwnerInfo,
+    workspaceOwner,
     workspaceMembers,
     handleVideoSelection,
     handleUpdateStatus,
     handleFieldSave,
     handleOpenUploadModal,
-    handleOpenStorageLocation,
+    canEditVideo,
+    canDeleteVideo,
+    handleEditVideo,
     handleDeleteVideo
   ]);
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <span className="loading loading-ring loading-lg text-white"></span>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-black overflow-hidden">
-      {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{ width: sidebarCollapsed ? '80px' : '240px' }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className={`hidden md:flex flex-col bg-neutral-900/50 backdrop-blur-md border-r border-neutral-800 relative ${sidebarCollapsed ? 'items-center' : ''}`}
-      >
-        {/* Logo */}
-        <div className={`p-6 flex items-center border-b border-neutral-800 ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
-          {!sidebarCollapsed && (
-            <div className="flex-1">
+    <div className="min-h-screen bg-black">
+      {/* Top Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black border-b border-neutral-800 px-4 py-3">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 mr-2 text-white rounded-lg md:hidden hover:bg-neutral-800 transition-colors"
+            >
+              {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+            
+            <div className="flex items-center">
               <Image
                 src="/kosmamedia-logo.svg"
-                alt="Logo"
-                width={120}
-                height={40}
-                className="brightness-0 invert"
-                priority
+                alt="kosmamedia Logo"
+                width={32}
+                height={32}
+                className="mr-3 filter invert"
               />
+              <span className="text-xl font-semibold text-white">kosmamedia</span>
             </div>
-          )}
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-neutral-800 rounded-lg transition-colors text-neutral-400 flex-shrink-0"
-          >
-            {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-          </button>
+
+          </div>
+
+          <div className="flex items-center space-x-3">
+            {/* Notifications */}
+            <NotificationBell />
+
+            {/* User Menu */}
+            <div className="relative user-dropdown">
+              <button 
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="flex items-center space-x-2 text-white hover:bg-neutral-800 rounded-lg p-2 transition-colors"
+              >
+                <div className="relative">
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-black" />
+                  </div>
+                  {/* Premium Crown */}
+                  {permissions.hasActiveSubscription && permissions.subscriptionStatus === 'active' && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg">
+                      <Crown className="w-2.5 h-2.5 text-yellow-900" />
+                    </div>
+                  )}
+                </div>
+                <span className="hidden md:block text-sm">{user.email}</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {userDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 mt-2 w-56 bg-black/80 backdrop-blur-md rounded-xl border border-neutral-700 shadow-lg z-50"
+                >
+                  <div className="py-2">
+                    <div className="px-4 py-3 border-b border-neutral-700">
+                      <p className="text-sm text-white font-medium">{user.email}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-neutral-400">Angemeldet</p>
+                        <div className="flex items-center space-x-1">
+                          {permissions.subscriptionStatus === 'active' && (
+                            <>
+                              <Crown className="w-3 h-3 text-yellow-400" />
+                              <span className="text-xs text-yellow-400 font-medium">Premium</span>
+                            </>
+                          )}
+                          {permissions.subscriptionStatus === 'trialing' && (
+                            <span className="text-xs text-blue-400 font-medium">Trial</span>
+                          )}
+                          {permissions.subscriptionStatus === 'expired' && (
+                            <span className="text-xs text-orange-400 font-medium">Abgelaufen</span>
+                          )}
+                          {permissions.subscriptionStatus === 'none' && (
+                            <span className="text-xs text-neutral-500 font-medium">Kostenlos</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        router.push('/profile');
+                      }}
+                      className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
+                    >
+                      <Settings className="w-4 h-4 mr-3 text-neutral-400" />
+                      Einstellungen
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        router.push('/profile');
+                      }}
+                      className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
+                    >
+                      <CreditCard className="w-4 h-4 mr-3 text-neutral-400" />
+                      Abonnement verwalten
+                    </button>
+                    
+                    <div className="border-t border-neutral-700 mt-2">
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          handleSignOut();
+                        }}
+                        className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4 mr-3 text-neutral-400" />
+                        Ausloggen
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </div>
         </div>
+      </nav>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {sidebarItems.map((item) => (
+      {/* Sidebar */}
+      <motion.aside 
+        animate={{ width: sidebarCollapsed ? '80px' : '256px' }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className={`fixed top-0 left-0 z-40 h-screen pt-16 transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} bg-neutral-900/50 backdrop-blur-md border-r border-neutral-700 md:translate-x-0`}
+      >
+        <div className="h-full px-3 py-4 overflow-y-auto flex flex-col">
+          {/* Collapse Toggle Button - Desktop Only */}
+          <div className="hidden md:flex justify-end mb-4">
             <button
-              key={item.href}
-              onClick={() => router.push(item.href)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                item.active 
-                  ? 'bg-white text-black font-medium' 
-                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-white'
-              } ${sidebarCollapsed ? 'justify-center' : ''}`}
-              title={item.name}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800/50 rounded-lg transition-all duration-300 hover:shadow-[0_0_10px_rgba(255,255,255,0.1)]"
             >
-              <item.icon className={`w-5 h-5 flex-shrink-0`} />
-              {!sidebarCollapsed && <span className="truncate" title={item.name}>{item.name}</span>}
+              {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
             </button>
-          ))}
-        </nav>
+          </div>
 
-        {/* Bottom Items */}
-        <div className="p-4 border-t border-neutral-800 space-y-2">
-          {sidebarBottomItems.map((item) => (
-            <button
-              key={item.href}
-              onClick={() => router.push(item.href)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                item.active 
-                  ? 'bg-white text-black font-medium' 
-                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-white'
-              } ${sidebarCollapsed ? 'justify-center' : ''}`}
-              title={sidebarCollapsed ? item.name : ''}
-            >
-              <item.icon className="w-5 h-5" />
-              {!sidebarCollapsed && <span>{item.name}</span>}
-            </button>
-          ))}
+          {/* Navigation Items */}
+          <ul className="space-y-2 font-medium flex-1">
+            {sidebarItems.map((item) => (
+              <li key={item.name}>
+                <button
+                  onClick={() => router.push(item.href)}
+                  className={`flex items-center p-3 rounded-2xl w-full text-left transition-all duration-300 ${
+                    item.active 
+                      ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                      : 'text-white hover:bg-neutral-800/50 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  }`}
+                  title={sidebarCollapsed ? item.name : ''}
+                >
+                  <item.icon className={`w-6 h-6 flex-shrink-0 ${item.active ? 'text-black' : 'text-neutral-400'} transition-colors ${sidebarCollapsed ? 'mx-auto' : ''}`} />
+                  {!sidebarCollapsed && <span className="ml-3 truncate" title={item.name}>{item.name}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* Bottom Navigation Items */}
+          <ul className="space-y-2 font-medium border-t border-neutral-700 pt-4">
+            {sidebarBottomItems.map((item) => (
+              <li key={item.name}>
+                <button
+                  onClick={() => router.push(item.href)}
+                  className={`flex items-center p-3 rounded-2xl w-full text-left transition-all duration-300 ${
+                    item.active 
+                      ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                      : 'text-white hover:bg-neutral-800/50 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  }`}
+                  title={sidebarCollapsed ? item.name : ''}
+                >
+                  <item.icon className={`w-6 h-6 ${item.active ? 'text-black' : 'text-neutral-400'} transition-colors ${sidebarCollapsed ? 'mx-auto' : ''}`} />
+                  {!sidebarCollapsed && <span className="ml-3">{item.name}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       </motion.aside>
 
-      {/* Mobile Sidebar */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-          <motion.div
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            className="absolute left-0 top-0 bottom-0 w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col"
-          >
-            {/* Mobile Logo & Close */}
-            <div className="p-4 flex items-center justify-between border-b border-neutral-800">
-              <Image
-                src="/kosmamedia-logo.svg"
-                alt="Logo"
-                width={120}
-                height={40}
-                className="brightness-0 invert"
-              />
-              <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-neutral-800 rounded-lg">
-                <X className="w-5 h-5 text-neutral-400" />
-              </button>
-            </div>
-
-            {/* Mobile Navigation */}
-            <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-              {sidebarItems.map((item) => (
-                <button
-                  key={item.href}
-                  onClick={() => {
-                    router.push(item.href);
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                    item.active 
-                      ? 'bg-white text-black font-medium' 
-                      : 'text-neutral-400 hover:bg-neutral-800 hover:text-white'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.name}</span>
-                </button>
-              ))}
-            </nav>
-
-            {/* Mobile Bottom Items */}
-            <div className="p-4 border-t border-neutral-800 space-y-2">
-              {sidebarBottomItems.map((item) => (
-                <button
-                  key={item.href}
-                  onClick={() => {
-                    router.push(item.href);
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                    item.active 
-                      ? 'bg-white text-black font-medium' 
-                      : 'text-neutral-400 hover:bg-neutral-800 hover:text-white'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.name}</span>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      )}
-
       {/* Main Content */}
-      <motion.main
-        initial={false}
-        animate={{ marginLeft: sidebarCollapsed ? '0' : '0' }}
+      <motion.main 
+        animate={{ 
+          marginLeft: isMobile ? '0px' : (sidebarCollapsed ? '80px' : '256px')
+        }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="flex-1 flex flex-col overflow-hidden"
+        className="p-4 ml-0 md:ml-64 pt-24"
       >
-        {/* Top Bar - Same structure as Videos page */}
-        <nav className="bg-black border-b border-neutral-800 px-4 py-3">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 mr-2 text-white rounded-lg md:hidden hover:bg-neutral-800 transition-colors"
-              >
-                {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </button>
-              
-              <div className="flex items-center">
-                <Image
-                  src="/kosmamedia-logo.svg"
-                  alt="kosmamedia Logo"
-                  width={32}
-                  height={32}
-                  className="mr-3 filter invert"
-                />
-                <span className="text-xl font-semibold text-white">kosmamedia</span>
-              </div>
-
-              {/* Search Bar */}
-              <div className="hidden md:flex md:ml-8 md:items-center md:gap-3">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-neutral-400" />
-                  </div>
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-64 pl-10 p-2.5 placeholder-neutral-400"
-                    placeholder="Videos suchen..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              {/* Notifications */}
-              <NotificationBell />
-
-              {/* User Menu */}
-              <div className="relative user-dropdown">
-                <button 
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center space-x-2 text-white hover:bg-neutral-800 rounded-lg p-2 transition-colors"
-                >
-                  <div className="relative">
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-black" />
-                    </div>
-                  </div>
-                  <span className="hidden md:block text-sm">{user.email}</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Dropdown Menu */}
-                {userDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute right-0 mt-2 w-56 bg-black/80 backdrop-blur-md rounded-xl border border-neutral-700 shadow-lg z-50"
-                  >
-                    <div className="py-2">
-                      <div className="px-4 py-3 border-b border-neutral-700">
-                        <p className="text-sm text-white font-medium">{user.email}</p>
-                        <p className="text-xs text-neutral-400 mt-1">Angemeldet</p>
-                      </div>
-                      
-                      <button
-                        onClick={() => {
-                          setUserDropdownOpen(false);
-                          router.push('/profile');
-                        }}
-                        className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
-                      >
-                        <Settings className="w-4 h-4 mr-3 text-neutral-400" />
-                        Einstellungen
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          setUserDropdownOpen(false);
-                          router.push('/profile');
-                        }}
-                        className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
-                      >
-                        <CreditCard className="w-4 h-4 mr-3 text-neutral-400" />
-                        Abonnement verwalten
-                      </button>
-                      
-                      <div className="border-t border-neutral-700 mt-2">
-                        <button
-                          onClick={() => {
-                            setUserDropdownOpen(false);
-                            handleSignOut();
-                          }}
-                          className="w-full flex items-center px-4 py-3 text-sm text-white hover:bg-neutral-800/50 transition-colors"
-                        >
-                          <LogOut className="w-4 h-4 mr-3 text-neutral-400" />
-                          Ausloggen
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-auto p-4 sm:p-8">
-          {/* Header with Permissions Info and Create Button */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Geteilte Videos</h2>
-                <div className="flex flex-wrap gap-2">
-                  {permissions.can_view && (
-                    <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs rounded-full">
-                      Ansehen
-                    </span>
-                  )}
-                  {permissions.can_create && (
-                    <span className="px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-400 text-xs rounded-full">
-                      Erstellen
-                    </span>
-                  )}
-                  {permissions.can_edit && (
-                    <span className="px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs rounded-full">
-                      Bearbeiten
-                    </span>
-                  )}
-                  {permissions.can_delete && (
-                    <span className="px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-full">
-                      Löschen
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                {/* Spalten-Einstellungen Button */}
-                <button
-                  onClick={() => setShowColumnsModal(true)}
-                  className="px-4 sm:px-6 py-2 sm:py-3 rounded-2xl flex items-center justify-center space-x-2 transition-all duration-300 font-medium text-sm sm:text-base bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 hover:border-neutral-600"
-                >
-                  <Settings className="w-5 h-5" />
-                  <span className="hidden sm:inline">Spalten</span>
-                </button>
-
-                {/* Mehrfachbearbeitung Button (nur wenn can_edit) */}
-                {permissions.can_edit && (
-                  <button
-                    onClick={handleToggleBulkMode}
-                    className={`px-4 sm:px-6 py-2 sm:py-3 rounded-2xl flex items-center justify-center space-x-2 transition-all duration-300 font-medium text-sm sm:text-base ${
-                      isBulkEditMode
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
-                        : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 hover:border-neutral-600'
-                    }`}
-                  >
-                    {isBulkEditMode ? <CheckSquare className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
-                    <span className="hidden sm:inline">{isBulkEditMode ? 'Bearbeitung aktiv' : 'Mehrfachbearbeitung'}</span>
-                    <span className="sm:hidden">{isBulkEditMode ? 'Aktiv' : 'Mehrfach'}</span>
-                  </button>
-                )}
-
-                {/* Create Video Button */}
-                {permissions.can_create && (
-                  <button
-                    onClick={() => alert('Video-Erstellung für geteilte Workspaces kommt in Kürze!')}
-                    className="bg-white hover:bg-neutral-100 text-black px-4 sm:px-6 py-2 sm:py-3 rounded-2xl flex items-center space-x-2 transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] font-medium text-sm sm:text-base"
-                  >
-                    <span className="text-xl sm:text-2xl">+</span>
-                    <span className="hidden sm:inline">Neues Video</span>
-                    <span className="sm:hidden">Video hinzufügen</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
+        <div className="mb-6 md:mb-8">
+          {/* Subscription Warning */}
+          
           {/* Workspace Description */}
-          <div className="mb-6 bg-neutral-900/30 border border-neutral-700/50 rounded-2xl p-4">
+          <div className="mt-6 bg-neutral-900/30 border border-neutral-700/50 rounded-2xl p-4">
             <p className="text-neutral-400 text-sm leading-relaxed">
-              <span className="font-medium text-neutral-300">Geteilter Workspace:</span> Hier befinden sich alle Videos aus dem Workspace von <span className="font-medium text-white">{workspaceOwnerName}</span>. Sie können Videos gemäß Ihrer zugewiesenen Berechtigungen verwalten.
+              <span className="font-medium text-neutral-300">
+                Workspace von {workspaceOwner?.firstname || workspaceOwner?.email || 'Unbekannt'}:
+              </span> Hier befinden sich alle deine Videos. Verwalte sie ganz einfach, lade Mitarbeitende ein und behalte die Status im Blick.
             </p>
           </div>
-
-          {/* Mobile Search */}
-          <div className="md:hidden mb-4">
+          
+          {/* Mobile Search Bar & Filter */}
+          <div className="md:hidden mt-4 space-y-3">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-neutral-400" />
@@ -1567,274 +1941,818 @@ export default function SharedWorkspacePage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl focus:ring-white focus:border-white block w-full pl-10 p-3 placeholder-neutral-400"
+                className="mobile-search-input bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl focus:ring-white focus:border-white block w-full pl-10 p-3 placeholder-neutral-400"
                 placeholder="Videos suchen..."
               />
             </div>
+            
+            {/* Status Filter Mobile */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-neutral-900 border border-neutral-700 text-white text-sm rounded-xl focus:ring-white focus:border-white block w-full p-3 placeholder-neutral-400"
+            >
+              <option value="">Alle Status</option>
+              <option value="Idee">Idee</option>
+              <option value="Warten auf Aufnahme">Warten auf Aufnahme</option>
+              <option value="In Bearbeitung (Schnitt)">In Bearbeitung</option>
+              <option value="Schnitt abgeschlossen">Schnitt abgeschlossen</option>
+              <option value="Hochgeladen">Hochgeladen</option>
+            </select>
           </div>
+        </div>
 
-          {/* Videos Table */}
-          {showSkeleton ? (
-            <VideoTableSkeleton />
-          ) : (
-            <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-neutral-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-neutral-700 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">Alle Videos ({filteredVideos.length})</h3>
-                {isFetching && !isLoading && (
-                  <div className="flex items-center text-neutral-400 text-sm">
-                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Aktualisiere...
+        {/* Videos Table */}
+        {showSkeleton ? (
+          <VideoTableSkeleton />
+        ) : (
+          <>
+            {/* Placeholder für Sticky Header - verhindert Layout-Shift */}
+            {isHeaderSticky && (
+              <div style={{ height: headerHeight }} />
+            )}
+
+            {/* Sticky Header mit position: fixed */}
+            <div 
+              ref={headerRef}
+              className={`${
+                isHeaderSticky 
+                  ? `fixed top-16 z-30 shadow-lg ${showStickyAnimation ? 'animate-slideDown' : ''}` 
+                  : 'relative z-20'
+              } transition-all duration-300 ease-in-out`}
+              style={{
+                left: isHeaderSticky && !isMobile ? `calc(${sidebarCollapsed ? '80px' : '256px'} + 16px)` : (isHeaderSticky && isMobile ? '16px' : undefined),
+                right: isHeaderSticky ? '16px' : undefined,
+                width: isHeaderSticky && !isMobile ? `calc(100% - ${sidebarCollapsed ? '80px' : '256px'} - 32px)` : (isHeaderSticky && isMobile ? 'calc(100% - 32px)' : undefined)
+              }}
+            >
+              {/* Header mit Title und Actions - zusammenhängend */}
+              <div className={`bg-neutral-900/95 backdrop-blur-md rounded-t-2xl border border-neutral-700 px-6 ${isHeaderSticky ? 'py-5' : 'py-4'} flex items-center justify-between`}>
+                <h3 className="text-lg font-semibold text-white">Alle Videos</h3>
+
+                {/* Action Buttons - Rechts mit neuer Reihenfolge */}
+                <div className="flex items-center gap-2">
+                  {/* Desktop Search - Jetzt rechts */}
+                  <div className="hidden md:flex relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="h-4 w-4 text-neutral-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="bg-neutral-800/50 border border-neutral-700 text-white text-sm rounded-lg focus:ring-white focus:border-white pl-10 pr-3 py-2 w-64 placeholder-neutral-400"
+                      placeholder="Videos suchen..."
+                    />
                   </div>
-                )}
+
+                  {/* Mobile Search Icon */}
+                  <Tooltip content="Suchen" position="left">
+                    <button
+                      onClick={() => {
+                        // Scroll zur mobilen Suchleiste
+                        const mobileSearch = document.querySelector('.mobile-search-input') as HTMLInputElement;
+                        if (mobileSearch) {
+                          mobileSearch.focus();
+                          mobileSearch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }}
+                      className="md:hidden p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
+                    >
+                      <Search className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+
+                  {/* Spalten-Einstellungen - Nur Desktop */}
+                  <Tooltip content="Spalten anpassen" position="left">
+                    <button
+                      onClick={() => setShowColumnsModal(true)}
+                      className="hidden md:block p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
+                    >
+                      <Settings className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+
+                  {/* Mehrfachbearbeitung - Nur Desktop */}
+                  <Tooltip content={isBulkEditMode ? "Bearbeitung deaktivieren" : "Mehrfachbearbeitung"} position="left">
+                    <button
+                      onClick={handleToggleBulkMode}
+                      className={`hidden md:block p-2 rounded-lg transition-all ${
+                        isBulkEditMode
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500'
+                          : 'bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700'
+                      }`}
+                    >
+                      {isBulkEditMode ? <CheckSquare className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
+                    </button>
+                  </Tooltip>
+
+                  {/* Neues Video - Nur wenn can_create Permission */}
+                  {permissions.can_create && (
+                    <Tooltip content="Neues Video erstellen" position="left">
+                      <button
+                        onClick={() => {
+                        if (permissions.can_create) {
+                          setShowAddModal(true);
+                        } else {
+                          addToast({
+                            id: Date.now().toString(),
+                            type: 'error',
+                            message: 'Du hast keine Berechtigung, Videos zu erstellen.'
+                          });
+                        }
+                      }}
+                      className={`p-2 rounded-lg transition-all ${
+                        permissions.can_create 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 shadow-sm' 
+                          : 'bg-neutral-700 text-neutral-400 border border-neutral-600 cursor-not-allowed'
+                      }`}
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+                  )}
+
+                  {/* Loading Indicator */}
+                  {isFetching && !isLoading && (
+                    <div className="hidden md:flex items-center text-neutral-400 text-sm ml-2">
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* View Tabs */}
-              <ViewTabs
-                activeViewId={activeViewId}
-                views={workspaceViews}
-                onViewChange={handleViewChange}
-                onCreateView={handleCreateView}
-                onEditView={handleEditView}
-                onDeleteView={handleDeleteView}
-                onSetDefault={handleSetDefaultView}
-                canManageViews={permissions.can_create}
-              />
+              {/* View Tabs - direkt angehängt ohne Lücke */}
+              <div className={`bg-neutral-900/95 backdrop-blur-md border-x border-b border-t-0 border-neutral-700 ${isHeaderSticky ? 'rounded-b-2xl' : ''} px-6`}>
+                <ViewTabs
+                  activeViewId={activeViewId}
+                  views={workspaceViews}
+                  onViewChange={handleViewChange}
+                  onCreateView={handleCreateView}
+                  onEditView={handleEditView}
+                  onDeleteView={handleDeleteView}
+                  onSetDefault={handleSetDefaultView}
+                  canManageViews={permissions.can_create}
+                />
+              </div>
+            </div>
 
-              {filteredVideos.length === 0 ? (
-                <div className="text-center py-12">
-                  <VideoIcon className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">
-                    {searchTerm ? 'Keine Videos gefunden' : 'Noch keine Videos'}
-                  </h3>
-                  <p className="text-neutral-400">
-                    {searchTerm 
-                      ? `Keine Videos gefunden für "${searchTerm}".`
-                      : 'In diesem Workspace sind noch keine Videos vorhanden.'
-                    }
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Desktop Table View */}
-                  <div className="hidden lg:block overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-neutral-800/50">
-                        <DraggableTableHeader
-                          columns={isBulkEditMode 
-                            ? [{ id: 'checkbox', label: '', fixed: true, resizable: false }, ...DEFAULT_COLUMNS]
-                            : DEFAULT_COLUMNS
-                          }
-                          columnOrder={isBulkEditMode 
-                            ? ['checkbox', ...columnOrder]
-                            : columnOrder
-                          }
-                          hiddenColumns={hiddenColumns}
-                          onColumnOrderChange={(newOrder) => {
-                            // Remove checkbox from order if present
-                            const orderWithoutCheckbox = newOrder.filter(id => id !== 'checkbox');
-                            handleColumnOrderChange(orderWithoutCheckbox);
-                          }}
-                          onColumnResize={handleColumnResize}
-                          columnWidths={columnWidths}
-                        >
-                          {(column) => (
-                            <>
-                              {column.id === 'checkbox' && isBulkEditMode && (
-                                <input
-                                  type="checkbox"
-                                  checked={selectedVideoIds.size === filteredVideos.length && filteredVideos.length > 0}
-                                  onChange={(e) => e.target.checked ? handleSelectAll() : handleDeselectAll()}
-                                  className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
-                                />
-                              )}
-                              {column.id !== 'checkbox' && column.label}
-                            </>
+            {/* Active Filters & Sorts Bar */}
+            <ActiveFiltersBar
+              filters={activeFilters}
+              sorts={activeSorts}
+              onRemoveFilter={handleRemoveFilter}
+              onRemoveSort={handleRemoveSort}
+              onUpdateSortPriority={handleUpdateSortPriority}
+              onEditFilter={handleEditFilter}
+              fieldLabels={(() => {
+                // Erstelle Reverse-Mapping: Video-Feld -> Spalten-ID -> Label
+                const reverseMap: Record<string, string> = {};
+                Object.entries(columnToFieldMap).forEach(([columnId, field]) => {
+                  reverseMap[field] = fieldLabels[columnId] || columnId;
+                });
+                // Füge direkte Mappings hinzu für Felder die gleich sind
+                Object.keys(fieldLabels).forEach(key => {
+                  if (!reverseMap[key]) {
+                    reverseMap[key] = fieldLabels[key];
+                  }
+                });
+                return reverseMap;
+              })()}
+              personMap={Object.fromEntries(
+                workspaceMembers.map(m => [m.user_id, { 
+                  firstname: m.user?.firstname || '', 
+                  lastname: m.user?.lastname || '', 
+                  email: m.user?.email || m.invitation_email || '' 
+                }])
+              )}
+            />
+
+            {/* Tabellen-Content - sieht aus wie Fortsetzung */}
+            <div className={`bg-neutral-900/50 backdrop-blur-md ${isHeaderSticky ? 'rounded-3xl border mt-2' : 'rounded-b-3xl border border-t-0'} border-neutral-700`}>
+            {filteredVideos.length === 0 ? (
+            <div className="text-center py-12">
+              <VideoIcon className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-2">
+                {searchTerm ? 'Keine Videos gefunden' : 'Noch keine Videos'}
+              </h3>
+              <p className="text-neutral-400 mb-4">
+                {searchTerm 
+                  ? `Keine Videos gefunden für "${searchTerm}". Versuchen Sie einen anderen Suchbegriff.`
+                  : 'Erstellen Sie Ihr erstes Video, um zu beginnen.'
+                }
+              </p>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-neutral-800 hover:bg-white hover:text-black text-white px-6 py-3 rounded-3xl flex items-center space-x-2 mx-auto transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Erstes Video erstellen</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <DraggableTableHeader
+                      columns={isBulkEditMode 
+                        ? [{ id: 'checkbox', label: '', fixed: true, resizable: false }, ...DEFAULT_COLUMNS]
+                        : DEFAULT_COLUMNS
+                      }
+                      columnOrder={isBulkEditMode 
+                        ? ['checkbox', ...columnOrder]
+                        : columnOrder
+                      }
+                      hiddenColumns={hiddenColumns}
+                      onColumnOrderChange={(newOrder) => {
+                        // Remove checkbox from order if present
+                        const orderWithoutCheckbox = newOrder.filter(id => id !== 'checkbox');
+                        handleColumnOrderChange(orderWithoutCheckbox);
+                      }}
+                      onColumnResize={handleColumnResize}
+                      columnWidths={columnWidths}
+                      onHeaderClick={handleHeaderClick}
+                      activeFilters={activeFilters}
+                      activeSorts={activeSorts}
+                    >
+                      {(column) => (
+                        <>
+                          {column.id === 'checkbox' && isBulkEditMode && (
+                            <input
+                              type="checkbox"
+                              checked={selectedVideoIds.size === filteredVideos.length && filteredVideos.length > 0}
+                              onChange={(e) => e.target.checked ? handleSelectAll() : handleDeselectAll()}
+                              className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+                            />
                           )}
-                        </DraggableTableHeader>
-                      </thead>
-                      <tbody>
-                        {filteredVideos.map((video) => (
-                          <tr 
-                            key={video.id} 
-                            className={`border-b border-neutral-800 hover:bg-neutral-800/30 ${isBulkEditMode ? 'cursor-pointer' : ''} ${selectedVideoIds.has(video.id) ? 'border-l-4 border-l-blue-500 bg-blue-500/5' : ''} transition-all duration-200`}
-                            onClick={(e) => handleRowClick(e, video.id)}
-                          >
-                            {/* Render cells dynamically based on visible columns */}
-                            {visibleColumns.map((column) => renderCell(column.id, video))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                          {column.id !== 'checkbox' && column.label}
+                        </>
+                      )}
+                    </DraggableTableHeader>
+                  </thead>
+                  <tbody>
+                    {filteredVideos.map((video) => (
+                      <tr 
+                        key={video.id} 
+                        className={`border-b border-neutral-800/30 hover:bg-neutral-800/30 cursor-pointer ${selectedVideoIds.has(video.id) ? 'border-l-4 border-l-blue-500 bg-blue-500/5' : ''} transition-all duration-200`}
+                        onClick={(e) => handleRowClick(e, video.id)}
+                      >
+                        {/* Render cells dynamically based on visible columns */}
+                        {visibleColumns.map((column) => renderCell(column.id, video))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                  {/* Mobile Card View */}
-                  <div className="lg:hidden space-y-4 p-4">
-                    {filteredVideos.map((video) => {
-                      const statusInfo = getStatusIcon(video.status);
-                      const StatusIcon = statusInfo.icon;
-
-                      return (
-                        <div key={video.id} className="bg-neutral-800/50 border border-neutral-700 rounded-2xl p-4 space-y-4">
-                          {/* Header */}
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center flex-1 min-w-0">
-                              <div className="p-2 bg-neutral-800 rounded-lg mr-3 flex-shrink-0">
-                                <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
-                              </div>
-                              <h3 className="text-white font-medium truncate">{video.name}</h3>
-                            </div>
-                            <div className="flex items-center space-x-2 ml-2">
-                              {permissions.can_delete && (
-                                <button
-                                  onClick={() => handleDeleteVideo(video)}
-                                  className="p-1 text-red-400 hover:text-red-300"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              )}
-                            </div>
+              {/* Mobile Card View */}
+              <div className="lg:hidden space-y-4 p-4">
+                {filteredVideos.map((video) => {
+                  const statusInfo = getStatusIcon(video.status);
+                  const StatusIcon = statusInfo.icon;
+                  const isExpanded = expandedCardId === video.id;
+                  
+                  return (
+                    <div key={video.id} className="bg-neutral-800/50 border border-neutral-700 rounded-2xl p-4 space-y-3">
+                      {/* Header mit Titel, Status Icon und Actions */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center flex-1 min-w-0">
+                          <div className={`p-2 bg-neutral-800 rounded-lg mr-3 flex-shrink-0`}>
+                            <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
                           </div>
-
-                          {/* Status */}
-                          <div>
-                            <label className="block text-xs font-medium text-neutral-400 mb-2">Status</label>
-                            {permissions.can_edit ? (
-                              <CustomDropdown
-                                options={[
-                                  { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
-                                  { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
-                                  { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
-                                  { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
-                                  { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
-                                ]}
-                                value={video.status}
-                                onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
-                              />
-                            ) : (
-                              <div className="flex items-center px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-xl">
-                                <StatusIcon className={`w-4 h-4 mr-2 ${statusInfo.color}`} />
-                                <span className="text-neutral-300 text-sm">{video.status}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Other Details */}
-                          <div className="space-y-3 text-sm">
-                            <div>
-                              <label className="block text-xs font-medium text-neutral-400 mb-1">Veröffentlichung</label>
-                              <EditableDate
-                                value={video.publication_date}
-                                videoId={video.id}
-                                onSave={handleFieldSave}
-                                editable={permissions.can_edit}
-                                placeholder="Datum wählen"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-neutral-400 mb-1">Verantwortlich</label>
-                              <ResponsiblePersonAvatar 
-                                responsiblePerson={video.responsible_person} 
-                                size="sm" 
-                                showFullName={true}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-neutral-400 mb-1">Dateien hochladen</label>
-                              {permissions.can_edit && (
-                                video.storage_location ? (
-                                  <button
-                                    onClick={() => handleOpenUploadModal(video)}
-                                    className="p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20"
-                                    title="Dateien hochladen"
-                                  >
-                                    <Upload className="h-5 w-5" />
-                                  </button>
-                                ) : (
-                                  <Tooltip 
-                                    content="Der Speicherort wird noch erstellt und wird in Kürze (max. 5 Minuten) verfügbar sein. Bitte um Geduld. Sollte die Funktion nicht verfügbar sein, bitte Kontakt aufnehmen."
-                                    position="top"
-                                    maxWidth="300px"
-                                  >
-                                    <button
-                                      disabled
-                                      className="p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20"
-                                    >
-                                      <Loader2 className="h-5 w-5 animate-spin" />
-                                    </button>
-                                  </Tooltip>
-                                )
-                              )}
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-neutral-400 mb-1">Speicherort</label>
-                              {video.storage_location ? (
-                                <button
-                                  onClick={() => handleOpenStorageLocation(video)}
-                                  className="p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors inline-flex items-center"
-                                  title="Ordner durchsuchen"
-                                >
-                                  <FolderOpen className="h-5 w-5" />
-                                </button>
-                              ) : (
-                                <p className="text-neutral-300">-</p>
-                              )}
-                            </div>
-                            {video.updated_at && (
-                              <div className="flex justify-between">
-                                <span className="text-neutral-400">Aktualisiert:</span>
-                                <span className="text-white">{formatRelativeTime(video.updated_at)}</span>
-                              </div>
-                            )}
-                            <div>
-                              <label className="block text-xs font-medium text-neutral-400 mb-1">Beschreibung</label>
-                              <EditableDescription
-                                value={video.description}
-                                videoId={video.id}
-                                onSave={handleFieldSave}
-                                editable={permissions.can_edit}
-                                placeholder="Beschreibung hinzufügen"
-                              />
-                            </div>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-white font-medium truncate">{video.name}</h3>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+                        <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+                          <button
+                            onClick={() => {
+                              if (canEditVideo(video)) {
+                                handleEditVideo(video);
+                              } else {
+                                addToast({
+                                  id: Date.now().toString(),
+                                  type: 'error',
+                                  message: 'Du hast keine Berechtigung, Videos zu bearbeiten.'
+                                });
+                              }
+                            }}
+                            className={`p-1 transition-colors ${
+                              canEditVideo(video)
+                                ? 'text-white hover:text-neutral-300' 
+                                : 'text-neutral-600 hover:text-neutral-500 cursor-pointer'
+                            }`}
+                            title={canEditVideo(video) ? 'Video bearbeiten' : 'Keine Berechtigung'}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          
+                          {canDeleteVideo(video) && (
+                            <button
+                              onClick={() => handleDeleteVideo(video)}
+                              className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                              title="Video löschen"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status Dropdown */}
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-400 mb-2">Status</label>
+                        {permissions.can_edit ? (
+                          <CustomDropdown
+                            options={[
+                              { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                              { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                              { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                              { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                              { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
+                            ]}
+                            value={video.status}
+                            onChange={(newStatus) => handleUpdateStatus(video.id, newStatus)}
+                            className="text-sm"
+                          />
+                        ) : (
+                          <div className="flex items-center px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-xl cursor-not-allowed text-sm">
+                            {(() => {
+                              const statusInfo = getStatusIcon(video.status);
+                              const StatusIcon = statusInfo.icon;
+                              return (
+                                <>
+                                  <StatusIcon className={`w-4 h-4 mr-2 ${statusInfo.color}`} />
+                                  <span className="text-neutral-400">{video.status}</span>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Verantwortlich */}
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-400 mb-2">Verantwortlich</label>
+                        <ResponsiblePersonAvatar 
+                          responsiblePerson={video.responsible_person} 
+                          size="sm" 
+                          showFullName={true}
+                        />
+                      </div>
+
+                      {/* Aktionen Grid: Upload & Speicherort */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-400 mb-2">Dateien hochladen</label>
+                          {video.storage_location ? (
+                            <button
+                              onClick={() => handleOpenUploadModal(video)}
+                              className="w-full p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20 flex items-center justify-center"
+                              title="Dateien hochladen"
+                            >
+                              <Upload className="h-5 w-5" />
+                            </button>
+                          ) : (
+                            <Tooltip 
+                              content="Der Speicherort wird noch erstellt und wird in Kürze (max. 5 Minuten) verfügbar sein. Bitte um Geduld. Sollte die Funktion nicht verfügbar sein, bitte Kontakt aufnehmen."
+                              position="top"
+                              maxWidth="300px"
+                            >
+                              <button
+                                disabled
+                                className="w-full p-3 bg-orange-500/10 text-orange-400 rounded-lg cursor-not-allowed border border-orange-500/20 flex items-center justify-center"
+                              >
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                              </button>
+                            </Tooltip>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-400 mb-2">Speicherort</label>
+                          {video.storage_location ? (
+                            <button
+                              onClick={() => handleOpenStorageLocation(video)}
+                              className="w-full p-3 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-colors flex items-center justify-center border border-neutral-700"
+                              title="Ordner durchsuchen"
+                            >
+                              <FolderOpen className="h-5 w-5" />
+                            </button>
+                          ) : (
+                            <div className="w-full p-3 bg-neutral-800/30 rounded-lg flex items-center justify-center border border-neutral-700">
+                              <span className="text-neutral-500 text-sm">-</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Details Toggle Button */}
+                      <button
+                        onClick={() => setExpandedCardId(isExpanded ? null : video.id)}
+                        className="w-full flex items-center justify-between px-4 py-2 bg-neutral-800/50 hover:bg-neutral-800 rounded-lg transition-colors border border-neutral-700"
+                      >
+                        <span className="text-sm text-neutral-300">
+                          {isExpanded ? 'Details verbergen' : 'Details anzeigen'}
+                        </span>
+                        <ChevronDown 
+                          className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+
+                      {/* Expandable Details Section */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-3 pt-3 border-t border-neutral-700">
+                              {/* Veröffentlichungsdatum */}
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-400 mb-2">Veröffentlichung</label>
+                                <EditableDate
+                                  value={video.publication_date}
+                                  videoId={video.id}
+                                  onSave={handleFieldSave}
+                                  editable={permissions.can_edit}
+                                  placeholder="Datum wählen"
+                                />
+                              </div>
+
+                              {/* Inspiration */}
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-400 mb-2">Inspiration</label>
+                                <EditableCell
+                                  value={video.inspiration_source}
+                                  videoId={video.id}
+                                  field="inspiration_source"
+                                  onSave={handleFieldSave}
+                                  editable={permissions.can_edit}
+                                  type="url"
+                                  placeholder="URL hinzufügen"
+                                />
+                              </div>
+
+                              {/* Beschreibung */}
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-400 mb-2">Beschreibung</label>
+                                <EditableDescription
+                                  value={video.description}
+                                  videoId={video.id}
+                                  onSave={handleFieldSave}
+                                  editable={permissions.can_edit}
+                                  placeholder="Beschreibung hinzufügen"
+                                />
+                              </div>
+
+                              {/* Aktualisiert */}
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-400 mb-2">Aktualisiert</label>
+                                <p className="text-neutral-300 text-sm px-3 py-2 bg-neutral-800/50 rounded-lg border border-neutral-700">
+                                  {formatRelativeTime(video.last_updated || video.updated_at)}
+                                </p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+            )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </motion.main>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <DeleteConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => {
-            setShowDeleteModal(false);
-            setVideoToDelete(null);
-          }}
-          onConfirm={confirmDeleteVideo}
-          title="Video löschen?"
-          message="Möchten Sie dieses Video wirklich unwiderruflich löschen?"
-          itemName={videoToDelete?.name}
+      {/* Add Video Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 touch-action-none"
+            onClick={() => setShowAddModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-neutral-900/95 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-2xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
+              onClick={(e) => e.stopPropagation()}
+            >
+            <h3 className="text-xl font-semibold mb-6 text-white">🎬 Neues Video erstellen</h3>
+            <form onSubmit={handleAddVideo}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Video Titel */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Video Titel *
+                  </label>
+                  <input
+                    type="text"
+                    value={newVideo.name}
+                    onChange={(e) => setNewVideo({ ...newVideo, name: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="z.B. Mein YouTube Tutorial"
+                    required
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Status
+                  </label>
+                  <CustomDropdown
+                    options={[
+                      { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                      { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                      { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                      { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                      { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
+                    ]}
+                    value={newVideo.status}
+                    onChange={(status) => setNewVideo({ ...newVideo, status })}
+                  />
+                </div>
+
+                {/* Veröffentlichungsdatum */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Geplantes Veröffentlichungsdatum
+                  </label>
+                  <input
+                    type="date"
+                    value={newVideo.publication_date}
+                    onChange={(e) => setNewVideo({ ...newVideo, publication_date: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                  />
+                </div>
+
+                {/* Verantwortliche Person */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Verantwortliche Person
+                  </label>
+                  <ResponsiblePersonDropdownSimple
+                    value={newVideo.responsible_person}
+                    onChange={(value) => setNewVideo({ ...newVideo, responsible_person: value })}
+                    workspaceOwner={workspaceOwner}
+                    workspaceMembers={workspaceMembers}
+                  />
+                </div>
+
+                {/* Inspiration Quelle */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Inspiration Quelle
+                  </label>
+                  <input
+                    type="url"
+                    value={newVideo.inspiration_source}
+                    onChange={(e) => setNewVideo({ ...newVideo, inspiration_source: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
+
+                {/* Beschreibung */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Beschreibung
+                  </label>
+                  <textarea
+                    value={newVideo.description}
+                    onChange={(e) => setNewVideo({ ...newVideo, description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white resize-none"
+                    placeholder="Kurze Beschreibung des Videos..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-lg transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                >
+                  Video erstellen
+                </button>
+              </div>
+            </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Video Modal */}
+      <AnimatePresence>
+        {showEditModal && editingVideo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-40 touch-action-none"
+            onClick={() => {
+              setShowEditModal(false);
+              setEditingVideo(null);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-neutral-900/95 backdrop-blur-md rounded-3xl p-4 md:p-6 max-w-5xl w-full border border-neutral-700 max-h-[90vh] overflow-y-auto overscroll-y-contain touch-action-pan-y"
+              onClick={(e) => e.stopPropagation()}
+            >
+            <h3 className="text-xl font-semibold mb-6 text-white">✏️ Video bearbeiten</h3>
+            
+            {/* Layout: Player links (bei entsprechendem Status), Form rechts */}
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Video Preview Player - nur bei Status "Schnitt abgeschlossen" oder "Hochgeladen" */}
+              {(editingVideo.status === 'Schnitt abgeschlossen' || editingVideo.status === 'Hochgeladen') && (
+                <div className="lg:w-1/3 flex-shrink-0">
+                  <VideoPreviewPlayer
+                    videoId={editingVideo.id}
+                    storageLocation={editingVideo.storage_location}
+                    status={editingVideo.status}
+                  />
+                </div>
+              )}
+              
+              {/* Edit Form */}
+              <div className="flex-1">
+            <form onSubmit={handleUpdateVideo}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Video Titel */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Video Titel *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingVideo.name}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, name: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="z.B. Mein YouTube Tutorial"
+                    required
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Status
+                  </label>
+                  <CustomDropdown
+                    options={[
+                      { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                      { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                      { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                      { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                      { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
+                    ]}
+                    value={editingVideo.status}
+                    onChange={(status) => setEditingVideo({ ...editingVideo, status })}
+                  />
+                </div>
+
+                {/* Veröffentlichungsdatum */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Geplantes Veröffentlichungsdatum
+                  </label>
+                  <input
+                    type="date"
+                    value={editingVideo.publication_date || ''}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, publication_date: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                  />
+                </div>
+
+                {/* Verantwortliche Person */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Verantwortliche Person
+                  </label>
+                  <ResponsiblePersonDropdownSimple
+                    value={editingVideo.responsible_person || ''}
+                    onChange={(value) => setEditingVideo({ ...editingVideo, responsible_person: value })}
+                    workspaceOwner={workspaceOwner}
+                    workspaceMembers={workspaceMembers}
+                  />
+                </div>
+
+                {/* Inspiration Quelle */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Inspiration Quelle
+                  </label>
+                  <input
+                    type="url"
+                    value={editingVideo.inspiration_source || ''}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, inspiration_source: e.target.value })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
+
+                {/* Beschreibung */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">
+                    Beschreibung
+                  </label>
+                  <textarea
+                    value={editingVideo.description || ''}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white resize-none"
+                    placeholder="Kurze Beschreibung des Videos..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingVideo(null);
+                  }}
+                  className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-lg transition-all duration-300 border border-neutral-700 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                >
+                  Änderungen speichern
+                </button>
+              </div>
+            </form>
+              </div>
+            </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setVideoToDelete(null);
+        }}
+        onConfirm={confirmDeleteVideo}
+        title="Video löschen"
+        message={`Möchten Sie das Video "${videoToDelete?.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`}
+        itemName={videoToDelete?.name}
+      />
+
       {/* Error Modal */}
-      {showErrorModal && (
-        <ErrorModal
-          isOpen={showErrorModal}
-          onClose={() => setShowErrorModal(false)}
-          title={errorDetails.title}
-          message={errorDetails.message}
-          details={errorDetails.details}
-        />
-      )}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title={errorDetails.title}
+        message={errorDetails.message}
+        details={errorDetails.details}
+      />
 
       {/* Bulk Edit Bar */}
       <AnimatePresence>
@@ -1896,12 +2814,62 @@ export default function SharedWorkspacePage() {
         }}
         onSave={handleSaveView}
         editView={editingView}
-        currentFilters={{ search: searchTerm }}
+        currentFilters={activeFilters}
+        currentSort={activeSorts}
       />
+
+      {/* Column Header Dropdown */}
+      {columnDropdownOpen && columnDropdownTrigger && (
+        <ColumnHeaderDropdown
+          columnId={columnDropdownOpen}
+          columnLabel={fieldLabels[columnDropdownOpen] || columnDropdownOpen}
+          columnType={getColumnType(columnDropdownOpen)}
+          isOpen={true}
+          onClose={() => {
+            setColumnDropdownOpen(null);
+            setColumnDropdownTrigger(null);
+          }}
+          triggerRef={{ current: columnDropdownTrigger }}
+          onSort={(direction) => handleAddSort(columnDropdownOpen, direction)}
+          onFilter={() => {
+            setFilterSubmenuOpen(columnDropdownOpen);
+            setFilterSubmenuTrigger(columnDropdownTrigger);
+          }}
+          onHide={() => toggleColumnVisibility(columnDropdownOpen)}
+          canFilter={canFilterColumn(columnDropdownOpen)}
+          canSort={canSortColumn(columnDropdownOpen)}
+        />
+      )}
+
+      {/* Filter Submenu */}
+      {filterSubmenuOpen && filterSubmenuTrigger && (
+        <FilterSubmenu
+          isOpen={true}
+          onClose={() => {
+            setFilterSubmenuOpen(null);
+            setFilterSubmenuTrigger(null);
+          }}
+          triggerRef={{ current: filterSubmenuTrigger }}
+          filterType={getFilterType(filterSubmenuOpen)}
+          columnLabel={fieldLabels[filterSubmenuOpen] || filterSubmenuOpen}
+          currentValue={activeFilters[filterSubmenuOpen]}
+          onApply={(value) => handleAddFilter(filterSubmenuOpen, value)}
+          statusOptions={['Idee', 'Warten auf Aufnahme', 'In Bearbeitung', 'Schnitt abgeschlossen', 'Hochgeladen']}
+          personOptions={[
+            ...(workspaceOwner ? [{ id: user?.id || '', ...workspaceOwner }] : []),
+            ...workspaceMembers.map(m => ({
+              id: m.user_id,
+              firstname: m.user?.firstname || '',
+              lastname: m.user?.lastname || '',
+              email: m.user?.email || m.invitation_email || ''
+            }))
+          ]}
+          locationOptions={Array.from(new Set(videos.map(v => v.storage_location).filter(Boolean) as string[]))}
+        />
+      )}
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
 }
-

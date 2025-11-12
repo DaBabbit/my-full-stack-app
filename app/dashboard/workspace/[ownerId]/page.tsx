@@ -568,6 +568,7 @@ export default function SharedWorkspacePage() {
     // In shared workspaces, creating videos is not supported
     addToast({
       type: 'error',
+      title: 'Nicht erlaubt',
       message: 'Videos können in geteilten Workspaces nicht erstellt werden.'
     });
     
@@ -587,6 +588,7 @@ export default function SharedWorkspacePage() {
     if (!permissions.can_edit) {
       addToast({
         type: 'error',
+        title: 'Keine Berechtigung',
         message: 'Du hast keine Berechtigung, den Status zu ändern.'
       });
       return;

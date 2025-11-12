@@ -27,6 +27,7 @@ import { FileUploadModal } from '@/components/FileUploadModal';
 import { VideoPreviewPlayer } from '@/components/VideoPreviewPlayer';
 import { Tooltip } from '@/components/Tooltip';
 import { TableColumnsSettings, type ColumnConfig } from '@/components/TableColumnsSettings';
+import { AutomationSettingsModal } from '@/components/AutomationSettingsModal';
 import { ViewTabs } from '@/components/ViewTabs';
 import { ViewCreateModal } from '@/components/ViewCreateModal';
 import { DraggableTableHeader, getVisibleColumnOrder } from '@/components/DraggableTableHeader';
@@ -63,7 +64,8 @@ import {
   CheckSquare,
   Upload,
   FolderOpen,
-  Loader2
+  Loader2,
+  Zap
 } from 'lucide-react';
 import CustomDropdown from '@/components/CustomDropdown';
 import Image from 'next/image';
@@ -222,6 +224,7 @@ export default function VideosPage() {
 
   // Table Settings & Views States
   const [showColumnsModal, setShowColumnsModal] = useState(false);
+  const [showAutomationModal, setShowAutomationModal] = useState(false);
   const [showViewCreateModal, setShowViewCreateModal] = useState(false);
   const [editingView, setEditingView] = useState<WorkspaceView | null>(null);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
@@ -2066,6 +2069,16 @@ export default function VideosPage() {
                     </button>
                   </Tooltip>
 
+                  {/* Automatisierung - Grau-Weiß wie Mehrfachbearbeitung */}
+                  <Tooltip content="Automatisierung konfigurieren" position="left">
+                    <button
+                      onClick={() => setShowAutomationModal(true)}
+                      className="hidden md:block p-2 rounded-lg transition-all bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700"
+                    >
+                      <Zap className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+
                   {/* Neues Video - Blau wie Tabs */}
                   <Tooltip content="Neues Video erstellen" position="left">
                     <button
@@ -2311,7 +2324,7 @@ export default function VideosPage() {
                       <div>
                         <label className="block text-xs font-medium text-neutral-400 mb-2">Verantwortlich</label>
                         <ResponsiblePersonAvatar 
-                          responsiblePerson={video.responsible_person_name} 
+                          responsiblePerson={video.responsible_person} 
                           size="sm" 
                           showFullName={true}
                         />
@@ -2895,6 +2908,12 @@ export default function VideosPage() {
           locationOptions={Array.from(new Set(videos.map(v => v.storage_location).filter(Boolean) as string[]))}
         />
       )}
+
+      {/* Automation Settings Modal */}
+      <AutomationSettingsModal
+        isOpen={showAutomationModal}
+        onClose={() => setShowAutomationModal(false)}
+      />
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onClose={removeToast} />

@@ -13,13 +13,6 @@ export interface Video {
   created_at: string;
   publication_date?: string;
   responsible_person?: string; // UUID or name string
-  responsible_user?: { // Joined user data
-    id: string;
-    firstname?: string;
-    lastname?: string;
-    email: string;
-  };
-  responsible_person_name?: string; // Computed display name
   inspiration_source?: string;
   description?: string;
   last_updated?: string;
@@ -74,7 +67,6 @@ export function useVideosQuery(userId?: string) {
           status,
           publication_date,
           responsible_person,
-          responsible_user:users!videos_responsible_person_fkey(id, firstname, lastname, email),
           storage_location,
           nextcloud_path,
           inspiration_source,
@@ -98,29 +90,11 @@ export function useVideosQuery(userId?: string) {
         throw error;
       }
 
-      // Transform to include 'name' alias and compute responsible_person_name
-      const transformedVideos: Video[] = (data || []).map((video: any) => {
-        // Compute display name from responsible_user data
-        let responsiblePersonName = null;
-        if (video.responsible_user) {
-          const user = video.responsible_user;
-          if (user.email?.toLowerCase().includes('kosmamedia')) {
-            responsiblePersonName = 'kosmamedia';
-          } else if (user.firstname && user.lastname) {
-            responsiblePersonName = `${user.firstname} ${user.lastname}`;
-          } else if (user.firstname) {
-            responsiblePersonName = user.firstname;
-          } else {
-            responsiblePersonName = user.email?.split('@')[0];
-          }
-        }
-
-        return {
-          ...video,
-          name: video.title,
-          responsible_person_name: responsiblePersonName,
-        };
-      });
+      // Transform to include 'name' alias
+      const transformedVideos: Video[] = (data || []).map((video: any) => ({
+        ...video,
+        name: video.title,
+      }));
 
       console.log('[useVideosQuery] ✅ Loaded', transformedVideos.length, 'videos from', data ? 'server' : 'cache');
       return transformedVideos;
@@ -164,7 +138,6 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
           status,
           publication_date,
           responsible_person,
-          responsible_user:users!videos_responsible_person_fkey(id, firstname, lastname, email),
           storage_location,
           nextcloud_path,
           inspiration_source,
@@ -187,29 +160,11 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
         throw error;
       }
 
-      // Transform to include 'name' alias and compute responsible_person_name
-      const transformedVideos: Video[] = (data || []).map((video: any) => {
-        // Compute display name from responsible_user data
-        let responsiblePersonName = null;
-        if (video.responsible_user) {
-          const user = video.responsible_user;
-          if (user.email?.toLowerCase().includes('kosmamedia')) {
-            responsiblePersonName = 'kosmamedia';
-          } else if (user.firstname && user.lastname) {
-            responsiblePersonName = `${user.firstname} ${user.lastname}`;
-          } else if (user.firstname) {
-            responsiblePersonName = user.firstname;
-          } else {
-            responsiblePersonName = user.email?.split('@')[0];
-          }
-        }
-
-        return {
-          ...video,
-          name: video.title,
-          responsible_person_name: responsiblePersonName,
-        };
-      });
+      // Transform to include 'name' alias
+      const transformedVideos: Video[] = (data || []).map((video: any) => ({
+        ...video,
+        name: video.title,
+      }));
 
       console.log('[useSharedWorkspaceVideosQuery] Loaded', transformedVideos.length, 'videos');
       return transformedVideos;

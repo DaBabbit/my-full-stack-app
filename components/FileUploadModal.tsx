@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FolderOpen, Upload } from 'lucide-react';
+import { X, FolderOpen, Upload, Zap } from 'lucide-react';
 import { NextcloudUploader } from './NextcloudUploader';
+import { supabase } from '@/utils/supabase';
 
 interface FileUploadModalProps {
   isOpen: boolean;
@@ -26,6 +27,9 @@ export function FileUploadModal({
   onUploadSuccess,
   onUploadError
 }: FileUploadModalProps) {
+  const [showAutomationPrompt, setShowAutomationPrompt] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [isTriggering, setIsTriggering] = useState(false);
 
   // Body scroll lock - Verbesserte Version
   useEffect(() => {
@@ -62,6 +66,60 @@ export function FileUploadModal({
     if (storageLocation) {
       window.open(storageLocation, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  // Handler für erfolgreichen Upload - zeigt Automatisierungs-Prompt
+  const handleUploadSuccess = (fileNames: string[]) => {
+    setUploadedFiles(fileNames);
+    setShowAutomationPrompt(true);
+    if (onUploadSuccess) {
+      onUploadSuccess(fileNames);
+    }
+  };
+
+  // Trigger Automatisierung: Status auf "In Bearbeitung" + kosmamedia als Zuständig
+  const triggerAutomation = async () => {
+    setIsTriggering(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        throw new Error('Nicht authentifiziert');
+      }
+
+      const response = await fetch('/api/automation/trigger', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          videoId,
+          allFilesUploaded: true
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Automatisierung fehlgeschlagen');
+      }
+
+      console.log('[FileUploadModal] ✅ Automatisierung erfolgreich getriggert');
+      
+      // Schließe Modal nach erfolgreichem Trigger
+      setShowAutomationPrompt(false);
+      onClose();
+    } catch (error) {
+      console.error('[FileUploadModal] ❌ Automatisierung fehlgeschlagen:', error);
+    } finally {
+      setIsTriggering(false);
+    }
+  };
+
+  // Handler für "Nein" - schließe Prompt, aber lasse Modal offen
+  const dismissAutomationPrompt = () => {
+    setShowAutomationPrompt(false);
   };
 
   // Error state: No nextcloud path or storage location
@@ -198,10 +256,71 @@ export function FileUploadModal({
                 videoId={videoId}
                 videoName={videoName}
                 nextcloudPath={nextcloudPath}
-                onUploadSuccess={onUploadSuccess}
+                onUploadSuccess={handleUploadSuccess}
                 onUploadError={onUploadError}
               />
             </div>
+
+            {/* Automatisierungs-Prompt nach Upload */}
+            <AnimatePresence>
+              {showAutomationPrompt && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+                >
+                  <div className="bg-gradient-to-br from-purple-900/90 to-blue-900/90 border-2 border-purple-500/50 rounded-2xl p-8 max-w-lg w-full shadow-2xl">
+                    {/* Blitz-Icon */}
+                    <div className="w-16 h-16 bg-yellow-400/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Zap className="w-8 h-8 text-yellow-400" fill="currentColor" />
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-white text-center mb-3">
+                      Automatisierung
+                    </h3>
+
+                    <p className="text-lg text-neutral-200 text-center mb-6">
+                      Waren das alle Dateien, die für die Bearbeitung nötig sind?
+                    </p>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={dismissAutomationPrompt}
+                        disabled={isTriggering}
+                        className="flex-1 px-6 py-3 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Nein
+                      </button>
+                      
+                      <button
+                        onClick={triggerAutomation}
+                        disabled={isTriggering}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all font-medium shadow-lg hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isTriggering ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Wird verarbeitet...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4" fill="currentColor" />
+                            <span>Ja, Bearbeitung starten</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                      <p className="text-xs text-blue-200 text-center">
+                        ⚡ Status wird auf <span className="font-semibold">&quot;In Bearbeitung&quot;</span> gesetzt und kosmamedia wird automatisch als zuständige Person zugewiesen.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </div>
       )}

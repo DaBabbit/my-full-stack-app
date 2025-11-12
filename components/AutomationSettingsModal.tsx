@@ -43,6 +43,25 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
     auto_assign_on_waiting_for_recording: null
   });
 
+  // Body scroll lock - Verhindert Hintergrund-Scrollen
+  useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${scrollY}px`;
+
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (!user || !isOpen) return;
     
@@ -82,19 +101,29 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
       }
       
       // Add workspace members (collaborators invited by this user)
-      const { data: members } = await supabase
+      const { data: members, error: membersError } = await supabase
         .from('workspace_members')
         .select('user_id, users!workspace_members_user_id_fkey(id, firstname, lastname, email)')
         .eq('workspace_owner_id', user?.id)
         .eq('status', 'active');
       
-      if (members) {
-        console.log('[AutomationSettings] Loaded members:', members);
-        members.forEach((member: { user_id: string; users: User[] }) => {
-          const userData = member.users?.[0]; // Supabase returns array
-          console.log('[AutomationSettings] Processing member:', userData);
-          if (userData && !users.find(u => u.id === userData.id)) {
-            users.push(userData);
+      console.log('[AutomationSettings] Members query result:', { members, error: membersError });
+      
+      if (members && Array.isArray(members)) {
+        members.forEach((member: any) => {
+          console.log('[AutomationSettings] Processing member object:', member);
+          // Supabase returns users as an array with one element
+          const userData = Array.isArray(member.users) ? member.users[0] : member.users;
+          console.log('[AutomationSettings] Extracted user data:', userData);
+          
+          if (userData && userData.id && !users.find(u => u.id === userData.id)) {
+            users.push({
+              id: userData.id,
+              firstname: userData.firstname,
+              lastname: userData.lastname,
+              email: userData.email
+            });
+            console.log('[AutomationSettings] ✅ Added member:', userData.email);
           }
         });
       }
@@ -178,6 +207,11 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
     const user = availableUsers.find(u => u.id === userId);
     if (!user) return 'Unbekannt';
     
+    // Check if kosmamedia
+    if (user.email?.toLowerCase().includes('kosmamedia')) {
+      return 'kosmamedia';
+    }
+    
     if (user.firstname && user.lastname) {
       return `${user.firstname} ${user.lastname}`;
     }
@@ -188,23 +222,26 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-black/50"
-        />
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+          />
 
-        {/* Modal */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
-        >
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-neutral-800">
             <h2 className="text-xl font-semibold text-white">Automatisierung konfigurieren</h2>
@@ -312,8 +349,10 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
               )}
             </button>
           </div>
-        </motion.div>
-      </div>
+            </motion.div>
+          </div>
+        </>
+      )}
     </AnimatePresence>
   );
 }

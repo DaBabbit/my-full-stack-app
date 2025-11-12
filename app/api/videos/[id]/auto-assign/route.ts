@@ -49,7 +49,7 @@ export async function POST(
     let shouldNotify = false;
     
     // System-definierte Automatisierungen (immer aktiv)
-    if (newStatus === 'In Bearbeitung' || newStatus === 'Schnitt abgeschlossen' || newStatus === 'Hochgeladen') {
+    if (newStatus === 'In Bearbeitung (Schnitt)' || newStatus === 'Schnitt abgeschlossen' || newStatus === 'Hochgeladen') {
       // Automatisch kosmamedia zuweisen
       const { data: kosmamediaUser } = await supabaseAdmin
         .from('users')
@@ -106,7 +106,7 @@ export async function POST(
         const statusLabels: { [key: string]: string } = {
           'Idee': 'Idee',
           'Warten auf Aufnahme': 'Warten auf Aufnahme',
-          'In Bearbeitung': 'In Bearbeitung',
+          'In Bearbeitung (Schnitt)': 'In Bearbeitung (Schnitt)',
           'Schnitt abgeschlossen': 'Schnitt abgeschlossen',
           'Hochgeladen': 'Hochgeladen'
         };

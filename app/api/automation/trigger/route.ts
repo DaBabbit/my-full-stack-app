@@ -63,9 +63,9 @@ export async function POST(request: NextRequest) {
     let notificationMessage = '';
     const previousResponsible = video.responsible_person;
 
-    // Automatisierung: Alle Dateien hochgeladen → Status "In Bearbeitung"
+    // Automatisierung: Alle Dateien hochgeladen → Status "In Bearbeitung (Schnitt)"
     if (allFilesUploaded) {
-      updates.status = 'In Bearbeitung';
+      updates.status = 'In Bearbeitung (Schnitt)';
       
       // Automatische Zuständigkeit: kosmamedia
       // Suche kosmamedia User

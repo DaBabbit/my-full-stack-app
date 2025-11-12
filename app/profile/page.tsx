@@ -506,14 +506,16 @@ function ProfileContent() {
                       }`} />
                       <div>
                         <p className="text-white font-medium">
-                          Status: <span className={`${currentSubscription.cancel_at_period_end ? 'text-red-400' : 'capitalize'}`}>
+                          Status: <span className={`${
+                            currentSubscription.cancel_at_period_end ? 'text-red-400' : 
+                            currentSubscription.status === 'active' ? '' : 
+                            'text-neutral-400'
+                          }`}>
                             {currentSubscription.cancel_at_period_end 
                               ? 'Gekündigt' 
                               : currentSubscription.status === 'active' 
                                 ? 'Aktiv' 
-                                : currentSubscription.status === 'canceled' 
-                                  ? 'Abgelaufen' 
-                                  : currentSubscription.status}
+                                : 'Inaktiv'}
                           </span>
                         </p>
                         <p className="text-sm text-neutral-400">

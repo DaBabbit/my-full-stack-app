@@ -25,9 +25,17 @@ export const POST = withCors(async function POST(request: NextRequest) {
     console.log('[Reactivate] 📊 Cancel at period end:', currentSubscription.cancel_at_period_end);
     console.log('[Reactivate] 📊 Current period end:', new Date(currentSubscription.current_period_end * 1000).toISOString());
     
-    // Check if subscription is truly canceled in Stripe
-    if (currentSubscription.status === 'canceled') {
-      console.log('[Reactivate] ❌ Subscription is truly canceled in Stripe');
+    // Check if subscription is truly canceled in Stripe AND period has ended
+    const currentPeriodEnd = new Date(currentSubscription.current_period_end * 1000);
+    const now = new Date();
+    const periodHasEnded = currentPeriodEnd < now;
+    
+    console.log('[Reactivate] 📅 Period end:', currentPeriodEnd.toISOString());
+    console.log('[Reactivate] 📅 Now:', now.toISOString());
+    console.log('[Reactivate] 📅 Period has ended:', periodHasEnded);
+    
+    if (currentSubscription.status === 'canceled' && periodHasEnded) {
+      console.log('[Reactivate] ❌ Subscription is truly canceled and period has ended');
       
       // Sync Supabase to reflect reality
       await supabaseAdmin
@@ -44,6 +52,43 @@ export const POST = withCors(async function POST(request: NextRequest) {
         { error: 'Das Abonnement ist bereits abgelaufen und kann nicht wiederhergestellt werden. Bitte schließe ein neues Abo ab.' },
         { status: 400 }
       );
+    }
+    
+    // If subscription is canceled but period hasn't ended, treat it as cancel_at_period_end
+    if (currentSubscription.status === 'canceled' && !periodHasEnded) {
+      console.log('[Reactivate] ⚠️ Subscription is marked canceled but period is still active');
+      console.log('[Reactivate] 🔄 Treating as cancel_at_period_end and attempting to reactivate...');
+      
+      // Try to update the subscription to remove cancellation
+      // Note: This might fail if Stripe has truly canceled it
+      try {
+        const subscription = await stripe.subscriptions.update(subscriptionId, {
+          cancel_at_period_end: false
+        });
+        
+        console.log('[Reactivate] ✅ Successfully reactivated subscription in Stripe');
+        
+        // Update Supabase
+        await supabaseAdmin
+          .from('subscriptions')
+          .update({
+            status: subscription.status,
+            cancel_at_period_end: false,
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('stripe_subscription_id', subscriptionId);
+        
+        console.log('[Reactivate] ✅ Supabase synced');
+        
+        return NextResponse.json({ status: 'success', subscription });
+      } catch (stripeError) {
+        console.error('[Reactivate] ❌ Failed to update subscription in Stripe:', stripeError);
+        return NextResponse.json(
+          { error: 'Das Abonnement konnte nicht wiederhergestellt werden. Möglicherweise ist es bereits vollständig beendet.' },
+          { status: 400 }
+        );
+      }
     }
 
     // If subscription is active/past_due but marked for cancellation, remove the cancellation
@@ -160,8 +205,13 @@ export const POST = withCors(async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'success', subscription: currentSubscription });
   } catch (error) {
     console.error('[Reactivate] ❌ Subscription reactivation failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to reactivate subscription' },
+      { 
+        error: 'Failed to reactivate subscription',
+        details: errorMessage,
+        subscriptionId
+      },
       { status: 500 }
     );
   }

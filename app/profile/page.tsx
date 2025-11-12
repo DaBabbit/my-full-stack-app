@@ -261,10 +261,11 @@ function ProfileContent() {
       } else {
         const data = await response.json();
         setError(data.error || 'Failed to reactivate subscription');
+        setIsReactivateModalOpen(false);
         addToast({
           type: 'error',
           title: 'Fehler',
-          message: 'Fehler beim Wiederherstellen des Abonnements'
+          message: data.error || 'Fehler beim Wiederherstellen des Abonnements'
         });
       }
     } catch (err) {
@@ -547,8 +548,8 @@ function ProfileContent() {
                       </button>
                     )}
 
-                    {/* Abo wiederherstellen - nur wenn gekündigt aber noch aktiv */}
-                    {currentSubscription.cancel_at_period_end && currentSubscription.status === 'active' && (
+                    {/* Abo wiederherstellen - bei gekündigt (cancel_at_period_end) ODER canceled Status */}
+                    {(currentSubscription.cancel_at_period_end || currentSubscription.status === 'canceled') && (
                       <button
                         onClick={() => setIsReactivateModalOpen(true)}
                         className="w-full p-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-2xl transition-all duration-300 border border-green-500/20 hover:border-green-500/40 flex items-center justify-center gap-2 font-medium"
@@ -556,22 +557,6 @@ function ProfileContent() {
                         <CheckCircle className="w-4 h-4" />
                         Abo wiederherstellen
                       </button>
-                    )}
-
-                    {/* Hinweis: Abo ist abgelaufen */}
-                    {currentSubscription.status === 'canceled' && (
-                      <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl">
-                        <p className="text-red-300 text-sm mb-2 font-medium">Abo ist abgelaufen</p>
-                        <p className="text-red-200/80 text-xs mb-3">
-                          Dein Abonnement ist vollständig abgelaufen. Schließe ein neues Abo ab, um alle Features wieder zu nutzen.
-                        </p>
-                        <button
-                          onClick={() => router.push('#subscription-section')}
-                          className="w-full p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl transition-all duration-300 font-medium"
-                        >
-                          Neues Abo abschließen
-                        </button>
-                      </div>
                     )}
                   </div>
                 </div>

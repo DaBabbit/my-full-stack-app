@@ -53,7 +53,6 @@ import {
   Check,
   Rocket,
   Trash2,
-  Crown,
   Users,
   Edit3,
   CheckSquare,
@@ -159,7 +158,7 @@ export default function SharedWorkspacePage() {
   } : undefined;
   
   // For now, workspaceMembers is empty - we can load it separately if needed
-  const workspaceMembers: Array<{ user_id: string; email: string; firstname?: string; lastname?: string }> = [];
+  const workspaceMembers: Array<{ id: string; user?: { firstname?: string; lastname?: string; email: string } }> = [];
   
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [
@@ -1667,6 +1666,7 @@ export default function SharedWorkspacePage() {
                   } else {
                     addToast({
                       type: 'error',
+                      title: 'Keine Berechtigung',
                       message: 'Du hast keine Berechtigung, Videos zu bearbeiten.'
                     });
                   }
@@ -1760,12 +1760,7 @@ export default function SharedWorkspacePage() {
                   <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
                     <User className="w-5 h-5 text-black" />
                   </div>
-                  {/* Premium Crown */}
-                  {permissions.hasActiveSubscription && permissions.subscriptionStatus === 'active' && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg">
-                      <Crown className="w-2.5 h-2.5 text-yellow-900" />
-                    </div>
-                  )}
+                  {/* Premium Crown - Hidden in workspace view */}
                 </div>
                 <span className="hidden md:block text-sm">{user.email}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1785,23 +1780,6 @@ export default function SharedWorkspacePage() {
                       <p className="text-sm text-white font-medium">{user.email}</p>
                       <div className="flex items-center justify-between mt-1">
                         <p className="text-xs text-neutral-400">Angemeldet</p>
-                        <div className="flex items-center space-x-1">
-                          {permissions.subscriptionStatus === 'active' && (
-                            <>
-                              <Crown className="w-3 h-3 text-yellow-400" />
-                              <span className="text-xs text-yellow-400 font-medium">Premium</span>
-                            </>
-                          )}
-                          {permissions.subscriptionStatus === 'trialing' && (
-                            <span className="text-xs text-blue-400 font-medium">Trial</span>
-                          )}
-                          {permissions.subscriptionStatus === 'expired' && (
-                            <span className="text-xs text-orange-400 font-medium">Abgelaufen</span>
-                          )}
-                          {permissions.subscriptionStatus === 'none' && (
-                            <span className="text-xs text-neutral-500 font-medium">Kostenlos</span>
-                          )}
-                        </div>
                       </div>
                     </div>
                     
@@ -2052,6 +2030,7 @@ export default function SharedWorkspacePage() {
                         } else {
                           addToast({
                             type: 'error',
+                            title: 'Keine Berechtigung',
                             message: 'Du hast keine Berechtigung, Videos zu erstellen.'
                           });
                         }
@@ -2117,10 +2096,10 @@ export default function SharedWorkspacePage() {
                 return reverseMap;
               })()}
               personMap={Object.fromEntries(
-                workspaceMembers.map(m => [m.user_id, { 
+                workspaceMembers.map(m => [m.id, { 
                   firstname: m.user?.firstname || '', 
                   lastname: m.user?.lastname || '', 
-                  email: m.user?.email || m.invitation_email || '' 
+                  email: m.user?.email || '' 
                 }])
               )}
             />
@@ -2231,6 +2210,7 @@ export default function SharedWorkspacePage() {
                               } else {
                                 addToast({
                                   type: 'error',
+                                  title: 'Keine Berechtigung',
                                   message: 'Du hast keine Berechtigung, Videos zu bearbeiten.'
                                 });
                               }
@@ -2851,10 +2831,10 @@ export default function SharedWorkspacePage() {
           personOptions={[
             ...(workspaceOwner ? [{ id: user?.id || '', ...workspaceOwner }] : []),
             ...workspaceMembers.map(m => ({
-              id: m.user_id,
+              id: m.id,
               firstname: m.user?.firstname || '',
               lastname: m.user?.lastname || '',
-              email: m.user?.email || m.invitation_email || ''
+              email: m.user?.email || ''
             }))
           ]}
           locationOptions={Array.from(new Set(videos.map(v => v.storage_location).filter(Boolean) as string[]))}

@@ -687,7 +687,7 @@ export default function SharedWorkspacePage() {
     if (!videoToDelete) return;
 
     try {
-      deleteVideo(videoToDelete.id);
+      deleteVideo({ id: videoToDelete.id, ownerId });
       
       setShowDeleteModal(false);
       setVideoToDelete(null);

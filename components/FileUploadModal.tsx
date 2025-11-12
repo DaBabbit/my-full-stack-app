@@ -69,12 +69,14 @@ export function FileUploadModal({
     }
   };
 
-  // Handler für erfolgreichen Upload - zeigt Automatisierungs-Prompt
+  // Handler für erfolgreichen Upload - zeigt Toast + Automatisierungs-Prompt
   const handleUploadSuccess = (fileNames: string[]) => {
-    setShowAutomationPrompt(true);
+    // Zeige Toast-Benachrichtigung
     if (onUploadSuccess) {
       onUploadSuccess(fileNames);
     }
+    // Zeige Automatisierungs-Prompt
+    setShowAutomationPrompt(true);
   };
 
   // Trigger Automatisierung: Status auf "In Bearbeitung" + kosmamedia als Zuständig
@@ -273,59 +275,79 @@ export function FileUploadModal({
             <AnimatePresence>
               {showAutomationPrompt && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 z-50"
                 >
-                  <div className="bg-gradient-to-br from-purple-900/90 to-blue-900/90 border-2 border-purple-500/50 rounded-2xl p-8 max-w-lg w-full shadow-2xl">
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    transition={{ type: "spring", duration: 0.5 }}
+                    className="bg-neutral-900/95 border border-neutral-700/50 rounded-2xl p-8 max-w-lg w-full shadow-2xl backdrop-blur-xl"
+                  >
                     {/* Blitz-Icon */}
-                    <div className="w-16 h-16 bg-yellow-400/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Zap className="w-8 h-8 text-yellow-400" fill="currentColor" />
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/30">
+                      <Zap className="w-10 h-10 text-blue-400" strokeWidth={2} />
                     </div>
 
                     <h3 className="text-2xl font-bold text-white text-center mb-3">
-                      Automatisierung
+                      Alle Dateien hochgeladen
                     </h3>
 
-                    <p className="text-lg text-neutral-200 text-center mb-6">
+                    <p className="text-base text-neutral-300 text-center mb-8">
                       Waren das alle Dateien, die für die Bearbeitung nötig sind?
                     </p>
 
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={dismissAutomationPrompt}
-                        disabled={isTriggering}
-                        className="flex-1 px-6 py-3 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Nein
-                      </button>
-                      
+                    {/* Info-Box */}
+                    <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                      <p className="text-sm text-blue-200 text-center leading-relaxed">
+                        Bei Bestätigung wird der Status auf <span className="font-semibold text-white">&quot;In Bearbeitung (Schnitt)&quot;</span> gesetzt und <span className="font-semibold text-white">kosmamedia</span> automatisch als zuständige Person zugewiesen.
+                      </p>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex flex-col gap-3">
+                      {/* Option 1: Status ändern */}
                       <button
                         onClick={triggerAutomation}
                         disabled={isTriggering}
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all font-medium shadow-lg hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all font-semibold shadow-lg hover:shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isTriggering ? (
                           <>
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             <span>Wird verarbeitet...</span>
                           </>
                         ) : (
                           <>
-                            <Zap className="w-4 h-4" fill="currentColor" />
-                            <span>Ja, Bearbeitung starten</span>
+                            <Zap className="w-5 h-5" strokeWidth={2} />
+                            <span>Ja, Status auf &quot;In Bearbeitung&quot; setzen</span>
                           </>
                         )}
                       </button>
-                    </div>
 
-                    <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                      <p className="text-xs text-blue-200 text-center">
-                        ⚡ Status wird auf <span className="font-semibold">&quot;In Bearbeitung&quot;</span> gesetzt und kosmamedia wird automatisch als zuständige Person zugewiesen.
-                      </p>
+                      {/* Option 2: Weitere Dateien hochladen */}
+                      <button
+                        onClick={dismissAutomationPrompt}
+                        disabled={isTriggering}
+                        className="w-full px-6 py-4 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-neutral-600 text-neutral-200 rounded-xl transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <Upload className="w-5 h-5" />
+                        <span>Weitere Dateien hochladen</span>
+                      </button>
+
+                      {/* Option 3: Nein danke (schließt alles) */}
+                      <button
+                        onClick={onClose}
+                        disabled={isTriggering}
+                        className="w-full px-6 py-3 text-neutral-400 hover:text-white transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Nein danke, fertig
+                      </button>
                     </div>
-                  </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>

@@ -123,9 +123,10 @@ export default function StatusFilterModal({
   const workspaceOwner = useMemo(() => {
     if (!user) return undefined;
     return {
+      id: user.id,
       email: user.email || '',
-      firstname: user.user_metadata?.firstname,
-      lastname: user.user_metadata?.lastname,
+      firstname: user.user_metadata?.firstname || '',
+      lastname: user.user_metadata?.lastname || '',
     };
   }, [user]);
 

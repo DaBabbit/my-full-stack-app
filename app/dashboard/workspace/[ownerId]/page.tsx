@@ -7,6 +7,7 @@ import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useSharedWorkspaceVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeWorkspaceVideos } from '@/hooks/useRealtimeVideos';
 import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
+import { supabase } from '@/utils/supabase';
 import VideoTableSkeleton from '@/components/VideoTableSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
@@ -172,7 +173,7 @@ export default function SharedWorkspacePage() {
       name: 'Videos',
       icon: VideoIcon,
       href: '/dashboard/videos',
-      active: true
+      active: false
     },
     ...sharedWorkspaces.map(workspace => {
       // Format owner name: prioritize firstname + lastname, fallback to email first part
@@ -186,7 +187,7 @@ export default function SharedWorkspacePage() {
         name: displayName, // Just the name, without "Workspace:" prefix
         icon: Users,
         href: `/dashboard/workspace/${workspace.workspace_owner_id}`,
-        active: false
+        active: workspace.workspace_owner_id === ownerId // Active if this is the current workspace
       };
     })
   ];
@@ -564,22 +565,53 @@ export default function SharedWorkspacePage() {
       }
     }
 
-    // In shared workspaces, creating videos is not supported
-    addToast({
-      type: 'error',
-      title: 'Nicht erlaubt',
-      message: 'Videos können in geteilten Workspaces nicht erstellt werden.'
-    });
-    
-    setShowAddModal(false);
-    setNewVideo({
-      name: '',
-      status: 'Idee',
-      publication_date: '',
-      responsible_person: '',
-      inspiration_source: '',
-      description: ''
-    });
+    try {
+      // Create video using React Query mutation - in workspace context
+      await fetch('/api/videos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({
+          title: trimmedName,
+          status: newVideo.status,
+          publication_date: newVideo.publication_date || null,
+          responsible_person: newVideo.responsible_person || null,
+          inspiration_source: newVideo.inspiration_source || null,
+          description: newVideo.description || null,
+          user_id: ownerId // Create for workspace owner
+        })
+      });
+
+      console.log('Video erfolgreich erstellt!');
+
+      // Refetch videos
+      refetchVideos();
+      
+      setShowAddModal(false);
+      setNewVideo({
+        name: '',
+        status: 'Idee',
+        publication_date: '',
+        responsible_person: '',
+        inspiration_source: '',
+        description: ''
+      });
+      
+      addToast({
+        type: 'success',
+        title: 'Video erstellt',
+        message: `"${trimmedName}" wurde erfolgreich erstellt`
+      });
+    } catch (error) {
+      console.error('Error adding video:', error);
+      addToast({
+        type: 'error',
+        title: 'Video-Erstellung fehlgeschlagen',
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      });
+    }
   };
 
   const handleUpdateStatus = async (videoId: string, newStatus: string) => {
@@ -1897,11 +1929,37 @@ export default function SharedWorkspacePage() {
           
           {/* Workspace Description */}
           <div className="mt-6 bg-neutral-900/30 border border-neutral-700/50 rounded-2xl p-4">
-            <p className="text-neutral-400 text-sm leading-relaxed">
-              <span className="font-medium text-neutral-300">
-                Workspace von {workspaceOwner?.firstname || workspaceOwner?.email || 'Unbekannt'}:
-              </span> Hier befinden sich alle deine Videos. Verwalte sie ganz einfach, lade Mitarbeitende ein und behalte die Status im Blick.
-            </p>
+            <div className="flex items-start justify-between">
+              <p className="text-neutral-400 text-sm leading-relaxed flex-1">
+                <span className="font-medium text-neutral-300">
+                  Workspace von {workspaceOwner?.firstname || workspaceOwner?.email || 'Unbekannt'}:
+                </span> Hier befinden sich alle Videos von {workspaceOwner?.firstname || workspaceOwner?.email || 'diesem Workspace'}. 
+                {permissions.can_edit ? 'Du kannst Videos bearbeiten' : 'Du hast nur Leserechte'}.
+              </p>
+              {/* Permissions Badge */}
+              <div className="ml-4 flex items-center gap-2">
+                {permissions.can_view && (
+                  <span className="px-2 py-1 bg-blue-500/10 text-blue-400 text-xs rounded-full border border-blue-500/20">
+                    Ansehen
+                  </span>
+                )}
+                {permissions.can_edit && (
+                  <span className="px-2 py-1 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20">
+                    Bearbeiten
+                  </span>
+                )}
+                {permissions.can_create && (
+                  <span className="px-2 py-1 bg-purple-500/10 text-purple-400 text-xs rounded-full border border-purple-500/20">
+                    Erstellen
+                  </span>
+                )}
+                {permissions.can_delete && (
+                  <span className="px-2 py-1 bg-red-500/10 text-red-400 text-xs rounded-full border border-red-500/20">
+                    Löschen
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           
           {/* Mobile Search Bar & Filter */}

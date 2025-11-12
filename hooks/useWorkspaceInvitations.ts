@@ -24,7 +24,8 @@ export function useWorkspaceInvitations() {
         .from('workspace_members')
         .select(`
           *,
-          owner:workspace_owner_id (
+          owner:users!workspace_members_workspace_owner_id_fkey(
+            id,
             email,
             firstname,
             lastname
@@ -46,7 +47,8 @@ export function useWorkspaceInvitations() {
         .from('workspace_members')
         .select(`
           *,
-          owner:workspace_owner_id (
+          owner:users!workspace_members_workspace_owner_id_fkey(
+            id,
             email,
             firstname,
             lastname

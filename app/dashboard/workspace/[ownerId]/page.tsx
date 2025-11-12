@@ -153,6 +153,7 @@ export default function SharedWorkspacePage() {
   
   // Create workspace owner object from current workspace
   const workspaceOwner = currentWorkspace ? {
+    id: ownerId, // workspace_owner_id
     firstname: currentWorkspace.owner_name.split(' ')[0] || '',
     lastname: currentWorkspace.owner_name.split(' ').slice(1).join(' ') || '',
     email: currentWorkspace.owner_email

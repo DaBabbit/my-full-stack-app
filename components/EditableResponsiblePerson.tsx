@@ -5,19 +5,19 @@ import { ChevronDown, Loader2, Check } from 'lucide-react';
 import ResponsiblePersonAvatar from './ResponsiblePersonAvatar';
 
 interface ResponsiblePersonOption {
-  id: string;
-  name: string;
+  id: string; // UUID des Users
+  name: string; // Display name (nur für Anzeige, nicht zum Speichern!)
   type: 'kosmamedia' | 'owner' | 'member';
   email?: string;
 }
 
 interface EditableResponsiblePersonProps {
-  value: string | null | undefined;
+  value: string | null | undefined; // UUID
   videoId: string;
   onSave: (videoId: string, field: string, value: string) => Promise<void>;
   editable?: boolean;
   isLoading?: boolean;
-  workspaceOwner?: { firstname: string; lastname: string; email: string };
+  workspaceOwner?: { id: string; firstname: string; lastname: string; email: string };
   workspaceMembers?: Array<{ id: string; user?: { firstname?: string; lastname?: string; email: string } }>;
 }
 
@@ -45,8 +45,28 @@ export default function EditableResponsiblePerson({
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
   const [isSaving, setIsSaving] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value || '');
+  const [kosmamediaId, setKosmamediaId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Load kosmamedia UUID once on mount
+  useEffect(() => {
+    const loadKosmamediaId = async () => {
+      const { supabase } = await import('@/utils/supabase');
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .ilike('email', '%kosmamedia%')
+        .limit(1)
+        .single();
+      
+      if (data) {
+        setKosmamediaId(data.id);
+      }
+    };
+    
+    loadKosmamediaId();
+  }, []);
 
   // Update local value wenn external value sich ändert
   useEffect(() => {
@@ -87,36 +107,36 @@ export default function EditableResponsiblePerson({
     }
   }, [isOpen]);
 
-  // Build options list (ohne Console-Logs für Performance)
-  const options: ResponsiblePersonOption[] = [
-    {
-      id: 'kosmamedia',
+  // Build options list with UUIDs
+  const options: ResponsiblePersonOption[] = [];
+
+  // Add kosmamedia (if ID is loaded)
+  if (kosmamediaId) {
+    options.push({
+      id: kosmamediaId,
       name: 'kosmamedia',
       type: 'kosmamedia'
-    }
-  ];
-
-  // Add workspace owner
-  if (workspaceOwner) {
-    const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
-    if (ownerName) {
-      options.push({
-        id: 'owner',
-        name: ownerName,
-        type: 'owner',
-        email: workspaceOwner.email
-      });
-    }
+    });
   }
 
-  // Add workspace members
+  // Add workspace owner
+  if (workspaceOwner && workspaceOwner.id) {
+    options.push({
+      id: workspaceOwner.id, // UUID!
+      name: `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim() || workspaceOwner.email,
+      type: 'owner',
+      email: workspaceOwner.email
+    });
+  }
+
+  // Add workspace members (user_id is the UUID!)
   (workspaceMembers || []).forEach((member) => {
-    if (member.user) {
+    if (member.user && member.id) {
       const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
       const displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
       
       options.push({
-        id: member.id,
+        id: member.id, // This is user_id (UUID!)
         name: displayName,
         type: 'member',
         email: member.user.email
@@ -127,13 +147,15 @@ export default function EditableResponsiblePerson({
   const handleSelect = async (option: ResponsiblePersonOption) => {
     setIsOpen(false);
     
-    if (option.name === selectedValue) return;
+    const userIdToSave = option.id; // Already UUID!
 
-    setSelectedValue(option.name);
+    if (userIdToSave === selectedValue) return;
+
+    setSelectedValue(userIdToSave);
     setIsSaving(true);
 
     try {
-      await onSave(videoId, 'responsible_person', option.name);
+      await onSave(videoId, 'responsible_person', userIdToSave); // Save UUID!
     } catch (error) {
       console.error('[EditableResponsiblePerson] Save failed:', error);
       // Revert on error
@@ -192,7 +214,7 @@ export default function EditableResponsiblePerson({
         >
           <div className="py-1 max-h-64 overflow-y-auto">
             {options.map((option) => {
-              const isSelected = option.name === selectedValue;
+              const isSelected = option.id === selectedValue;
               return (
                 <button
                   key={option.id}
@@ -206,7 +228,7 @@ export default function EditableResponsiblePerson({
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <ResponsiblePersonAvatar 
-                      responsiblePerson={option.name} 
+                      responsiblePerson={option.id} 
                       size="sm" 
                       showFullName={true}
                     />

@@ -150,6 +150,7 @@ export default function VideosPage() {
   
   // Workspace Owner Info (current user is the owner)
   const workspaceOwner = user ? {
+    id: user.id,
     firstname: user.user_metadata?.firstname || '',
     lastname: user.user_metadata?.lastname || '',
     email: user.email || ''

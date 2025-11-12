@@ -1,20 +1,29 @@
 'use client';
 
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/utils/supabase';
 
 interface ResponsiblePersonAvatarProps {
-  responsiblePerson: string | null | undefined;
+  responsiblePerson: string | null | undefined; // UUID
   size?: 'sm' | 'md' | 'lg';
   showFullName?: boolean;
   className?: string;
+}
+
+interface UserProfile {
+  id: string;
+  firstname?: string;
+  lastname?: string;
+  email: string;
 }
 
 /**
  * Avatar-Komponente für "Verantwortliche Person"
  * 
  * Zeigt entweder:
- * - Kosmamedia Logo (wenn "kosmamedia")
- * - User Initialen (wenn User Name)
+ * - Kosmamedia Logo (wenn kosmamedia email)
+ * - User Initialen (Vorname + Nachname)
  * - Platzhalter (wenn leer)
  */
 export default function ResponsiblePersonAvatar({
@@ -23,6 +32,8 @@ export default function ResponsiblePersonAvatar({
   showFullName = false,
   className = ''
 }: ResponsiblePersonAvatarProps) {
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   
   const sizeClasses = {
     sm: 'w-6 h-6 text-xs',
@@ -30,14 +41,40 @@ export default function ResponsiblePersonAvatar({
     lg: 'w-10 h-10 text-base'
   };
 
-  const isKosmamedia = responsiblePerson?.toLowerCase() === 'kosmamedia';
-  
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!responsiblePerson) {
+        setUserProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, firstname, lastname, email')
+        .eq('id', responsiblePerson)
+        .single();
+
+      if (error) {
+        console.error('[ResponsiblePersonAvatar] Error fetching user:', error);
+        setUserProfile(null);
+      } else {
+        setUserProfile(data);
+      }
+      setLoading(false);
+    };
+
+    fetchUserProfile();
+  }, [responsiblePerson]);
+
   // Initialen extrahieren (Vorname + Nachname)
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(' ').filter(Boolean);
-    if (parts.length === 0) return '?';
-    if (parts.length === 1) return parts[0][0].toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  const getInitials = (user: UserProfile) => {
+    if (user.firstname && user.lastname) {
+      return (user.firstname[0] + user.lastname[0]).toUpperCase();
+    }
+    if (user.firstname) return user.firstname[0].toUpperCase();
+    return user.email[0].toUpperCase();
   };
 
   // Graustufen für Profilbilder (schwarz-weiß, nicht bunt)
@@ -59,16 +96,37 @@ export default function ResponsiblePersonAvatar({
     return grayscales[Math.abs(hash) % grayscales.length];
   };
 
-  if (!responsiblePerson) {
+  const getDisplayName = (user: UserProfile) => {
+    if (user.firstname && user.lastname) {
+      return `${user.firstname} ${user.lastname}`;
+    }
+    if (user.firstname) return user.firstname;
+    return user.email.split('@')[0];
+  };
+
+  if (loading) {
+    return (
+      <div className={`flex items-center gap-2 ${className}`}>
+        <div className={`${sizeClasses[size]} rounded-full bg-neutral-700 flex items-center justify-center text-neutral-400 font-medium animate-pulse`}>
+          ...
+        </div>
+        {showFullName && <span className="text-neutral-500 text-sm animate-pulse">Lädt...</span>}
+      </div>
+    );
+  }
+
+  if (!userProfile) {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <div className={`${sizeClasses[size]} rounded-full bg-neutral-700 flex items-center justify-center text-neutral-400 font-medium`}>
           ?
         </div>
-        <span className="text-neutral-500 text-sm">Nicht zugeteilt</span>
+        {showFullName && <span className="text-neutral-500 text-sm">Nicht zugeteilt</span>}
       </div>
     );
   }
+
+  const isKosmamedia = userProfile.email?.toLowerCase().includes('kosmamedia');
 
   if (isKosmamedia) {
     return (
@@ -88,25 +146,16 @@ export default function ResponsiblePersonAvatar({
   }
 
   // User Avatar mit Initialen
-  const initials = getInitials(responsiblePerson);
-  const grayscaleClass = getGrayscaleFromName(responsiblePerson);
-  
-  // Display Name: Vor- und Nachname (firstname + lastname)
-  const getDisplayName = (name: string) => {
-    const parts = name.trim().split(' ').filter(Boolean);
-    if (parts.length > 1) {
-      // Wenn mehrere Namen: firstname + lastname
-      return `${parts[0]} ${parts[parts.length - 1]}`;
-    }
-    return name; // Sonst ganzen Namen
-  };
+  const initials = getInitials(userProfile);
+  const displayName = getDisplayName(userProfile);
+  const grayscaleClass = getGrayscaleFromName(displayName);
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <div className={`${sizeClasses[size]} rounded-full ${grayscaleClass} flex items-center justify-center text-white font-semibold`}>
         {initials}
       </div>
-      {showFullName && <span className="text-neutral-200 text-sm">{getDisplayName(responsiblePerson)}</span>}
+      {showFullName && <span className="text-neutral-200 text-sm">{displayName}</span>}
     </div>
   );
 }

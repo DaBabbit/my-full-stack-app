@@ -20,6 +20,8 @@ interface StatusFilterModalProps {
   onDelete: (videoId: string) => Promise<void>;
   canEdit: boolean;
   canDelete: boolean;
+  workspaceOwner?: { id: string; firstname: string; lastname: string; email: string };
+  workspaceMembers?: Array<{ id: string; user?: { firstname?: string; lastname?: string; email: string } }>;
 }
 
 const statusOptions = [

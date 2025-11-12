@@ -565,7 +565,12 @@ function ProfileContent() {
                         <p className="text-red-200/80 text-xs mb-3">
                           Dein Abonnement ist vollständig abgelaufen. Schließe ein neues Abo ab, um alle Features wieder zu nutzen.
                         </p>
-                        <StripeBuyButton />
+                        <button
+                          onClick={() => router.push('#subscription-section')}
+                          className="w-full p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl transition-all duration-300 font-medium"
+                        >
+                          Neues Abo abschließen
+                        </button>
                       </div>
                     )}
                   </div>

@@ -329,23 +329,7 @@ export default function SharedWorkspacePage() {
     }
   }, [user, router]);
 
-  // URL-Parameter auslesen und Edit-Modal öffnen
-  const hasProcessedEditParam = useRef(false);
-  useEffect(() => {
-    // Nur einmal ausführen
-    if (hasProcessedEditParam.current) return;
-    
-    const editVideoId = searchParams?.get('edit');
-    if (editVideoId && videos.length > 0) {
-      const videoToEdit = videos.find(v => v.id === editVideoId);
-      if (videoToEdit) {
-        hasProcessedEditParam.current = true;
-        handleEditVideo(videoToEdit);
-        // URL-Parameter entfernen
-        router.replace('/dashboard/videos', { scroll: false });
-      }
-    }
-  }, [searchParams, videos, router]);
+  // Note: ?edit=videoId feature from main videos page is not needed in shared workspaces
 
   // Handle mobile detection and resize
   useEffect(() => {

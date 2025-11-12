@@ -22,8 +22,6 @@ export const POST = withCors(async function POST(request: NextRequest) {
     // Get current subscription from Stripe
     const currentSubscription = await stripe.subscriptions.retrieve(subscriptionId);
     console.log('[Reactivate] Current status:', currentSubscription.status);
-
-    let subscription;
     
     // If subscription is already canceled, we need to resume it
     if (currentSubscription.status === 'canceled') {
@@ -38,7 +36,7 @@ export const POST = withCors(async function POST(request: NextRequest) {
     }
 
     // If subscription is active but marked for cancellation, remove the cancellation
-    subscription = await stripe.subscriptions.update(subscriptionId, {
+    const subscription = await stripe.subscriptions.update(subscriptionId, {
       cancel_at_period_end: false
     });
 

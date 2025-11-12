@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import TopBar from '@/components/TopBar';
@@ -35,6 +36,7 @@ interface Referral {
 
 export default function ReferralsPage() {
   const { user, supabase } = useAuth();
+  const { currentSubscription } = useSubscription();
   const router = useRouter();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -279,35 +281,60 @@ export default function ReferralsPage() {
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
+                      {/* Warnung: Geworbener User hat Abo gekündigt */}
                       {referral.referredUserSubscriptionCanceled ? (
                         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3">
                           <div className="flex items-center gap-2 text-yellow-400 text-sm">
                             <AlertTriangle className="w-5 h-5" />
-                            <span>Abo wurde gekündigt - Bonus verfällt</span>
+                            <span>Abo des Freundes gekündigt - Bonus verfällt</span>
                           </div>
                         </div>
                       ) : referral.status === 'rewarded' ? (
-                        <motion.div 
-                          className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3"
-                          animate={{ 
-                            scale: [1, 1.02, 1],
-                            boxShadow: [
-                              '0 0 0 0 rgba(34, 197, 94, 0)',
-                              '0 0 20px 5px rgba(34, 197, 94, 0.3)',
-                              '0 0 0 0 rgba(34, 197, 94, 0)'
-                            ]
-                          }}
-                          transition={{ 
-                            duration: 2,
-                            repeat: Infinity,
-                            repeatType: "reverse"
-                          }}
-                        >
-                          <Gift className="w-6 h-6 text-green-400" />
-                          <span className="text-green-400 font-semibold text-base">
-                            250€ Rabatt wird bei nächster Rechnung angewendet
-                          </span>
-                        </motion.div>
+                        /* Warnung: Eigenes Abo gekündigt - Bonus verfällt */
+                        currentSubscription?.cancel_at_period_end || currentSubscription?.status === 'canceled' ? (
+                          <div className="bg-red-500/10 border-2 border-red-500/50 rounded-xl px-4 py-3">
+                            <div className="flex items-start gap-3">
+                              <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5 animate-pulse" />
+                              <div className="flex-1">
+                                <p className="text-red-300 font-semibold text-sm mb-1">
+                                  ⚠️ Dein Abo ist gekündigt!
+                                </p>
+                                <p className="text-red-200/90 text-xs">
+                                  Empfehlung erfolgreich, aber der 250€ Rabatt verfällt, wenn du dein Abo nicht bis zum{' '}
+                                  <span className="font-bold">
+                                    {currentSubscription?.current_period_end 
+                                      ? new Date(currentSubscription.current_period_end).toLocaleDateString('de-DE')
+                                      : 'Abrechnungsdatum'}
+                                  </span>{' '}
+                                  wiederherstellst.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Alles gut: Grüne Box mit Rabatt-Info */
+                          <motion.div 
+                            className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3"
+                            animate={{ 
+                              scale: [1, 1.02, 1],
+                              boxShadow: [
+                                '0 0 0 0 rgba(34, 197, 94, 0)',
+                                '0 0 20px 5px rgba(34, 197, 94, 0.3)',
+                                '0 0 0 0 rgba(34, 197, 94, 0)'
+                              ]
+                            }}
+                            transition={{ 
+                              duration: 2,
+                              repeat: Infinity,
+                              repeatType: "reverse"
+                            }}
+                          >
+                            <Gift className="w-6 h-6 text-green-400" />
+                            <span className="text-green-400 font-semibold text-base">
+                              250€ Rabatt wird bei nächster Rechnung angewendet
+                            </span>
+                          </motion.div>
+                        )
                       ) : (
                         getStatusBadge(referral.status)
                       )}

@@ -520,6 +520,7 @@ function ProfileContent() {
 
                   {/* Subscription Actions */}
                   <div className="space-y-3">
+                    {/* Abo verwalten - nur wenn aktiv und nicht gekündigt */}
                     {currentSubscription.status === 'active' && !currentSubscription.cancel_at_period_end && (
                       <button
                         onClick={() => router.push('/profile/manage-subscription')}
@@ -530,11 +531,14 @@ function ProfileContent() {
                       </button>
                     )}
 
-                    {currentSubscription.cancel_at_period_end && currentSubscription.status === 'active' && (
+                    {/* Abo wiederherstellen - wenn gekündigt (noch aktiv) oder bereits abgelaufen */}
+                    {((currentSubscription.cancel_at_period_end && currentSubscription.status === 'active') || 
+                      currentSubscription.status === 'canceled') && (
                       <button
                         onClick={() => setIsReactivateModalOpen(true)}
-                        className="w-full p-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-2xl transition-all duration-300 border border-green-500/20 hover:border-green-500/40"
+                        className="w-full p-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-2xl transition-all duration-300 border border-green-500/20 hover:border-green-500/40 flex items-center justify-center gap-2 font-medium"
                       >
+                        <CheckCircle className="w-4 h-4" />
                         Abo wiederherstellen
                       </button>
                     )}

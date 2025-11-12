@@ -2898,7 +2898,7 @@ export default function VideosPage() {
           onApply={(value) => handleAddFilter(filterSubmenuOpen, value)}
           statusOptions={['Idee', 'Warten auf Aufnahme', 'In Bearbeitung', 'Schnitt abgeschlossen', 'Hochgeladen']}
           personOptions={[
-            ...(workspaceOwner ? [{ id: user?.id || '', ...workspaceOwner }] : []),
+            ...(workspaceOwner ? [workspaceOwner] : []),
             ...workspaceMembers.map(m => ({
               id: m.user_id,
               firstname: m.user?.firstname || '',

@@ -317,8 +317,38 @@ export function useVideoMutations() {
       return data;
     },
     // Server-First: KEINE Optimistic Updates, nur echte Server-Bestätigung
-    onSuccess: (data) => {
+    onSuccess: async (data, variables) => {
       console.log('[updateVideoMutation] ✅ Success! Supabase confirmed update:', data);
+      
+      // Automatische Zuständigkeitszuweisung bei Status-Änderung
+      if (variables.updates.status) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+
+          if (token) {
+            // Hole altes Video für Status-Vergleich
+            const oldVideo = queryClient.getQueryData<Video[]>(['videos', 'own'])?.find(v => v.id === data.id);
+            const oldStatus = oldVideo?.status;
+
+            console.log('[updateVideoMutation] 🤖 Triggering auto-assignment for status change:', oldStatus, '→', variables.updates.status);
+
+            await fetch(`/api/videos/${data.id}/auto-assign`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                newStatus: variables.updates.status,
+                oldStatus
+              })
+            });
+          }
+        } catch (autoAssignError) {
+          console.error('[updateVideoMutation] ⚠️ Auto-assign failed (non-critical):', autoAssignError);
+        }
+      }
       
       // Cache mit echten Server-Daten updaten - mit korrektem Query Key!
       // Query Key muss mit useVideosQuery übereinstimmen: ['videos', 'own', userId]
@@ -412,8 +442,38 @@ export function useVideoMutations() {
       return data;
     },
     // Server-First: KEINE Optimistic Updates, nur echte Server-Bestätigung
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
       console.log('[updateWorkspaceVideoMutation] ✅ Success! Supabase confirmed update:', data);
+      
+      // Automatische Zuständigkeitszuweisung bei Status-Änderung (auch für Workspaces)
+      if (variables.updates.status) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+
+          if (token) {
+            // Hole altes Video für Status-Vergleich
+            const oldVideo = queryClient.getQueryData<Video[]>(['videos', 'workspace', variables.ownerId])?.find(v => v.id === data.id);
+            const oldStatus = oldVideo?.status;
+
+            console.log('[updateWorkspaceVideoMutation] 🤖 Triggering auto-assignment for status change:', oldStatus, '→', variables.updates.status);
+
+            await fetch(`/api/videos/${data.id}/auto-assign`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                newStatus: variables.updates.status,
+                oldStatus
+              })
+            });
+          }
+        } catch (autoAssignError) {
+          console.error('[updateWorkspaceVideoMutation] ⚠️ Auto-assign failed (non-critical):', autoAssignError);
+        }
+      }
       
       // Cache mit echten Server-Daten updaten - korrekter Query Key!
       queryClient.setQueryData(['videos', 'workspace', variables.ownerId], (old: Video[] | undefined) => {

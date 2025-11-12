@@ -5,10 +5,10 @@ import { supabaseAdmin } from '@/utils/supabase-admin';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { ownerId: string } }
+  context: { params: Promise<{ ownerId: string }> }
 ) {
   try {
-    const { ownerId } = params;
+    const { ownerId } = await context.params;
     
     // Authenticate the current user
     const authHeader = request.headers.get('authorization');

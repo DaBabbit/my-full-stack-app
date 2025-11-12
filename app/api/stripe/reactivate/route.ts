@@ -209,8 +209,7 @@ export const POST = withCors(async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to reactivate subscription',
-        details: errorMessage,
-        subscriptionId
+        details: errorMessage
       },
       { status: 500 }
     );

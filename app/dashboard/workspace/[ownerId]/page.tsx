@@ -488,7 +488,8 @@ export default function SharedWorkspacePage() {
           id: videoId,
           updates: {
             [field]: value || null
-          }
+          },
+          ownerId
         });
         
         addToast({
@@ -616,7 +617,8 @@ export default function SharedWorkspacePage() {
         // Single update
         updateVideo({
           id: videoId,
-          updates: { status: newStatus }
+          updates: { status: newStatus },
+          ownerId
         });
         
         console.log('Status erfolgreich aktualisiert!');
@@ -654,7 +656,8 @@ export default function SharedWorkspacePage() {
           responsible_person: editingVideo.responsible_person || null,
           inspiration_source: editingVideo.inspiration_source || null,
           description: editingVideo.description || null,
-        }
+        },
+        ownerId
       });
       
       setShowEditModal(false);

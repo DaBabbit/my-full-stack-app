@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { supabase } from '@/utils/supabase';
 import { supabaseAdmin } from '@/utils/supabase-admin';
 
 export async function POST(
@@ -18,14 +17,14 @@ export async function POST(
 
     // Get current user from auth header
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user has permission to create videos in this workspace
-    const { data: membership, error: membershipError } = await supabase
+    const { data: membership, error: membershipError } = await supabaseAdmin
       .from('workspace_members')
       .select('permissions')
       .eq('workspace_owner_id', ownerId)

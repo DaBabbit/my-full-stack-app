@@ -333,7 +333,7 @@ export function useVideoMutations() {
 
             console.log('[updateVideoMutation] 🤖 Triggering auto-assignment for status change:', oldStatus, '→', variables.updates.status);
 
-            await fetch(`/api/videos/${data.id}/auto-assign`, {
+            const autoAssignResponse = await fetch(`/api/videos/${data.id}/auto-assign`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -344,6 +344,17 @@ export function useVideoMutations() {
                 oldStatus
               })
             });
+
+            const autoAssignResult = await autoAssignResponse.json();
+            console.log('[updateVideoMutation] 🤖 Auto-assign response:', autoAssignResult);
+
+            if (!autoAssignResponse.ok) {
+              console.error('[updateVideoMutation] ⚠️ Auto-assign failed:', autoAssignResult);
+            } else if (autoAssignResult.assigned) {
+              console.log('[updateVideoMutation] ✅ Auto-assigned to:', autoAssignResult.assignedTo);
+              // Refetch videos to update UI
+              queryClient.invalidateQueries({ queryKey: ['videos', 'own'], exact: false });
+            }
           }
         } catch (autoAssignError) {
           console.error('[updateVideoMutation] ⚠️ Auto-assign failed (non-critical):', autoAssignError);
@@ -458,7 +469,7 @@ export function useVideoMutations() {
 
             console.log('[updateWorkspaceVideoMutation] 🤖 Triggering auto-assignment for status change:', oldStatus, '→', variables.updates.status);
 
-            await fetch(`/api/videos/${data.id}/auto-assign`, {
+            const autoAssignResponse = await fetch(`/api/videos/${data.id}/auto-assign`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -469,6 +480,17 @@ export function useVideoMutations() {
                 oldStatus
               })
             });
+
+            const autoAssignResult = await autoAssignResponse.json();
+            console.log('[updateWorkspaceVideoMutation] 🤖 Auto-assign response:', autoAssignResult);
+
+            if (!autoAssignResponse.ok) {
+              console.error('[updateWorkspaceVideoMutation] ⚠️ Auto-assign failed:', autoAssignResult);
+            } else if (autoAssignResult.assigned) {
+              console.log('[updateWorkspaceVideoMutation] ✅ Auto-assigned to:', autoAssignResult.assignedTo);
+              // Refetch workspace videos to update UI
+              queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', variables.ownerId], exact: false });
+            }
           }
         } catch (autoAssignError) {
           console.error('[updateWorkspaceVideoMutation] ⚠️ Auto-assign failed (non-critical):', autoAssignError);

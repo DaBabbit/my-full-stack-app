@@ -25,9 +25,19 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { newStatus, oldStatus } = await request.json();
+    const body = await request.json();
+    const { newStatus, oldStatus } = body;
+
+    console.log('[AutoAssign] 📥 Request received:', { 
+      videoId, 
+      newStatus, 
+      oldStatus,
+      userId: user.id,
+      userEmail: user.email 
+    });
 
     if (!newStatus) {
+      console.log('[AutoAssign] ❌ Missing status');
       return NextResponse.json({ error: 'Status erforderlich' }, { status: 400 });
     }
 
@@ -48,8 +58,11 @@ export async function POST(
     let newResponsiblePerson: string | null = null;
     let shouldNotify = false;
     
+    console.log('[AutoAssign] 🔍 Checking automation rules for status:', newStatus);
+    
     // System-definierte Automatisierungen (immer aktiv)
     if (newStatus === 'In Bearbeitung (Schnitt)' || newStatus === 'Schnitt abgeschlossen' || newStatus === 'Hochgeladen') {
+      console.log('[AutoAssign] 🔧 System automation triggered for status:', newStatus);
       // Automatisch kosmamedia zuweisen
       const { data: kosmamediaUser } = await supabaseAdmin
         .from('users')
@@ -61,11 +74,14 @@ export async function POST(
       if (kosmamediaUser) {
         newResponsiblePerson = kosmamediaUser.id;
         shouldNotify = true;
-        console.log('[AutoAssign] ✅ System-Automatisierung: kosmamedia zugewiesen');
+        console.log('[AutoAssign] ✅ System-Automatisierung: kosmamedia zugewiesen:', kosmamediaUser.id);
+      } else {
+        console.log('[AutoAssign] ⚠️ Kosmamedia user nicht gefunden');
       }
     } 
     // Benutzerdefinierte Automatisierungen für "Idee" und "Warten auf Aufnahme"
     else if (newStatus === 'Idee' || newStatus === 'Warten auf Aufnahme') {
+      console.log('[AutoAssign] 🔧 User automation triggered for status:', newStatus);
       // Hole Automatisierungs-Einstellungen
       // Für eigene Videos: workspace_owner_id = user_id AND settings.workspace_owner_id IS NULL
       const { data: settings, error: settingsError } = await supabaseAdmin
@@ -90,14 +106,25 @@ export async function POST(
           newResponsiblePerson = settings.auto_assign_on_waiting_for_recording;
           shouldNotify = true;
           console.log('[AutoAssign] ✅ Benutzer-Automatisierung: Warten auf Aufnahme → User', newResponsiblePerson);
+        } else {
+          console.log('[AutoAssign] ℹ️ Keine Automatisierung für Status:', newStatus);
         }
       } else {
-        console.log('[AutoAssign] ⚠️ Keine Automatisierungs-Einstellungen gefunden');
+        console.log('[AutoAssign] ⚠️ Keine Automatisierungs-Einstellungen gefunden für workspace_owner:', video.workspace_owner_id);
       }
+    } else {
+      console.log('[AutoAssign] ℹ️ Kein Automatisierungs-Regel für Status:', newStatus);
     }
 
     // Update Video, wenn Zuständigkeit geändert werden soll
+    console.log('[AutoAssign] 🔍 Checking if assignment needed:', { 
+      newResponsiblePerson, 
+      currentResponsiblePerson: video.responsible_person,
+      willUpdate: newResponsiblePerson && newResponsiblePerson !== video.responsible_person
+    });
+
     if (newResponsiblePerson && newResponsiblePerson !== video.responsible_person) {
+      console.log('[AutoAssign] ✏️ Updating video responsible_person to:', newResponsiblePerson);
       const { error: updateError } = await supabaseAdmin
         .from('videos')
         .update({ 
@@ -107,9 +134,11 @@ export async function POST(
         .eq('id', videoId);
 
       if (updateError) {
-        console.error('[AutoAssign] Update-Fehler:', updateError);
+        console.error('[AutoAssign] ❌ Update-Fehler:', updateError);
         return NextResponse.json({ error: updateError.message }, { status: 500 });
       }
+
+      console.log('[AutoAssign] ✅ Video updated successfully');
 
       // Benachrichtigung erstellen
       if (shouldNotify && newResponsiblePerson !== user.id) {
@@ -134,15 +163,22 @@ export async function POST(
           });
 
         console.log('[AutoAssign] ✅ Benachrichtigung erstellt für User:', newResponsiblePerson);
+      } else {
+        console.log('[AutoAssign] ℹ️ Keine Benachrichtigung nötig (User ist selbst zuständig oder shouldNotify=false)');
       }
+
+      console.log('[AutoAssign] 🎉 Auto-assignment completed successfully');
 
       return NextResponse.json({ 
         success: true,
         assigned: true,
-        newResponsiblePerson,
+        assignedTo: newResponsiblePerson,
+        newResponsiblePerson, // Keep for backward compatibility
         notificationSent: shouldNotify && newResponsiblePerson !== user.id
       });
     }
+
+    console.log('[AutoAssign] ℹ️ No assignment needed - returning success with assigned=false');
 
     return NextResponse.json({ 
       success: true,

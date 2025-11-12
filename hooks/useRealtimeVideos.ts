@@ -33,7 +33,7 @@ export function useRealtimeVideos(userId?: string) {
           
           // Explizit refetchen (sofortiges Neuladen der Daten)
           queryClient.refetchQueries({ 
-            queryKey: ['videos', 'own'],
+            queryKey: ['videos', 'own', userId],
             type: 'active'
           });
           

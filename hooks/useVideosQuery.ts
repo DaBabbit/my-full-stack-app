@@ -254,8 +254,8 @@ export function useVideoMutations() {
       return data;
     },
     onSuccess: () => {
-      // Invalidate and refetch videos
-      queryClient.invalidateQueries({ queryKey: ['videos', 'own'] });
+      // Invalidate and refetch videos (exact: false für alle userId-Varianten)
+      queryClient.invalidateQueries({ queryKey: ['videos', 'own'], exact: false });
     },
   });
 
@@ -460,7 +460,8 @@ export function useVideoMutations() {
       return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['videos', 'own'] });
+      // Query Key muss userId enthalten, um den richtigen Cache zu invalidieren
+      queryClient.invalidateQueries({ queryKey: ['videos', 'own'], exact: false });
     },
   });
 
@@ -537,8 +538,8 @@ export function useVideoMutations() {
     },
     onSuccess: (data) => {
       console.log('[bulkUpdateVideosMutation] ✅ Bulk update successful');
-      // Invalidate cache to refetch all videos
-      queryClient.invalidateQueries({ queryKey: ['videos', 'own'] });
+      // Invalidate cache to refetch all videos (exact: false für alle userId-Varianten)
+      queryClient.invalidateQueries({ queryKey: ['videos', 'own'], exact: false });
     },
     onError: (err) => {
       console.error('[bulkUpdateVideosMutation] ❌ Bulk update failed:', err);

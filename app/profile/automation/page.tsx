@@ -91,7 +91,7 @@ export default function AutomationSettingsPage() {
         .eq('status', 'active');
       
       if (members) {
-        members.forEach((member: any) => {
+        members.forEach((member: { users?: User }) => {
           if (member.users && !users.find(u => u.id === member.users.id)) {
             users.push(member.users);
           }

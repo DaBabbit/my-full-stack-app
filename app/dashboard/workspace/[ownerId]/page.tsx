@@ -2834,6 +2834,17 @@ export default function SharedWorkspacePage() {
             duration: 6000
           });
         }}
+        onAutomationSuccess={() => {
+          // Toast-Benachrichtigung
+          addToast({
+            type: 'success',
+            title: 'Video in Bearbeitung',
+            message: 'Der Status wurde auf "In Bearbeitung (Schnitt)" gesetzt und kosmamedia wurde als zuständige Person zugewiesen. Du wirst über Fortschritte benachrichtigt.',
+            duration: 7000
+          });
+          // UI aktualisieren
+          refetchVideos();
+        }}
       />
 
       {/* Table Columns Settings Modal */}

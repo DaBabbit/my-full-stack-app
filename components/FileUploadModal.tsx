@@ -15,6 +15,7 @@ interface FileUploadModalProps {
   nextcloudPath?: string;
   onUploadSuccess?: (fileNames: string[]) => void;
   onUploadError?: (errorMessage: string) => void;
+  onAutomationSuccess?: () => void;
 }
 
 export function FileUploadModal({
@@ -25,7 +26,8 @@ export function FileUploadModal({
   storageLocation,
   nextcloudPath,
   onUploadSuccess,
-  onUploadError
+  onUploadError,
+  onAutomationSuccess
 }: FileUploadModalProps) {
   const [showAutomationPrompt, setShowAutomationPrompt] = useState(false);
   const [isTriggering, setIsTriggering] = useState(false);
@@ -105,11 +107,19 @@ export function FileUploadModal({
 
       console.log('[FileUploadModal] ✅ Automatisierung erfolgreich getriggert');
       
+      // Rufe Callback auf (für Toast + Cache-Update)
+      if (onAutomationSuccess) {
+        onAutomationSuccess();
+      }
+      
       // Schließe Modal nach erfolgreichem Trigger
       setShowAutomationPrompt(false);
       onClose();
     } catch (error) {
       console.error('[FileUploadModal] ❌ Automatisierung fehlgeschlagen:', error);
+      if (onUploadError) {
+        onUploadError('Automatisierung fehlgeschlagen');
+      }
     } finally {
       setIsTriggering(false);
     }

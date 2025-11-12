@@ -173,7 +173,7 @@ export default function ManageSubscriptionPage() {
 
   return (
     <div className="min-h-screen bg-black text-white pt-24">
-      <ToastContainer toasts={toasts} />
+      <ToastContainer toasts={toasts} onClose={removeToast} />
       
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Back Button */}

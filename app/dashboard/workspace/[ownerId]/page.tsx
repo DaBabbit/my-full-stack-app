@@ -142,17 +142,24 @@ export default function SharedWorkspacePage() {
   
   // Get workspace info
   const currentWorkspace = sharedWorkspaces.find(w => w.workspace_owner_id === ownerId);
-  const workspaceMembers = currentWorkspace?.members || [];
-  const workspaceOwner = currentWorkspace?.owner || undefined;
   
-  // Get current user's permissions for this workspace
-  const currentMember = currentWorkspace?.members?.find(m => m.user_id === user?.id);
-  const permissions = currentMember?.permissions || {
+  // Get permissions from current workspace
+  const permissions = currentWorkspace?.permissions || {
     can_view: false,
     can_create: false,
     can_edit: false,
     can_delete: false
   };
+  
+  // Create workspace owner object from current workspace
+  const workspaceOwner = currentWorkspace ? {
+    firstname: currentWorkspace.owner_name.split(' ')[0] || '',
+    lastname: currentWorkspace.owner_name.split(' ').slice(1).join(' ') || '',
+    email: currentWorkspace.owner_email
+  } : undefined;
+  
+  // For now, workspaceMembers is empty - we can load it separately if needed
+  const workspaceMembers: any[] = [];
   
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [

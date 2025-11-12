@@ -69,6 +69,75 @@ export const POST = withCors(async function POST(request: NextRequest) {
 
       console.log('[Reactivate] ✅ Supabase synced with Stripe');
       
+      // Check if this user has a referral that was reverted due to cancellation
+      console.log('[Reactivate] 🎁 Checking for reverted referral rewards...');
+      
+      // First, get the user_id from the subscription
+      const { data: userSubscription } = await supabaseAdmin
+        .from('subscriptions')
+        .select('user_id')
+        .eq('stripe_subscription_id', subscriptionId)
+        .single();
+      
+      if (!userSubscription?.user_id) {
+        console.log('[Reactivate] ⚠️ No user_id found for subscription');
+        return NextResponse.json({ status: 'success', subscription });
+      }
+      
+      const { data: referrals } = await supabaseAdmin
+        .from('referrals')
+        .select('*')
+        .eq('referred_user_id', userSubscription.user_id)
+        .eq('status', 'completed'); // Status was reverted to 'completed' when subscription was canceled
+      
+      if (referrals && referrals.length > 0) {
+        for (const referral of referrals) {
+          console.log('[Reactivate] 🎁 Found reverted referral:', referral.id);
+          
+          // Get referrer's subscription to apply credit
+          const { data: referrerSub } = await supabaseAdmin
+            .from('subscriptions')
+            .select('stripe_customer_id, user_id')
+            .eq('user_id', referral.referrer_user_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (referrerSub?.stripe_customer_id) {
+            try {
+              // Re-apply the 250€ credit to referrer
+              await stripe.customers.createBalanceTransaction(
+                referrerSub.stripe_customer_id,
+                {
+                  amount: -25000, // Negative = credit
+                  currency: 'eur',
+                  description: `Empfehlungsbonus wiederhergestellt - Abo wurde reaktiviert`,
+                  metadata: {
+                    referral_id: referral.id,
+                    referral_code: referral.referral_code,
+                    referred_user_id: referral.referred_user_id,
+                    reason: 'subscription_reactivated',
+                  },
+                }
+              );
+              
+              // Update referral status back to 'rewarded'
+              await supabaseAdmin
+                .from('referrals')
+                .update({
+                  status: 'rewarded',
+                  rewarded_at: new Date().toISOString()
+                })
+                .eq('id', referral.id);
+              
+              console.log('[Reactivate] ✅ Referral reward restored:', referral.id);
+            } catch (error) {
+              console.error('[Reactivate] ❌ Error restoring referral reward:', error);
+            }
+          }
+        }
+      }
+      
       return NextResponse.json({ status: 'success', subscription });
     }
 

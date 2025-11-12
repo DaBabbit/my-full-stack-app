@@ -234,7 +234,18 @@ function ProfileContent() {
   };
 
   const handleReactivateSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return;
+    // Use currentSubscription which is ALWAYS set (regardless of status)
+    if (!currentSubscription?.stripe_subscription_id) {
+      console.error('[Reactivate] No subscription ID found');
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Keine Abonnement-ID gefunden'
+      });
+      return;
+    }
+    
+    console.log('[Reactivate] Using subscription ID:', currentSubscription.stripe_subscription_id);
     
     setIsReactivating(true);
     setError(null);
@@ -243,7 +254,7 @@ function ProfileContent() {
       const response = await fetch('/api/stripe/reactivate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscriptionId: subscription.stripe_subscription_id }),
+        body: JSON.stringify({ subscriptionId: currentSubscription.stripe_subscription_id }),
       });
 
       if (response.ok) {

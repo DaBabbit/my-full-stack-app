@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -13,8 +13,7 @@ import {
   AlertTriangle,
   CheckCircle
 } from 'lucide-react';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, ToastProps } from '@/components/Toast';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ManageSubscriptionPage() {
@@ -26,6 +25,17 @@ export default function ManageSubscriptionPage() {
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [isReactivating, setIsReactivating] = useState(false);
   const [hasActiveReferralReward, setHasActiveReferralReward] = useState(false);
+  const [toasts, setToasts] = useState<ToastProps[]>([]);
+
+  // Toast helpers
+  const removeToast = React.useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const addToast = React.useCallback((toast: Omit<ToastProps, 'id' | 'onClose'>) => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts(prev => [...prev, { ...toast, id, onClose: () => removeToast(id) }]);
+  }, [removeToast]);
 
   // Check for active referral reward
   useEffect(() => {
@@ -56,18 +66,18 @@ export default function ManageSubscriptionPage() {
         const data = await response.json();
         window.location.href = data.url;
       } else {
-        toast.error('Fehler beim Öffnen des Kundenportals', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'error',
+          title: 'Fehler',
+          message: 'Fehler beim Öffnen des Kundenportals'
         });
       }
     } catch (err) {
       console.error('Customer portal error:', err);
-      toast.error('Netzwerkfehler', {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "dark"
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Netzwerkfehler'
       });
     }
   };
@@ -84,10 +94,10 @@ export default function ManageSubscriptionPage() {
       });
 
       if (response.ok) {
-        toast.success('Abonnement erfolgreich wiederhergestellt!', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'success',
+          title: 'Erfolgreich',
+          message: 'Abonnement erfolgreich wiederhergestellt!'
         });
         await fetchSubscription(true);
         setIsReactivateModalOpen(false);
@@ -96,18 +106,18 @@ export default function ManageSubscriptionPage() {
         }, 1500);
       } else {
         const data = await response.json();
-        toast.error(data.error || 'Fehler beim Wiederherstellen', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'error',
+          title: 'Fehler',
+          message: data.error || 'Fehler beim Wiederherstellen'
         });
       }
     } catch (err) {
       console.error('Reactivate subscription error:', err);
-      toast.error('Netzwerkfehler', {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "dark"
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Netzwerkfehler'
       });
     } finally {
       setIsReactivating(false);
@@ -126,10 +136,10 @@ export default function ManageSubscriptionPage() {
       });
 
       if (response.ok) {
-        toast.success('Abonnement erfolgreich gekündigt!', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'success',
+          title: 'Erfolgreich',
+          message: 'Abonnement erfolgreich gekündigt!'
         });
         await fetchSubscription();
         setIsCancelModalOpen(false);
@@ -138,18 +148,18 @@ export default function ManageSubscriptionPage() {
         }, 1500);
       } else {
         const data = await response.json();
-        toast.error(data.error || 'Fehler beim Kündigen', {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "dark"
+        addToast({
+          type: 'error',
+          title: 'Fehler',
+          message: data.error || 'Fehler beim Kündigen'
         });
       }
     } catch (err) {
       console.error('Cancel subscription error:', err);
-      toast.error('Netzwerkfehler', {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "dark"
+      addToast({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Netzwerkfehler'
       });
     } finally {
       setIsCancelling(false);
@@ -163,7 +173,7 @@ export default function ManageSubscriptionPage() {
 
   return (
     <div className="min-h-screen bg-black text-white pt-24">
-      <ToastContainer />
+      <ToastContainer toasts={toasts} />
       
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Back Button */}

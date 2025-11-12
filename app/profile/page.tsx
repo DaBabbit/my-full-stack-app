@@ -489,20 +489,36 @@ function ProfileContent() {
                   <div className="flex items-center justify-between p-4 bg-neutral-800/50 rounded-2xl">
                     <div className="flex items-center">
                       <div className={`w-3 h-3 rounded-full mr-3 ${
-                        currentSubscription.status === 'active' ? 'bg-green-400' : 
-                        currentSubscription.status === 'canceled' ? 'bg-red-400' : 'bg-yellow-400'
+                        currentSubscription.status === 'active' && !currentSubscription.cancel_at_period_end ? 'bg-green-400' : 
+                        currentSubscription.status === 'canceled' || currentSubscription.cancel_at_period_end ? 'bg-red-400' : 'bg-yellow-400'
                       }`} />
                       <div>
                         <p className="text-white font-medium">
-                          Status: <span className="capitalize">{currentSubscription.status}</span>
+                          Status: <span className={`${currentSubscription.cancel_at_period_end ? 'text-red-400' : 'capitalize'}`}>
+                            {currentSubscription.cancel_at_period_end 
+                              ? 'Gekündigt' 
+                              : currentSubscription.status === 'active' 
+                                ? 'Aktiv' 
+                                : currentSubscription.status === 'canceled' 
+                                  ? 'Abgelaufen' 
+                                  : currentSubscription.status}
+                          </span>
                         </p>
                         <p className="text-sm text-neutral-400">
                           Plan: Premium
                         </p>
+                        {currentSubscription.cancel_at_period_end && (
+                          <p className="text-xs text-red-400 mt-1">
+                            Läuft bis {new Date(currentSubscription.current_period_end).toLocaleDateString('de-DE')}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {currentSubscription.status === 'active' && !currentSubscription.cancel_at_period_end && (
                       <CheckCircle className="w-6 h-6 text-green-400" />
+                    )}
+                    {currentSubscription.cancel_at_period_end && (
+                      <AlertTriangle className="w-6 h-6 text-red-400 animate-pulse" />
                     )}
                   </div>
 
@@ -531,9 +547,8 @@ function ProfileContent() {
                       </button>
                     )}
 
-                    {/* Abo wiederherstellen - wenn gekündigt (noch aktiv) oder bereits abgelaufen */}
-                    {((currentSubscription.cancel_at_period_end && currentSubscription.status === 'active') || 
-                      currentSubscription.status === 'canceled') && (
+                    {/* Abo wiederherstellen - nur wenn gekündigt aber noch aktiv */}
+                    {currentSubscription.cancel_at_period_end && currentSubscription.status === 'active' && (
                       <button
                         onClick={() => setIsReactivateModalOpen(true)}
                         className="w-full p-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-2xl transition-all duration-300 border border-green-500/20 hover:border-green-500/40 flex items-center justify-center gap-2 font-medium"
@@ -541,6 +556,17 @@ function ProfileContent() {
                         <CheckCircle className="w-4 h-4" />
                         Abo wiederherstellen
                       </button>
+                    )}
+
+                    {/* Hinweis: Abo ist abgelaufen */}
+                    {currentSubscription.status === 'canceled' && (
+                      <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl">
+                        <p className="text-red-300 text-sm mb-2 font-medium">Abo ist abgelaufen</p>
+                        <p className="text-red-200/80 text-xs mb-3">
+                          Dein Abonnement ist vollständig abgelaufen. Schließe ein neues Abo ab, um alle Features wieder zu nutzen.
+                        </p>
+                        <StripeBuyButton />
+                      </div>
                     )}
                   </div>
                 </div>

@@ -222,12 +222,6 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
     }
   };
 
-  const getPersonDisplayName = (personId: string | null) => {
-    if (!personId) return 'Keine Automatisierung';
-    const person = availablePersons.find(p => p.id === personId);
-    return person?.name || 'Unbekannt';
-  };
-
   if (!isOpen) return null;
 
   return (

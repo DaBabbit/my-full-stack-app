@@ -43,16 +43,10 @@ export function useWorkspaceMembers() {
 
       if (fetchError) throw fetchError;
 
-      console.log('[useWorkspaceMembers] 📊 Raw members data:', membersData);
-      console.log('[useWorkspaceMembers] 📊 Data length:', membersData?.length);
-
       // For each member, fetch user data manually using RPC or admin query
       const transformedMembers = await Promise.all((membersData || []).map(async (member: any) => {
-        console.log('[useWorkspaceMembers] 🔍 Processing member:', member);
-        
         // Skip if no user_id (pending invitation)
         if (!member.user_id) {
-          console.log('[useWorkspaceMembers] ⏭️ Skipping - no user_id');
           return { ...member, user: undefined };
         }
         
@@ -60,8 +54,6 @@ export function useWorkspaceMembers() {
           // Try to get user details via RPC function
           const { data: userDetails, error: userError } = await supabase
             .rpc('get_workspace_owner_details', { owner_ids: [member.user_id] });
-          
-          console.log('[useWorkspaceMembers] 🔍 User details for', member.user_id, ':', userDetails);
           
           if (!userError && userDetails && userDetails.length > 0) {
             const userData = userDetails[0];
@@ -75,15 +67,12 @@ export function useWorkspaceMembers() {
             };
           }
         } catch (err) {
-          console.error('[useWorkspaceMembers] ❌ Error fetching user details:', err);
+          console.error('[useWorkspaceMembers] Error fetching user details:', err);
         }
         
         // Fallback: return without user data
         return { ...member, user: undefined };
       }));
-
-      console.log('[useWorkspaceMembers] ✅ Transformed members:', transformedMembers);
-      console.log('[useWorkspaceMembers] ✅ Members with valid user data:', transformedMembers.filter((m: any) => m.user).length);
 
       setMembers(transformedMembers as WorkspaceMember[]);
       setError(null);
@@ -142,7 +131,6 @@ export function useWorkspaceMembers() {
           filter: `workspace_owner_id=eq.${user.id}`
         },
         () => {
-          console.log('Workspace members updated, refreshing...');
           fetchMembers();
         }
       )
@@ -172,8 +160,6 @@ export function useWorkspaceMembers() {
     }
 
     try {
-      console.log('[inviteMember] Inviting:', email);
-      
       // Check if user is already a member by invitation_email
       const { data: existingMember } = await supabase
         .from('workspace_members')
@@ -181,8 +167,6 @@ export function useWorkspaceMembers() {
         .eq('workspace_owner_id', user.id)
         .eq('invitation_email', email)
         .maybeSingle();
-
-      console.log('[inviteMember] Existing member check:', existingMember);
 
       if (existingMember) {
         if (existingMember.status === 'active') {
@@ -196,16 +180,9 @@ export function useWorkspaceMembers() {
       const { data: userId, error: rpcError } = await supabase
         .rpc('get_user_id_by_email', { user_email: email });
 
-      console.log('[inviteMember] User exists check (RPC):', { 
-        email, 
-        userId, 
-        error: rpcError 
-      });
-
       const invitationToken = generateInvitationToken();
 
       if (userId) {
-        console.log('[inviteMember] User exists, creating invitation for registered user with user_id:', userId);
         
         // User exists - check if they are already an owner (has active subscription)
         const { data: isUserOwner } = await supabase
@@ -245,10 +222,7 @@ export function useWorkspaceMembers() {
           }
           return { success: false, error: 'Fehler beim Einladen: ' + (insertError.message || 'Unbekannter Fehler') };
         }
-        
-        console.log('[inviteMember] Successfully created invitation with user_id');
       } else {
-        console.log('[inviteMember] User does NOT exist, creating invitation for non-registered user');
         
         // User doesn't exist yet - create pending invitation with NULL user_id
         // The user_id will be set when they accept the invitation
@@ -272,11 +246,8 @@ export function useWorkspaceMembers() {
           }
           return { success: false, error: 'Fehler beim Einladen: ' + (insertError.message || 'Unbekannter Fehler') };
         }
-        
-        console.log('[inviteMember] Successfully created invitation for non-registered user');
       }
 
-      console.log('[inviteMember] Invitation created successfully');
       await fetchMembers();
       return { success: true, invitationToken };
     } catch (err: any) {
@@ -319,26 +290,20 @@ export function useWorkspaceMembers() {
     memberId: string
   ): Promise<{ success: boolean; error?: string }> => {
     if (!user?.id || !isOwner) {
-      console.error('[removeMember] No permission:', { userId: user?.id, isOwner });
       return { success: false, error: 'Keine Berechtigung' };
     }
 
     try {
-      console.log('[removeMember] Removing member:', { memberId, workspaceOwnerId: user.id });
-      
-      const { data, error: deleteError } = await supabase
+      const { error: deleteError } = await supabase
         .from('workspace_members')
         .delete()
         .eq('id', memberId)
-        .eq('workspace_owner_id', user.id)
-        .select();
+        .eq('workspace_owner_id', user.id);
 
       if (deleteError) {
         console.error('[removeMember] Delete error:', deleteError);
         throw deleteError;
       }
-
-      console.log('[removeMember] Successfully removed:', data);
 
       await fetchMembers();
       return { success: true };

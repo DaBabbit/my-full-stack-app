@@ -129,14 +129,15 @@ export default function EditableResponsiblePerson({
     });
   }
 
-  // Add workspace members (user_id is the UUID!)
+  // Add workspace members - nur ACTIVE members mit user_id
   (workspaceMembers || []).forEach((member) => {
-    if (member.user && member.id) {
+    // Nur aktive Members mit user_id anzeigen
+    if (member.status === 'active' && member.user_id && member.user) {
       const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
       const displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
       
       options.push({
-        id: member.id, // This is user_id (UUID!)
+        id: member.user_id, // WICHTIG: user_id verwenden, nicht member.id!
         name: displayName,
         type: 'member',
         email: member.user.email

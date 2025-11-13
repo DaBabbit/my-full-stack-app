@@ -191,7 +191,7 @@ export default function SharedWorkspacePage() {
         if (error) throw error;
         
         // For each member, fetch user details
-        const membersWithDetails = await Promise.all((members || []).map(async (member: any) => {
+        const membersWithDetails = await Promise.all((members || []).map(async (member: { id: string; user_id: string; status: string; invitation_email?: string }) => {
           if (!member.user_id) {
             return {
               ...member,

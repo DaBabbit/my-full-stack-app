@@ -255,9 +255,50 @@ export function useVideoMutations(options?: {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data, variables) => {
       // Invalidate and refetch videos (exact: false für alle userId-Varianten)
       queryClient.invalidateQueries({ queryKey: ['videos', 'own'], exact: false });
+      
+      // Trigger auto-assignment für den Status des neu erstellten Videos
+      if (variables.status) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+
+          if (token) {
+            console.log('[createVideoMutation] 🤖 Triggering auto-assignment for new video status:', variables.status);
+
+            const autoAssignResponse = await fetch(`/api/videos/${data.id}/auto-assign`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                newStatus: variables.status,
+                oldStatus: null // Bei neuem Video gibt es keinen alten Status
+              })
+            });
+
+            const autoAssignResult = await autoAssignResponse.json();
+            console.log('[createVideoMutation] 🤖 Auto-assign response:', autoAssignResult);
+
+            if (!autoAssignResponse.ok) {
+              console.error('[createVideoMutation] ⚠️ Auto-assign failed:', autoAssignResult);
+            } else if (autoAssignResult.assigned) {
+              console.log('[createVideoMutation] ✅ Auto-assigned to:', autoAssignResult.assignedTo);
+              // Callback für Toast Notification
+              if (options?.onAutoAssign && autoAssignResult.assignedPersonName) {
+                options.onAutoAssign(autoAssignResult.assignedPersonName, data.title || 'Video');
+              }
+              // Refetch videos to update UI
+              queryClient.invalidateQueries({ queryKey: ['videos', 'own'], exact: false });
+            }
+          }
+        } catch (autoAssignError) {
+          console.error('[createVideoMutation] ⚠️ Auto-assign failed (non-critical):', autoAssignError);
+        }
+      }
     },
   });
 

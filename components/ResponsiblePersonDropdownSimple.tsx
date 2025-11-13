@@ -14,8 +14,13 @@ interface ResponsiblePersonOption {
 interface ResponsiblePersonDropdownSimpleProps {
   value: string;
   onChange: (value: string) => void;
-  workspaceOwner?: { firstname: string; lastname: string; email: string };
-  workspaceMembers?: Array<{ id: string; user?: { firstname?: string; lastname?: string; email: string } }>;
+  workspaceOwner?: { id: string; firstname: string; lastname: string; email: string };
+  workspaceMembers?: Array<{ 
+    id: string; 
+    user_id?: string | null;
+    status?: 'pending' | 'active' | 'removed';
+    user?: { firstname?: string; lastname?: string; email: string } 
+  }>;
 }
 
 /**
@@ -35,8 +40,27 @@ export default function ResponsiblePersonDropdownSimple({
 }: ResponsiblePersonDropdownSimpleProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
+  const [kosmamediaId, setKosmamediaId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Load kosmamedia UUID once on mount
+  useEffect(() => {
+    const loadKosmamediaId = async () => {
+      const { supabase } = await import('@/utils/supabase');
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .ilike('email', '%kosmamedia%')
+        .limit(1)
+        .single();
+      
+      if (data) {
+        setKosmamediaId(data.id);
+      }
+    };
+    loadKosmamediaId();
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -72,47 +96,52 @@ export default function ResponsiblePersonDropdownSimple({
     }
   }, [isOpen]);
 
-  // Build options list
-  const options: ResponsiblePersonOption[] = [
-    {
-      id: 'kosmamedia',
+  // Build options list with UUIDs
+  const options: ResponsiblePersonOption[] = [];
+  const addedIds = new Set<string>();
+
+  // Add kosmamedia (if ID is loaded)
+  if (kosmamediaId) {
+    options.push({
+      id: kosmamediaId,
       name: 'kosmamedia',
       type: 'kosmamedia'
-    }
-  ];
-
-  // Add workspace owner
-  if (workspaceOwner) {
-    // Nur hinzufügen wenn mindestens firstname ODER lastname vorhanden ist
-    const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
-    if (ownerName) {
-      options.push({
-        id: 'owner',
-        name: ownerName,
-        type: 'owner',
-        email: workspaceOwner.email
-      });
-    }
+    });
+    addedIds.add(kosmamediaId);
   }
 
-  // Add workspace members
+  // Add workspace owner
+  if (workspaceOwner && workspaceOwner.id && !addedIds.has(workspaceOwner.id)) {
+    const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
+    const displayName = ownerName || workspaceOwner.email.split('@')[0];
+    options.push({
+      id: workspaceOwner.id,
+      name: displayName,
+      type: 'owner',
+      email: workspaceOwner.email
+    });
+    addedIds.add(workspaceOwner.id);
+  }
+
+  // Add workspace members - nur ACTIVE members mit user_id
   workspaceMembers.forEach((member) => {
-    // Nur hinzufügen wenn user-Daten vorhanden sind UND mindestens ein Name vorhanden ist
-    if (member.user && (member.user.firstname || member.user.lastname)) {
+    // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
+    if (member.status === 'active' && member.user_id && member.user && !addedIds.has(member.user_id)) {
       const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
-      if (memberName) {
-        options.push({
-          id: member.id,
-          name: memberName,
-          type: 'member',
-          email: member.user.email
-        });
-      }
+      const displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
+      
+      options.push({
+        id: member.user_id, // WICHTIG: user_id verwenden!
+        name: displayName,
+        type: 'member',
+        email: member.user.email
+      });
+      addedIds.add(member.user_id);
     }
   });
 
   const handleSelect = (option: ResponsiblePersonOption) => {
-    onChange(option.name);
+    onChange(option.id); // UUID speichern!
     setIsOpen(false);
   };
 
@@ -149,7 +178,7 @@ export default function ResponsiblePersonDropdownSimple({
         >
           <div className="py-1 max-h-64 overflow-y-auto">
             {options.map((option) => {
-              const isSelected = option.name === value;
+              const isSelected = option.id === value;
               return (
                 <button
                   key={option.id}
@@ -164,7 +193,7 @@ export default function ResponsiblePersonDropdownSimple({
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <ResponsiblePersonAvatar 
-                      responsiblePerson={option.name} 
+                      responsiblePerson={option.id} 
                       size="sm" 
                       showFullName={false}
                     />

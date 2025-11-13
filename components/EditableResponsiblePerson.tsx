@@ -95,16 +95,8 @@ export default function EditableResponsiblePerson({
   const options = React.useMemo(() => {
     const opts: ResponsiblePersonOption[] = [];
     const addedIds = new Set<string>(); // Track bereits hinzugefügte IDs
-    let kosmamediaId: string | null = null;
 
-    // STEP 1: Find kosmamedia ID from workspace members
-    (workspaceMembers || []).forEach((member) => {
-      if (member.user?.email?.toLowerCase().includes('kosmamedia')) {
-        kosmamediaId = member.user_id || null;
-      }
-    });
-
-    // STEP 2: Add workspace owner FIRST
+    // STEP 1: Add workspace owner FIRST
     if (workspaceOwner && workspaceOwner.id) {
       const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
       const displayName = ownerName || workspaceOwner.email.split('@')[0];
@@ -117,20 +109,9 @@ export default function EditableResponsiblePerson({
       addedIds.add(workspaceOwner.id);
     }
 
-    // STEP 3: Add kosmamedia SECOND (if found and not already added as owner)
-    if (kosmamediaId && !addedIds.has(kosmamediaId)) {
-      opts.push({
-        id: kosmamediaId,
-        name: 'kosmamedia',
-        type: 'member',
-        email: 'kosmamedia'
-      });
-      addedIds.add(kosmamediaId);
-    }
-
-    // STEP 4: Add ALL other workspace members
+    // STEP 2: Add ALL workspace members with their REAL names
     (workspaceMembers || []).forEach((member) => {
-      // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
+      // Nur aktive Members mit user_id anzeigen, die noch nicht als Owner hinzugefügt wurden
       if (member.status === 'active' && member.user_id && !addedIds.has(member.user_id)) {
         let displayName = 'Unbekannt';
         let email = '';
@@ -146,7 +127,7 @@ export default function EditableResponsiblePerson({
         }
         
         opts.push({
-          id: member.user_id, // WICHTIG: user_id verwenden, nicht member.id!
+          id: member.user_id,
           name: displayName,
           type: 'member',
           email: email

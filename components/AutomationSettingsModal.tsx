@@ -66,10 +66,9 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
     try {
       setLoading(true);
       
-      // 1. Load available persons (Keine Automatisierung + owner + kosmamedia + ALL workspace members)
+      // 1. Load available persons (Keine Automatisierung + owner + ALL workspace members)
       const persons: AvailablePerson[] = [];
       const addedIds = new Set<string>();
-      let kosmamediaId: string | null = null;
       
       // Add "Keine Automatisierung" option
       persons.push({
@@ -78,35 +77,7 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
         type: 'none'
       });
       
-      // Load workspace members FIRST to find kosmamedia
-      const { data: members } = await supabase
-        .from('workspace_members')
-        .select('id, user_id, invitation_email')
-        .eq('workspace_owner_id', user?.id)
-        .eq('status', 'active');
-      
-      // Find kosmamedia ID from members
-      if (members && Array.isArray(members)) {
-        for (const member of members) {
-          if (!member.user_id) continue;
-          try {
-            const { data: userData } = await supabase
-              .from('users')
-              .select('id, email')
-              .eq('id', member.user_id)
-              .single();
-            
-            if (userData && userData.email?.toLowerCase().includes('kosmamedia')) {
-              kosmamediaId = userData.id;
-              break;
-            }
-          } catch (err) {
-            console.error('[AutomationSettings] Error checking member:', err);
-          }
-        }
-      }
-      
-      // Add self (owner) SECOND
+      // Add self (owner) FIRST
       if (user) {
         const { data: profile } = await supabase
           .from('users')
@@ -127,17 +98,13 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
         }
       }
       
-      // Add kosmamedia THIRD (if found and not already added as owner)
-      if (kosmamediaId && !addedIds.has(kosmamediaId)) {
-        persons.push({
-          id: kosmamediaId,
-          name: 'kosmamedia',
-          type: 'member'
-        });
-        addedIds.add(kosmamediaId);
-      }
+      // Add ALL workspace members with their REAL names
+      const { data: members } = await supabase
+        .from('workspace_members')
+        .select('id, user_id, invitation_email')
+        .eq('workspace_owner_id', user?.id)
+        .eq('status', 'active');
       
-      // Add ALL other workspace members
       if (members && Array.isArray(members)) {
         for (const member of members) {
           if (!member.user_id || addedIds.has(member.user_id)) continue;

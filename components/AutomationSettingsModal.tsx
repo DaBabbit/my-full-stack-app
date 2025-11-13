@@ -16,12 +16,6 @@ interface AutomationSettings {
   updated_at?: string;
 }
 
-interface User {
-  id: string;
-  firstname?: string;
-  lastname?: string;
-  email: string;
-}
 
 interface AutomationSettingsModalProps {
   isOpen: boolean;

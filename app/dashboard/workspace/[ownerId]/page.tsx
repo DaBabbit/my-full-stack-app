@@ -191,10 +191,17 @@ export default function SharedWorkspacePage() {
         if (error) throw error;
         
         // For each member, fetch user details
-        const membersWithDetails = await Promise.all((members || []).map(async (member: { id: string; user_id: string; status: string; invitation_email?: string }) => {
+        const membersWithDetails = await Promise.all((members || []).map(async (member: { id: string; user_id: string; status: string; invitation_email?: string }): Promise<{
+          id: string;
+          user_id: string;
+          status: 'pending' | 'active' | 'removed';
+          user?: { firstname?: string; lastname?: string; email: string };
+        }> => {
           if (!member.user_id) {
             return {
-              ...member,
+              id: member.id,
+              user_id: member.user_id,
+              status: member.status as 'pending' | 'active' | 'removed',
               user: member.invitation_email ? {
                 email: member.invitation_email,
                 firstname: '',
@@ -212,7 +219,9 @@ export default function SharedWorkspacePage() {
             
             if (userData) {
               return {
-                ...member,
+                id: member.id,
+                user_id: member.user_id,
+                status: member.status as 'pending' | 'active' | 'removed',
                 user: {
                   email: userData.email || member.invitation_email || '',
                   firstname: userData.firstname || '',
@@ -225,7 +234,9 @@ export default function SharedWorkspacePage() {
           }
           
           return {
-            ...member,
+            id: member.id,
+            user_id: member.user_id,
+            status: member.status as 'pending' | 'active' | 'removed',
             user: member.invitation_email ? {
               email: member.invitation_email,
               firstname: '',

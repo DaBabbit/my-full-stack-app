@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, Save, Loader2 } from 'lucide-react';
 
 interface AutomationSettings {
   id?: string;
@@ -26,16 +26,22 @@ interface User {
 interface AutomationSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: (message: string) => void; // Callback für Toast
 }
 
-export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsModalProps) {
+interface AvailablePerson {
+  id: string;
+  name: string;
+  type: 'none' | 'kosmamedia' | 'owner' | 'member';
+}
+
+export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: AutomationSettingsModalProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   
-  // Available users for assignment
-  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  // Available persons for assignment
+  const [availablePersons, setAvailablePersons] = useState<AvailablePerson[]>([]);
   
   // Settings (one row per user)
   const [settings, setSettings] = useState<AutomationSettings>({
@@ -66,21 +72,16 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
     try {
       setLoading(true);
       
-      // 1. Load available users (self + kosmamedia + workspace collaborators)
-      const users: User[] = [];
+      // 1. Load available persons (Keine Automatisierung + self + kosmamedia + workspace collaborators)
+      const persons: AvailablePerson[] = [];
+      const addedIds = new Set<string>();
       
-      // Add self
-      if (user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('id, firstname, lastname, email')
-          .eq('id', user.id)
-          .single();
-        
-        if (profile) {
-          users.push(profile);
-        }
-      }
+      // Add "Keine Automatisierung" option
+      persons.push({
+        id: '',
+        name: 'Keine Automatisierung',
+        type: 'none'
+      });
       
       // Add kosmamedia
       const { data: kosmamedia } = await supabase
@@ -90,40 +91,62 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
         .limit(1)
         .maybeSingle();
       
-      if (kosmamedia && kosmamedia.id !== user?.id) {
-        users.push(kosmamedia);
+      if (kosmamedia) {
+        persons.push({
+          id: kosmamedia.id,
+          name: 'kosmamedia',
+          type: 'kosmamedia'
+        });
+        addedIds.add(kosmamedia.id);
+      }
+      
+      // Add self (if not kosmamedia)
+      if (user && !addedIds.has(user.id)) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('id, firstname, lastname, email')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          const displayName = profile.firstname && profile.lastname 
+            ? `${profile.firstname} ${profile.lastname}` 
+            : profile.email.split('@')[0];
+          persons.push({
+            id: profile.id,
+            name: displayName,
+            type: 'owner'
+          });
+          addedIds.add(profile.id);
+        }
       }
       
       // Add workspace members (collaborators invited by this user)
-      const { data: members, error: membersError } = await supabase
+      const { data: members } = await supabase
         .from('workspace_members')
         .select('user_id, users!workspace_members_user_id_fkey(id, firstname, lastname, email)')
         .eq('workspace_owner_id', user?.id)
         .eq('status', 'active');
       
-      console.log('[AutomationSettings] Members query result:', { members, error: membersError });
-      
       if (members && Array.isArray(members)) {
         members.forEach((member: { user_id: string; users: User[] | User }) => {
-          console.log('[AutomationSettings] Processing member object:', member);
-          // Supabase returns users as an array with one element
           const userData = Array.isArray(member.users) ? member.users[0] : member.users;
-          console.log('[AutomationSettings] Extracted user data:', userData);
           
-          if (userData && userData.id && !users.find(u => u.id === userData.id)) {
-            users.push({
+          if (userData && userData.id && !addedIds.has(userData.id)) {
+            const displayName = userData.firstname && userData.lastname 
+              ? `${userData.firstname} ${userData.lastname}` 
+              : userData.email.split('@')[0];
+            persons.push({
               id: userData.id,
-              firstname: userData.firstname,
-              lastname: userData.lastname,
-              email: userData.email
+              name: displayName,
+              type: 'member'
             });
-            console.log('[AutomationSettings] ✅ Added member:', userData.email);
+            addedIds.add(userData.id);
           }
         });
       }
       
-      console.log('[AutomationSettings] Available users:', users);
-      setAvailableUsers(users);
+      setAvailablePersons(persons);
       
       // 2. Load existing automation settings
       const { data: existingSettings } = await supabase
@@ -155,7 +178,6 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
   const handleSave = async () => {
     try {
       setSaving(true);
-      setSaved(false);
       
       // Upsert settings (insert or update)
       if (settings.id) {
@@ -163,8 +185,8 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
         const { error } = await supabase
           .from('automation_settings')
           .update({
-            auto_assign_on_idea: settings.auto_assign_on_idea,
-            auto_assign_on_waiting_for_recording: settings.auto_assign_on_waiting_for_recording,
+            auto_assign_on_idea: settings.auto_assign_on_idea || null,
+            auto_assign_on_waiting_for_recording: settings.auto_assign_on_waiting_for_recording || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', settings.id);
@@ -177,45 +199,33 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
           .insert({
             user_id: user?.id,
             workspace_owner_id: null, // null = eigene Videos
-            auto_assign_on_idea: settings.auto_assign_on_idea,
-            auto_assign_on_waiting_for_recording: settings.auto_assign_on_waiting_for_recording
+            auto_assign_on_idea: settings.auto_assign_on_idea || null,
+            auto_assign_on_waiting_for_recording: settings.auto_assign_on_waiting_for_recording || null
           });
         
         if (error) throw error;
       }
       
-      console.log('[AutomationSettings] Settings saved successfully');
-      
-      setSaved(true);
-      setTimeout(() => {
-        setSaved(false);
-        onClose();
-      }, 1500);
-      
-      // Reload settings
-      await loadSettings();
+      // Sofort schließen und Toast anzeigen
+      onClose();
+      if (onSuccess) {
+        onSuccess('Automatisierung erfolgreich gespeichert');
+      }
       
     } catch (error) {
       console.error('[Automation Settings] Save error:', error);
+      if (onSuccess) {
+        onSuccess('Fehler beim Speichern der Automatisierung');
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const getUserDisplayName = (userId: string | null) => {
-    if (!userId) return 'Keine Automatisierung';
-    const user = availableUsers.find(u => u.id === userId);
-    if (!user) return 'Unbekannt';
-    
-    // Check if kosmamedia
-    if (user.email?.toLowerCase().includes('kosmamedia')) {
-      return 'kosmamedia';
-    }
-    
-    if (user.firstname && user.lastname) {
-      return `${user.firstname} ${user.lastname}`;
-    }
-    return user.email.split('@')[0];
+  const getPersonDisplayName = (personId: string | null) => {
+    if (!personId) return 'Keine Automatisierung';
+    const person = availablePersons.find(p => p.id === personId);
+    return person?.name || 'Unbekannt';
   };
 
   if (!isOpen) return null;
@@ -281,12 +291,11 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
                     <select
                       value={settings.auto_assign_on_idea || ''}
                       onChange={(e) => setSettings({ ...settings, auto_assign_on_idea: e.target.value || null })}
-                      className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
                     >
-                      <option value="">Keine Automatisierung</option>
-                      {availableUsers.map(user => (
-                        <option key={user.id} value={user.id}>
-                          {getUserDisplayName(user.id)}
+                      {availablePersons.map(person => (
+                        <option key={person.id} value={person.id}>
+                          {person.name}
                         </option>
                       ))}
                     </select>
@@ -303,12 +312,11 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
                     <select
                       value={settings.auto_assign_on_waiting_for_recording || ''}
                       onChange={(e) => setSettings({ ...settings, auto_assign_on_waiting_for_recording: e.target.value || null })}
-                      className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
                     >
-                      <option value="">Keine Automatisierung</option>
-                      {availableUsers.map(user => (
-                        <option key={user.id} value={user.id}>
-                          {getUserDisplayName(user.id)}
+                      {availablePersons.map(person => (
+                        <option key={person.id} value={person.id}>
+                          {person.name}
                         </option>
                       ))}
                     </select>
@@ -335,11 +343,6 @@ export function AutomationSettingsModal({ isOpen, onClose }: AutomationSettingsM
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Speichert...</span>
-                </>
-              ) : saved ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Gespeichert!</span>
                 </>
               ) : (
                 <>

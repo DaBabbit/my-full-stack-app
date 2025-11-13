@@ -129,7 +129,15 @@ export default function SharedWorkspacePage() {
     updateWorkspaceVideoAsync: updateVideoAsync,
     deleteWorkspaceVideo: deleteVideo,
     bulkUpdateWorkspaceVideosAsync: bulkUpdateVideosAsync
-  } = useVideoMutations();
+  } = useVideoMutations({
+    onAutoAssign: (personName, videoTitle) => {
+      addToast({
+        type: 'success',
+        title: 'Automatische Zuweisung',
+        message: `${personName} wurde automatisch dem Video "${videoTitle}" zugewiesen`
+      });
+    }
+  });
   
   // Setup Realtime for workspace
   useRealtimeWorkspaceVideos(ownerId);

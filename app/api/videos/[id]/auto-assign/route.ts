@@ -167,12 +167,31 @@ export async function POST(
         console.log('[AutoAssign] ℹ️ Keine Benachrichtigung nötig (User ist selbst zuständig oder shouldNotify=false)');
       }
 
+      // Person Name für Toast Notification holen
+      const { data: assignedUser } = await supabaseAdmin
+        .from('users')
+        .select('firstname, lastname, email')
+        .eq('id', newResponsiblePerson)
+        .single();
+      
+      let assignedPersonName = 'Unbekannt';
+      if (assignedUser) {
+        if (assignedUser.email?.toLowerCase().includes('kosmamedia')) {
+          assignedPersonName = 'kosmamedia';
+        } else if (assignedUser.firstname && assignedUser.lastname) {
+          assignedPersonName = `${assignedUser.firstname} ${assignedUser.lastname}`;
+        } else {
+          assignedPersonName = assignedUser.email?.split('@')[0] || 'Unbekannt';
+        }
+      }
+
       console.log('[AutoAssign] 🎉 Auto-assignment completed successfully');
 
       return NextResponse.json({ 
         success: true,
         assigned: true,
         assignedTo: newResponsiblePerson,
+        assignedPersonName, // Name für Toast
         newResponsiblePerson, // Keep for backward compatibility
         notificationSent: shouldNotify && newResponsiblePerson !== user.id
       });

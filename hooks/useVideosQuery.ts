@@ -184,7 +184,9 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
 /**
  * Hook für alle Video-Mutations (Create, Update, Delete)
  */
-export function useVideoMutations() {
+export function useVideoMutations(options?: {
+  onAutoAssign?: (personName: string, videoTitle: string) => void;
+}) {
   const queryClient = useQueryClient();
 
   // Create Video Mutation
@@ -352,6 +354,10 @@ export function useVideoMutations() {
               console.error('[updateVideoMutation] ⚠️ Auto-assign failed:', autoAssignResult);
             } else if (autoAssignResult.assigned) {
               console.log('[updateVideoMutation] ✅ Auto-assigned to:', autoAssignResult.assignedTo);
+              // Callback für Toast Notification
+              if (options?.onAutoAssign && autoAssignResult.assignedPersonName) {
+                options.onAutoAssign(autoAssignResult.assignedPersonName, data.title || 'Video');
+              }
               // Refetch videos to update UI
               queryClient.invalidateQueries({ queryKey: ['videos', 'own'], exact: false });
             }
@@ -488,6 +494,10 @@ export function useVideoMutations() {
               console.error('[updateWorkspaceVideoMutation] ⚠️ Auto-assign failed:', autoAssignResult);
             } else if (autoAssignResult.assigned) {
               console.log('[updateWorkspaceVideoMutation] ✅ Auto-assigned to:', autoAssignResult.assignedTo);
+              // Callback für Toast Notification
+              if (options?.onAutoAssign && autoAssignResult.assignedPersonName) {
+                options.onAutoAssign(autoAssignResult.assignedPersonName, data.title || 'Video');
+              }
               // Refetch workspace videos to update UI
               queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', variables.ownerId], exact: false });
             }

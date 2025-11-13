@@ -114,6 +114,7 @@ export default function EditableResponsiblePerson({
 
   // Build options list with UUIDs
   const options: ResponsiblePersonOption[] = [];
+  const addedIds = new Set<string>(); // Track bereits hinzugefügte IDs
 
   // Add kosmamedia (if ID is loaded)
   if (kosmamediaId) {
@@ -122,22 +123,24 @@ export default function EditableResponsiblePerson({
       name: 'kosmamedia',
       type: 'kosmamedia'
     });
+    addedIds.add(kosmamediaId);
   }
 
   // Add workspace owner
-  if (workspaceOwner && workspaceOwner.id) {
+  if (workspaceOwner && workspaceOwner.id && !addedIds.has(workspaceOwner.id)) {
     options.push({
       id: workspaceOwner.id, // UUID!
       name: `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim() || workspaceOwner.email,
       type: 'owner',
       email: workspaceOwner.email
     });
+    addedIds.add(workspaceOwner.id);
   }
 
   // Add workspace members - nur ACTIVE members mit user_id
   (workspaceMembers || []).forEach((member) => {
-    // Nur aktive Members mit user_id anzeigen
-    if (member.status === 'active' && member.user_id && member.user) {
+    // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
+    if (member.status === 'active' && member.user_id && member.user && !addedIds.has(member.user_id)) {
       const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
       const displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
       
@@ -147,6 +150,7 @@ export default function EditableResponsiblePerson({
         type: 'member',
         email: member.user.email
       });
+      addedIds.add(member.user_id);
     }
   });
 

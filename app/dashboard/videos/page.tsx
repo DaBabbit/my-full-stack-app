@@ -137,7 +137,15 @@ export default function VideosPage() {
     createVideo, 
     deleteVideo,
     bulkUpdateVideosAsync
-  } = useVideoMutations();
+  } = useVideoMutations({
+    onAutoAssign: (personName, videoTitle) => {
+      addToast({
+        type: 'success',
+        title: 'Automatische Zuweisung',
+        message: `${personName} wurde automatisch dem Video "${videoTitle}" zugewiesen`
+      });
+    }
+  });
   
   // Setup Realtime
   useRealtimeVideos(user?.id);
@@ -395,6 +403,14 @@ export default function VideosPage() {
       // Speichere in View
       const view = workspaceViews.find(v => v.id === activeViewId);
       if (view) {
+        // Prüfe ob sich wirklich was geändert hat
+        const filtersChanged = JSON.stringify(view.filters) !== JSON.stringify(activeFilters);
+        const sortsChanged = JSON.stringify(view.sort_config || []) !== JSON.stringify(activeSorts);
+        
+        if (!filtersChanged && !sortsChanged) {
+          return; // Keine Änderungen, kein Update nötig
+        }
+        
         // Debounced update - nur wenn sich Werte geändert haben
         const timeoutId = setTimeout(async () => {
           try {
@@ -2913,6 +2929,13 @@ export default function VideosPage() {
       <AutomationSettingsModal
         isOpen={showAutomationModal}
         onClose={() => setShowAutomationModal(false)}
+        onSuccess={(message) => {
+          addToast({
+            type: 'success',
+            title: 'Automatisierung',
+            message: message
+          });
+        }}
       />
 
       {/* Toast Notifications */}

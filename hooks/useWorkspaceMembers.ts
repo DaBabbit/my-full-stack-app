@@ -43,35 +43,53 @@ export function useWorkspaceMembers() {
 
       if (fetchError) throw fetchError;
 
-      // For each member, fetch user data manually using RPC or admin query
+      // For each member, fetch user data
       const transformedMembers = await Promise.all((membersData || []).map(async (member: any) => {
-        // Skip if no user_id (pending invitation)
+        // Skip if no user_id (pending invitation without accepted user)
         if (!member.user_id) {
-          return { ...member, user: undefined };
+          return { 
+            ...member, 
+            user: member.invitation_email ? {
+              email: member.invitation_email,
+              firstname: '',
+              lastname: ''
+            } : undefined 
+          };
         }
         
         try {
-          // Try to get user details via RPC function
-          const { data: userDetails, error: userError } = await supabase
-            .rpc('get_workspace_owner_details', { owner_ids: [member.user_id] });
+          // Direkt users Tabelle abfragen (RLS erlaubt authenticated users andere User zu lesen)
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id, email, firstname, lastname')
+            .eq('id', member.user_id)
+            .single();
           
-          if (!userError && userDetails && userDetails.length > 0) {
-            const userData = userDetails[0];
+          if (!userError && userData) {
             return {
               ...member,
               user: {
-                email: userData.email,
+                email: userData.email || member.invitation_email || '',
                 firstname: userData.firstname || '',
                 lastname: userData.lastname || ''
               }
             };
           }
+          
+          console.warn('[useWorkspaceMembers] User not found for user_id:', member.user_id, userError);
         } catch (err) {
           console.error('[useWorkspaceMembers] Error fetching user details:', err);
         }
         
-        // Fallback: return without user data
-        return { ...member, user: undefined };
+        // Fallback: use invitation_email if available
+        return { 
+          ...member, 
+          user: member.invitation_email ? {
+            email: member.invitation_email,
+            firstname: '',
+            lastname: ''
+          } : undefined 
+        };
       }));
 
       setMembers(transformedMembers as WorkspaceMember[]);

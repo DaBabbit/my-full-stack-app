@@ -124,26 +124,47 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
       // Add workspace members (collaborators invited by this user)
       const { data: members } = await supabase
         .from('workspace_members')
-        .select('user_id, users!workspace_members_user_id_fkey(id, firstname, lastname, email)')
+        .select('id, user_id, invitation_email')
         .eq('workspace_owner_id', user?.id)
         .eq('status', 'active');
       
       if (members && Array.isArray(members)) {
-        members.forEach((member: { user_id: string; users: User[] | User }) => {
-          const userData = Array.isArray(member.users) ? member.users[0] : member.users;
+        for (const member of members) {
+          if (!member.user_id || addedIds.has(member.user_id)) continue;
           
-          if (userData && userData.id && !addedIds.has(userData.id)) {
-            const displayName = userData.firstname && userData.lastname 
-              ? `${userData.firstname} ${userData.lastname}` 
-              : userData.email.split('@')[0];
-            persons.push({
-              id: userData.id,
-              name: displayName,
-              type: 'member'
-            });
-            addedIds.add(userData.id);
+          try {
+            // Fetch user details separately
+            const { data: userData } = await supabase
+              .from('users')
+              .select('id, email, firstname, lastname')
+              .eq('id', member.user_id)
+              .single();
+            
+            if (userData && userData.id) {
+              const displayName = userData.firstname && userData.lastname 
+                ? `${userData.firstname} ${userData.lastname}` 
+                : userData.email?.split('@')[0] || member.invitation_email?.split('@')[0] || 'Unbekannt';
+              
+              persons.push({
+                id: userData.id,
+                name: displayName,
+                type: 'member'
+              });
+              addedIds.add(userData.id);
+            }
+          } catch (err) {
+            // Fallback: use invitation_email if user data fetch fails
+            if (member.invitation_email) {
+              persons.push({
+                id: member.user_id,
+                name: member.invitation_email.split('@')[0],
+                type: 'member'
+              });
+              addedIds.add(member.user_id);
+            }
+            console.error('[AutomationSettings] Error fetching user for member:', member.user_id, err);
           }
-        });
+        }
       }
       
       setAvailablePersons(persons);

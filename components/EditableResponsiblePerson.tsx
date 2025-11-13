@@ -140,15 +140,26 @@ export default function EditableResponsiblePerson({
   // Add workspace members - nur ACTIVE members mit user_id
   (workspaceMembers || []).forEach((member) => {
     // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
-    if (member.status === 'active' && member.user_id && member.user && !addedIds.has(member.user_id)) {
-      const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
-      const displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
+    // WICHTIG: Auch Members ohne user-Objekt anzeigen (nutze dann invitation_email als Fallback)
+    if (member.status === 'active' && member.user_id && !addedIds.has(member.user_id)) {
+      let displayName = 'Unbekannt';
+      let email = '';
+      
+      if (member.user) {
+        const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
+        displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
+        email = member.user.email;
+      } else if ((member as any).invitation_email) {
+        // Fallback: Verwende invitation_email wenn user-Daten fehlen
+        email = (member as any).invitation_email;
+        displayName = email.split('@')[0];
+      }
       
       options.push({
         id: member.user_id, // WICHTIG: user_id verwenden, nicht member.id!
         name: displayName,
         type: 'member',
-        email: member.user.email
+        email: email
       });
       addedIds.add(member.user_id);
     }

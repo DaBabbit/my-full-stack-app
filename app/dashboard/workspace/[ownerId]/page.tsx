@@ -167,8 +167,81 @@ export default function SharedWorkspacePage() {
     email: currentWorkspace.owner_email
   } : undefined;
   
-  // For now, workspaceMembers is empty - we can load it separately if needed
-  const workspaceMembers: Array<{ id: string; user?: { firstname?: string; lastname?: string; email: string } }> = [];
+  // Load ALL workspace members who have access to THIS workspace (ownerId)
+  const [workspaceMembers, setWorkspaceMembers] = useState<Array<{ 
+    id: string; 
+    user_id: string;
+    status: 'pending' | 'active' | 'removed';
+    user?: { firstname?: string; lastname?: string; email: string } 
+  }>>([]);
+
+  // Fetch workspace members for THIS workspace
+  useEffect(() => {
+    const fetchWorkspaceMembers = async () => {
+      if (!ownerId) return;
+      
+      try {
+        // Fetch all ACTIVE members of THIS workspace (including owner)
+        const { data: members, error } = await supabase
+          .from('workspace_members')
+          .select('id, user_id, status, invitation_email')
+          .eq('workspace_owner_id', ownerId)
+          .eq('status', 'active');
+        
+        if (error) throw error;
+        
+        // For each member, fetch user details
+        const membersWithDetails = await Promise.all((members || []).map(async (member: any) => {
+          if (!member.user_id) {
+            return {
+              ...member,
+              user: member.invitation_email ? {
+                email: member.invitation_email,
+                firstname: '',
+                lastname: ''
+              } : undefined
+            };
+          }
+          
+          try {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('id, email, firstname, lastname')
+              .eq('id', member.user_id)
+              .single();
+            
+            if (userData) {
+              return {
+                ...member,
+                user: {
+                  email: userData.email || member.invitation_email || '',
+                  firstname: userData.firstname || '',
+                  lastname: userData.lastname || ''
+                }
+              };
+            }
+          } catch (err) {
+            console.error('[Workspace Members] Error fetching user:', err);
+          }
+          
+          return {
+            ...member,
+            user: member.invitation_email ? {
+              email: member.invitation_email,
+              firstname: '',
+              lastname: ''
+            } : undefined
+          };
+        }));
+        
+        setWorkspaceMembers(membersWithDetails);
+      } catch (error) {
+        console.error('[Workspace Members] Error loading members:', error);
+      }
+    };
+    
+    fetchWorkspaceMembers();
+  }, [ownerId, supabase]);
   
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [

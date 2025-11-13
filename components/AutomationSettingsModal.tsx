@@ -161,6 +161,7 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
         }
       }
       
+      console.log('[AutomationSettings] ✅ Available persons:', persons.length, persons);
       setAvailablePersons(persons);
       
       // 2. Load existing automation settings

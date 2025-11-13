@@ -92,10 +92,11 @@ export function useWorkspaceMembers() {
         };
       }));
 
+      console.log('[useWorkspaceMembers] ✅ Loaded members:', transformedMembers.length, transformedMembers);
       setMembers(transformedMembers as WorkspaceMember[]);
       setError(null);
     } catch (err) {
-      console.error('Error fetching workspace members:', err);
+      console.error('[useWorkspaceMembers] ❌ Error fetching workspace members:', err);
       setError('Fehler beim Laden der Team-Mitglieder');
     } finally {
       setIsLoading(false);

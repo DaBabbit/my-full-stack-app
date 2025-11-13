@@ -50,18 +50,54 @@ export default function ResponsiblePersonAvatar({
       }
 
       setLoading(true);
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, firstname, lastname, email')
-        .eq('id', responsiblePerson)
-        .single();
+      
+      // Check if responsiblePerson is a UUID (format: 8-4-4-4-12)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isUUID = uuidRegex.test(responsiblePerson);
 
-      if (error) {
-        console.error('[ResponsiblePersonAvatar] Error fetching user:', error);
-        setUserProfile(null);
+      if (isUUID) {
+        // It's a UUID - fetch by ID
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, firstname, lastname, email')
+          .eq('id', responsiblePerson)
+          .single();
+
+        if (error) {
+          console.error('[ResponsiblePersonAvatar] Error fetching user:', error);
+          setUserProfile(null);
+        } else {
+          setUserProfile(data);
+        }
       } else {
-        setUserProfile(data);
+        // It's a name (legacy data) - handle specially for known names
+        if (responsiblePerson.toLowerCase() === 'kosmamedia') {
+          // Fetch kosmamedia by email
+          const { data, error } = await supabase
+            .from('users')
+            .select('id, firstname, lastname, email')
+            .ilike('email', '%kosmamedia%')
+            .limit(1)
+            .single();
+
+          if (error) {
+            console.error('[ResponsiblePersonAvatar] Error fetching kosmamedia:', error);
+            setUserProfile(null);
+          } else {
+            setUserProfile(data);
+          }
+        } else {
+          // For other names, create a mock profile for display
+          console.warn('[ResponsiblePersonAvatar] Legacy name found (not UUID):', responsiblePerson);
+          setUserProfile({
+            id: responsiblePerson,
+            email: responsiblePerson,
+            firstname: responsiblePerson.split(' ')[0] || responsiblePerson,
+            lastname: responsiblePerson.split(' ').slice(1).join(' ') || ''
+          });
+        }
       }
+      
       setLoading(false);
     };
 

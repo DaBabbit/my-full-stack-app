@@ -169,6 +169,7 @@ export default function EditableResponsiblePerson({
     setIsOpen(false);
     
     const userIdToSave = option.id; // Already UUID!
+    console.log('[EditableResponsiblePerson] Selected:', userIdToSave, option.name);
 
     if (userIdToSave === selectedValue) return;
 
@@ -176,6 +177,7 @@ export default function EditableResponsiblePerson({
     setIsSaving(true);
 
     try {
+      console.log('[EditableResponsiblePerson] Saving UUID:', userIdToSave);
       await onSave(videoId, 'responsible_person', userIdToSave); // Save UUID!
     } catch (error) {
       console.error('[EditableResponsiblePerson] Save failed:', error);
@@ -185,6 +187,11 @@ export default function EditableResponsiblePerson({
       setIsSaving(false);
     }
   };
+
+  // Debug logging
+  console.log('[EditableResponsiblePerson] Available options:', options.length, options);
+  console.log('[EditableResponsiblePerson] Current value:', value);
+  console.log('[EditableResponsiblePerson] workspaceMembers:', workspaceMembers);
 
   if (!editable) {
     return (

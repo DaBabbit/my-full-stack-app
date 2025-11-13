@@ -152,15 +152,9 @@ export default function ResponsiblePersonDropdownSimple({
   });
 
   const handleSelect = (option: ResponsiblePersonOption) => {
-    console.log('[ResponsiblePersonDropdownSimple] Selected:', option.id, option.name);
     onChange(option.id); // UUID speichern!
     setIsOpen(false);
   };
-
-  // Debug logging
-  console.log('[ResponsiblePersonDropdownSimple] Available options:', options.length, options);
-  console.log('[ResponsiblePersonDropdownSimple] Current value:', value);
-  console.log('[ResponsiblePersonDropdownSimple] workspaceMembers:', workspaceMembers);
 
   return (
     <div ref={dropdownRef} className="relative">

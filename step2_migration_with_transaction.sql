@@ -14,7 +14,7 @@ SELECT COUNT(*) as backed_up_videos FROM videos_backup_20251113;
 -- 2. Update Peter OulokAccountNachname (6 videos)
 -- REPLACE THIS UUID WITH PETER'S ACTUAL UUID FROM STEP 1:
 UPDATE public.videos
-SET responsible_person = 'REPLACE_WITH_PETER_UUID_FROM_STEP1',
+SET responsible_person = 'eecb20b7-bdde-4105-9052-19ae1a3febc7',
     updated_at = NOW()
 WHERE responsible_person = 'Peter OulokAccountNachname'
   AND responsible_person !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
@@ -22,12 +22,12 @@ WHERE responsible_person = 'Peter OulokAccountNachname'
 -- Verify Peter's migration
 SELECT COUNT(*) as peters_videos_migrated 
 FROM public.videos 
-WHERE responsible_person = 'REPLACE_WITH_PETER_UUID_FROM_STEP1';
+WHERE responsible_person = 'eecb20b7-bdde-4105-9052-19ae1a3febc7';
 
 -- 3. Update David KosmahdmAccountTest (3 videos)
 -- REPLACE THIS UUID WITH DAVID'S ACTUAL UUID FROM STEP 1:
 UPDATE public.videos
-SET responsible_person = 'REPLACE_WITH_DAVID_UUID_FROM_STEP1',
+SET responsible_person = '8ed7f903-a032-4bb8-adde-4248b2d3c0d2',
     updated_at = NOW()
 WHERE responsible_person = 'David KosmahdmAccountTest'
   AND responsible_person !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
@@ -35,12 +35,12 @@ WHERE responsible_person = 'David KosmahdmAccountTest'
 -- Verify David's migration
 SELECT COUNT(*) as davids_videos_migrated 
 FROM public.videos 
-WHERE responsible_person = 'REPLACE_WITH_DAVID_UUID_FROM_STEP1';
+WHERE responsible_person = '8ed7f903-a032-4bb8-adde-4248b2d3c0d2';
 
 -- 4. Update karate_gestarrt.15 (1 video)
 -- REPLACE THIS UUID WITH KARATE'S ACTUAL UUID FROM STEP 1:
 UPDATE public.videos
-SET responsible_person = 'REPLACE_WITH_KARATE_UUID_FROM_STEP1',
+SET responsible_person = '185d79b4-c3fd-4637-85f4-3a5214efa7ee',
     updated_at = NOW()
 WHERE responsible_person = 'karate_gestarrt.15'
   AND responsible_person !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
@@ -48,7 +48,7 @@ WHERE responsible_person = 'karate_gestarrt.15'
 -- Verify karate's migration
 SELECT COUNT(*) as karates_videos_migrated 
 FROM public.videos 
-WHERE responsible_person = 'REPLACE_WITH_KARATE_UUID_FROM_STEP1';
+WHERE responsible_person = '185d79b4-c3fd-4637-85f4-3a5214efa7ee';
 
 -- 5. FINAL VERIFICATION - Check if any names remain
 SELECT 

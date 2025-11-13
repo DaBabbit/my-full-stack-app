@@ -112,58 +112,62 @@ export default function EditableResponsiblePerson({
     }
   }, [isOpen]);
 
-  // Build options list with UUIDs
-  const options: ResponsiblePersonOption[] = [];
-  const addedIds = new Set<string>(); // Track bereits hinzugefügte IDs
+  // Build options list with UUIDs - MUST be reactive to workspaceMembers changes!
+  const options = React.useMemo(() => {
+    const opts: ResponsiblePersonOption[] = [];
+    const addedIds = new Set<string>(); // Track bereits hinzugefügte IDs
 
-  // Add kosmamedia (if ID is loaded)
-  if (kosmamediaId) {
-    options.push({
-      id: kosmamediaId,
-      name: 'kosmamedia',
-      type: 'kosmamedia'
-    });
-    addedIds.add(kosmamediaId);
-  }
-
-  // Add workspace owner
-  if (workspaceOwner && workspaceOwner.id && !addedIds.has(workspaceOwner.id)) {
-    options.push({
-      id: workspaceOwner.id, // UUID!
-      name: `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim() || workspaceOwner.email,
-      type: 'owner',
-      email: workspaceOwner.email
-    });
-    addedIds.add(workspaceOwner.id);
-  }
-
-  // Add workspace members - nur ACTIVE members mit user_id
-  (workspaceMembers || []).forEach((member) => {
-    // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
-    // WICHTIG: Auch Members ohne user-Objekt anzeigen (nutze dann invitation_email als Fallback)
-    if (member.status === 'active' && member.user_id && !addedIds.has(member.user_id)) {
-      let displayName = 'Unbekannt';
-      let email = '';
-      
-      if (member.user) {
-        const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
-        displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
-        email = member.user.email;
-      } else if ('invitation_email' in member && typeof (member as {invitation_email?: string}).invitation_email === 'string') {
-        // Fallback: Verwende invitation_email wenn user-Daten fehlen
-        email = (member as {invitation_email: string}).invitation_email;
-        displayName = email.split('@')[0];
-      }
-      
-      options.push({
-        id: member.user_id, // WICHTIG: user_id verwenden, nicht member.id!
-        name: displayName,
-        type: 'member',
-        email: email
+    // Add kosmamedia (if ID is loaded)
+    if (kosmamediaId) {
+      opts.push({
+        id: kosmamediaId,
+        name: 'kosmamedia',
+        type: 'kosmamedia'
       });
-      addedIds.add(member.user_id);
+      addedIds.add(kosmamediaId);
     }
-  });
+
+    // Add workspace owner
+    if (workspaceOwner && workspaceOwner.id && !addedIds.has(workspaceOwner.id)) {
+      opts.push({
+        id: workspaceOwner.id, // UUID!
+        name: `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim() || workspaceOwner.email,
+        type: 'owner',
+        email: workspaceOwner.email
+      });
+      addedIds.add(workspaceOwner.id);
+    }
+
+    // Add workspace members - nur ACTIVE members mit user_id
+    (workspaceMembers || []).forEach((member) => {
+      // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
+      // WICHTIG: Auch Members ohne user-Objekt anzeigen (nutze dann invitation_email als Fallback)
+      if (member.status === 'active' && member.user_id && !addedIds.has(member.user_id)) {
+        let displayName = 'Unbekannt';
+        let email = '';
+        
+        if (member.user) {
+          const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
+          displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
+          email = member.user.email;
+        } else if ('invitation_email' in member && typeof (member as {invitation_email?: string}).invitation_email === 'string') {
+          // Fallback: Verwende invitation_email wenn user-Daten fehlen
+          email = (member as {invitation_email: string}).invitation_email;
+          displayName = email.split('@')[0];
+        }
+        
+        opts.push({
+          id: member.user_id, // WICHTIG: user_id verwenden, nicht member.id!
+          name: displayName,
+          type: 'member',
+          email: email
+        });
+        addedIds.add(member.user_id);
+      }
+    });
+
+    return opts;
+  }, [kosmamediaId, workspaceOwner, workspaceMembers]);
 
   const handleSelect = async (option: ResponsiblePersonOption) => {
     setIsOpen(false);

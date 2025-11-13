@@ -122,7 +122,7 @@ export default function VideosPage() {
   const searchParams = useSearchParams();
   const permissions = usePermissions();
   const { sharedWorkspaces } = useSharedWorkspaces();
-  const { members: workspaceMembers } = useWorkspaceMembers();
+  const { members: workspaceMembers, fetchMembers } = useWorkspaceMembers();
   
   // React Query Hooks - isLoading nur beim ersten Load, nicht bei Background Refetch
   const { 

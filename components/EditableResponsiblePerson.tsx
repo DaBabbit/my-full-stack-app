@@ -18,7 +18,12 @@ interface EditableResponsiblePersonProps {
   editable?: boolean;
   isLoading?: boolean;
   workspaceOwner?: { id: string; firstname: string; lastname: string; email: string };
-  workspaceMembers?: Array<{ id: string; user?: { firstname?: string; lastname?: string; email: string } }>;
+  workspaceMembers?: Array<{ 
+    id: string; 
+    user_id?: string | null;
+    status?: 'pending' | 'active' | 'removed';
+    user?: { firstname?: string; lastname?: string; email: string } 
+  }>;
 }
 
 /**

@@ -114,6 +114,8 @@ export function useWorkspaceInvitations() {
       // Invalidate queries to refetch
       queryClient.invalidateQueries({ queryKey: ['workspaceInvitations'] });
       queryClient.invalidateQueries({ queryKey: ['sharedWorkspaces'] });
+      // WICHTIG: Auch workspaceMembers invalidieren damit neue Members in Dropdowns erscheinen!
+      queryClient.invalidateQueries({ queryKey: ['workspaceMembers'] });
     },
   });
 

@@ -252,6 +252,30 @@ export default function SharedWorkspacePage() {
     };
     
     fetchWorkspaceMembers();
+    
+    // 🔥 Realtime Subscription für workspace_members Änderungen
+    const channel = supabase
+      .channel(`workspace_members_${ownerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'workspace_members',
+          filter: `workspace_owner_id=eq.${ownerId}`
+        },
+        (payload) => {
+          console.log('[Workspace Members] Realtime event:', payload);
+          // Refetch members when any change occurs
+          fetchWorkspaceMembers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Workspace Members] Cleaning up Realtime subscription');
+      supabase.removeChannel(channel);
+    };
   }, [ownerId, supabase]);
   
   // Dynamic sidebar items including shared workspaces

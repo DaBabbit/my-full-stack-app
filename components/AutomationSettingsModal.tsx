@@ -26,7 +26,7 @@ interface AutomationSettingsModalProps {
 interface AvailablePerson {
   id: string;
   name: string;
-  type: 'none' | 'kosmamedia' | 'owner' | 'member';
+  type: 'none' | 'owner' | 'member';
 }
 
 export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: AutomationSettingsModalProps) {
@@ -66,7 +66,7 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
     try {
       setLoading(true);
       
-      // 1. Load available persons (Keine Automatisierung + self + kosmamedia + workspace collaborators)
+      // 1. Load available persons (Keine Automatisierung + self + ALL workspace members)
       const persons: AvailablePerson[] = [];
       const addedIds = new Set<string>();
       
@@ -77,25 +77,8 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
         type: 'none'
       });
       
-      // Add kosmamedia
-      const { data: kosmamedia } = await supabase
-        .from('users')
-        .select('id, firstname, lastname, email')
-        .ilike('email', '%kosmamedia%')
-        .limit(1)
-        .maybeSingle();
-      
-      if (kosmamedia) {
-        persons.push({
-          id: kosmamedia.id,
-          name: 'kosmamedia',
-          type: 'kosmamedia'
-        });
-        addedIds.add(kosmamedia.id);
-      }
-      
-      // Add self (if not kosmamedia)
-      if (user && !addedIds.has(user.id)) {
+      // Add self (owner) FIRST
+      if (user) {
         const { data: profile } = await supabase
           .from('users')
           .select('id, firstname, lastname, email')
@@ -115,7 +98,7 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
         }
       }
       
-      // Add workspace members (collaborators invited by this user)
+      // Add ALL workspace members (including kosmamedia if they're a member)
       const { data: members } = await supabase
         .from('workspace_members')
         .select('id, user_id, invitation_email')
@@ -161,6 +144,7 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
         }
       }
       
+      console.log('[AutomationSettings] ✅ Available persons:', persons.length, persons);
       setAvailablePersons(persons);
       
       // 2. Load existing automation settings

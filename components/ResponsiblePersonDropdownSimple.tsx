@@ -7,7 +7,7 @@ import ResponsiblePersonAvatar from './ResponsiblePersonAvatar';
 interface ResponsiblePersonOption {
   id: string;
   name: string;
-  type: 'kosmamedia' | 'owner' | 'member';
+  type: 'owner' | 'member';
   email?: string;
 }
 
@@ -27,9 +27,8 @@ interface ResponsiblePersonDropdownSimpleProps {
  * Simpler Dropdown für "Verantwortliche Person" in Modals (Add/Edit)
  * 
  * Features:
- * - Kosmamedia Option
  * - Workspace Owner Option
- * - Workspace Members
+ * - ALL Workspace Members (inkl. eingeladene Mitarbeiter)
  * - Gleicher Look wie CustomDropdown
  */
 export default function ResponsiblePersonDropdownSimple({
@@ -40,27 +39,8 @@ export default function ResponsiblePersonDropdownSimple({
 }: ResponsiblePersonDropdownSimpleProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
-  const [kosmamediaId, setKosmamediaId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Load kosmamedia UUID once on mount
-  useEffect(() => {
-    const loadKosmamediaId = async () => {
-      const { supabase } = await import('@/utils/supabase');
-      const { data } = await supabase
-        .from('users')
-        .select('id')
-        .ilike('email', '%kosmamedia%')
-        .limit(1)
-        .single();
-      
-      if (data) {
-        setKosmamediaId(data.id);
-      }
-    };
-    loadKosmamediaId();
-  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -101,18 +81,8 @@ export default function ResponsiblePersonDropdownSimple({
     const opts: ResponsiblePersonOption[] = [];
     const addedIds = new Set<string>();
 
-    // Add kosmamedia (if ID is loaded)
-    if (kosmamediaId) {
-      opts.push({
-        id: kosmamediaId,
-        name: 'kosmamedia',
-        type: 'kosmamedia'
-      });
-      addedIds.add(kosmamediaId);
-    }
-
-    // Add workspace owner
-    if (workspaceOwner && workspaceOwner.id && !addedIds.has(workspaceOwner.id)) {
+    // Add workspace owner FIRST
+    if (workspaceOwner && workspaceOwner.id) {
       const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
       const displayName = ownerName || workspaceOwner.email.split('@')[0];
       opts.push({
@@ -124,10 +94,9 @@ export default function ResponsiblePersonDropdownSimple({
       addedIds.add(workspaceOwner.id);
     }
 
-    // Add workspace members - nur ACTIVE members mit user_id
+    // Add ALL workspace members - DONT skip kosmamedia!
     workspaceMembers.forEach((member) => {
-      // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
-      // WICHTIG: Auch Members ohne user-Objekt anzeigen (nutze dann invitation_email als Fallback)
+      // Nur aktive Members mit user_id anzeigen, die noch nicht als Owner hinzugefügt wurden
       if (member.status === 'active' && member.user_id && !addedIds.has(member.user_id)) {
         let displayName = 'Unbekannt';
         let email = '';
@@ -153,7 +122,7 @@ export default function ResponsiblePersonDropdownSimple({
     });
 
     return opts;
-  }, [kosmamediaId, workspaceOwner, workspaceMembers]);
+  }, [workspaceOwner, workspaceMembers]);
 
   const handleSelect = (option: ResponsiblePersonOption) => {
     onChange(option.id); // UUID speichern!

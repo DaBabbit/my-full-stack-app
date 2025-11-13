@@ -7,7 +7,7 @@ import ResponsiblePersonAvatar from './ResponsiblePersonAvatar';
 interface ResponsiblePersonOption {
   id: string; // UUID des Users
   name: string; // Display name (nur für Anzeige, nicht zum Speichern!)
-  type: 'kosmamedia' | 'owner' | 'member';
+  type: 'owner' | 'member';
   email?: string;
 }
 
@@ -30,9 +30,8 @@ interface EditableResponsiblePersonProps {
  * Dropdown-Komponente für "Verantwortliche Person"
  * 
  * Features:
- * - Kosmamedia Logo Option
  * - Workspace Owner Option
- * - Workspace Members (wenn vorhanden)
+ * - ALL Workspace Members (inkl. eingeladene Mitarbeiter)
  * - Modernes Dropdown im Stil von CustomDropdown
  * - Avatar-Anzeige in der Tabelle (kompakt)
  * - Voller Name in Edit-Ansicht
@@ -50,28 +49,8 @@ export default function EditableResponsiblePerson({
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
   const [isSaving, setIsSaving] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value || '');
-  const [kosmamediaId, setKosmamediaId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Load kosmamedia UUID once on mount
-  useEffect(() => {
-    const loadKosmamediaId = async () => {
-      const { supabase } = await import('@/utils/supabase');
-      const { data } = await supabase
-        .from('users')
-        .select('id')
-        .ilike('email', '%kosmamedia%')
-        .limit(1)
-        .single();
-      
-      if (data) {
-        setKosmamediaId(data.id);
-      }
-    };
-    
-    loadKosmamediaId();
-  }, []);
 
   // Update local value wenn external value sich ändert
   useEffect(() => {
@@ -117,31 +96,22 @@ export default function EditableResponsiblePerson({
     const opts: ResponsiblePersonOption[] = [];
     const addedIds = new Set<string>(); // Track bereits hinzugefügte IDs
 
-    // Add kosmamedia (if ID is loaded)
-    if (kosmamediaId) {
+    // Add workspace owner FIRST
+    if (workspaceOwner && workspaceOwner.id) {
+      const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
+      const displayName = ownerName || workspaceOwner.email.split('@')[0];
       opts.push({
-        id: kosmamediaId,
-        name: 'kosmamedia',
-        type: 'kosmamedia'
-      });
-      addedIds.add(kosmamediaId);
-    }
-
-    // Add workspace owner
-    if (workspaceOwner && workspaceOwner.id && !addedIds.has(workspaceOwner.id)) {
-      opts.push({
-        id: workspaceOwner.id, // UUID!
-        name: `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim() || workspaceOwner.email,
+        id: workspaceOwner.id,
+        name: displayName,
         type: 'owner',
         email: workspaceOwner.email
       });
       addedIds.add(workspaceOwner.id);
     }
 
-    // Add workspace members - nur ACTIVE members mit user_id
+    // Add ALL workspace members - DONT skip kosmamedia!
     (workspaceMembers || []).forEach((member) => {
-      // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
-      // WICHTIG: Auch Members ohne user-Objekt anzeigen (nutze dann invitation_email als Fallback)
+      // Nur aktive Members mit user_id anzeigen, die noch nicht als Owner hinzugefügt wurden
       if (member.status === 'active' && member.user_id && !addedIds.has(member.user_id)) {
         let displayName = 'Unbekannt';
         let email = '';
@@ -167,21 +137,26 @@ export default function EditableResponsiblePerson({
     });
 
     // DEBUG: Log welche Options gebaut wurden
-    console.log('[EditableResponsiblePerson] Built options:', {
-      total: opts.length,
-      kosmamedia: opts.filter(o => o.type === 'kosmamedia').length,
-      owner: opts.filter(o => o.type === 'owner').length,
-      members: opts.filter(o => o.type === 'member').length,
-      options: opts.map(o => ({ name: o.name, type: o.type, id: o.id.substring(0, 8) }))
+    console.log('[EditableResponsiblePerson] 📋 Built options:', opts.length, 'total');
+    console.log('  ├─ owner:', opts.filter(o => o.type === 'owner').length);
+    console.log('  └─ members:', opts.filter(o => o.type === 'member').length);
+    console.log('[EditableResponsiblePerson] 📝 Details:');
+    opts.forEach((o, i) => {
+      console.log(`  ${i+1}. [${o.type}] ${o.name} (${o.id.substring(0, 8)}...)`);
     });
-    console.log('[EditableResponsiblePerson] Input data:', {
-      workspaceOwner: workspaceOwner ? workspaceOwner.email : 'none',
-      workspaceMembers: workspaceMembers?.length || 0,
-      kosmamediaId: kosmamediaId ? kosmamediaId.substring(0, 8) : 'not loaded'
-    });
+    console.log('[EditableResponsiblePerson] 📥 Input data:');
+    console.log('  ├─ workspaceOwner:', workspaceOwner ? workspaceOwner.email : 'NONE');
+    console.log('  └─ workspaceMembers count:', workspaceMembers?.length || 0);
+    if (workspaceMembers && workspaceMembers.length > 0) {
+      console.log('[EditableResponsiblePerson] 👥 WorkspaceMembers details:');
+      workspaceMembers.forEach((m, i) => {
+        const name = m.user ? `${m.user.firstname || ''} ${m.user.lastname || ''}`.trim() || m.user.email : 'no user data';
+        console.log(`  ${i+1}. [${m.status}] ${name} (${m.user_id?.substring(0, 8) || 'no ID'}...)`);
+      });
+    }
 
     return opts;
-  }, [kosmamediaId, workspaceOwner, workspaceMembers]);
+  }, [workspaceOwner, workspaceMembers]);
 
   const handleSelect = async (option: ResponsiblePersonOption) => {
     setIsOpen(false);

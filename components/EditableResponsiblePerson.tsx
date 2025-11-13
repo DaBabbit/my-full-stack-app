@@ -166,6 +166,20 @@ export default function EditableResponsiblePerson({
       }
     });
 
+    // DEBUG: Log welche Options gebaut wurden
+    console.log('[EditableResponsiblePerson] Built options:', {
+      total: opts.length,
+      kosmamedia: opts.filter(o => o.type === 'kosmamedia').length,
+      owner: opts.filter(o => o.type === 'owner').length,
+      members: opts.filter(o => o.type === 'member').length,
+      options: opts.map(o => ({ name: o.name, type: o.type, id: o.id.substring(0, 8) }))
+    });
+    console.log('[EditableResponsiblePerson] Input data:', {
+      workspaceOwner: workspaceOwner ? workspaceOwner.email : 'none',
+      workspaceMembers: workspaceMembers?.length || 0,
+      kosmamediaId: kosmamediaId ? kosmamediaId.substring(0, 8) : 'not loaded'
+    });
+
     return opts;
   }, [kosmamediaId, workspaceOwner, workspaceMembers]);
 

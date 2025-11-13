@@ -135,9 +135,9 @@ export default function ResponsiblePersonDropdownSimple({
         const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
         displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
         email = member.user.email;
-      } else if ('invitation_email' in member && member.invitation_email) {
+      } else if ('invitation_email' in member && typeof (member as {invitation_email?: string}).invitation_email === 'string') {
         // Fallback: Verwende invitation_email wenn user-Daten fehlen
-        email = member.invitation_email;
+        email = (member as {invitation_email: string}).invitation_email;
         displayName = email.split('@')[0];
       }
       

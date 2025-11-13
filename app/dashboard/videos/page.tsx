@@ -405,7 +405,6 @@ export default function VideosPage() {
                 sort_config: activeSorts
               }
             });
-            console.log('[Filter/Sort] Auto-saved to view:', activeViewId);
           } catch (error) {
             console.error('[Filter/Sort] Error auto-saving to view:', error);
           }

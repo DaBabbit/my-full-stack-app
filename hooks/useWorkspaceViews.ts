@@ -56,8 +56,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
         throw new Error('Workspace Owner ID erforderlich');
       }
 
-      console.log('[useWorkspaceViews] Loading views for workspace:', workspaceOwnerId);
-
       const { data, error } = await supabase
         .from('workspace_views')
         .select('*')
@@ -69,7 +67,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
         throw error;
       }
 
-      console.log('[useWorkspaceViews] Loaded', data?.length || 0, 'views');
       return data as WorkspaceView[];
     },
     enabled: !!workspaceOwnerId,
@@ -88,8 +85,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
       if (!user) {
         throw new Error('Nicht authentifiziert');
       }
-
-      console.log('[useWorkspaceViews] Creating view:', input);
 
       const { data, error } = await supabase
         .from('workspace_views')
@@ -110,7 +105,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
         throw error;
       }
 
-      console.log('[useWorkspaceViews] View created successfully:', data);
       return data as WorkspaceView;
     },
     onSuccess: () => {
@@ -121,8 +115,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
   // Mutation für das Aktualisieren einer View
   const updateViewMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateViewInput> }) => {
-      console.log('[useWorkspaceViews] Updating view:', id, updates);
-
       const { data, error } = await supabase
         .from('workspace_views')
         .update(updates)
@@ -135,7 +127,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
         throw error;
       }
 
-      console.log('[useWorkspaceViews] View updated successfully:', data);
       return data as WorkspaceView;
     },
     onSuccess: () => {
@@ -146,8 +137,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
   // Mutation für das Löschen einer View
   const deleteViewMutation = useMutation({
     mutationFn: async (viewId: string) => {
-      console.log('[useWorkspaceViews] Deleting view:', viewId);
-
       const { error } = await supabase
         .from('workspace_views')
         .delete()
@@ -158,7 +147,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
         throw error;
       }
 
-      console.log('[useWorkspaceViews] View deleted successfully');
       return viewId;
     },
     onSuccess: () => {
@@ -172,8 +160,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
       if (!workspaceOwnerId) {
         throw new Error('Workspace Owner ID erforderlich');
       }
-
-      console.log('[useWorkspaceViews] Setting default view:', viewId);
 
       // Zuerst alle Views auf is_default = false setzen
       const { error: resetError } = await supabase
@@ -199,7 +185,6 @@ export function useWorkspaceViews(workspaceOwnerId?: string) {
         }
       }
 
-      console.log('[useWorkspaceViews] Default view set successfully');
       return viewId;
     },
     onSuccess: () => {

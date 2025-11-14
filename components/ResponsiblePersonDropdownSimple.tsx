@@ -80,8 +80,27 @@ export default function ResponsiblePersonDropdownSimple({
   const options = React.useMemo(() => {
     const opts: ResponsiblePersonOption[] = [];
     const addedIds = new Set<string>();
+    let kosmamediaId: string | null = null;
 
-    // STEP 1: Add workspace owner FIRST
+    // STEP 0: Find kosmamedia ID from workspace members
+    workspaceMembers.forEach((member) => {
+      if (member.user?.email?.toLowerCase().includes('kosmamedia')) {
+        kosmamediaId = member.user_id || null;
+      }
+    });
+
+    // STEP 1: Add kosmamedia FIRST (if found)
+    if (kosmamediaId) {
+      opts.push({
+        id: kosmamediaId,
+        name: 'kosmamedia',
+        type: 'member',
+        email: 'kosmamedia'
+      });
+      addedIds.add(kosmamediaId);
+    }
+
+    // STEP 2: Add workspace owner SECOND
     if (workspaceOwner && workspaceOwner.id) {
       const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
       const displayName = ownerName || workspaceOwner.email.split('@')[0];
@@ -94,9 +113,9 @@ export default function ResponsiblePersonDropdownSimple({
       addedIds.add(workspaceOwner.id);
     }
 
-    // STEP 2: Add ALL workspace members with their REAL names
+    // STEP 3: Add ALL other workspace members with their REAL names
     workspaceMembers.forEach((member) => {
-      // Nur aktive Members mit user_id anzeigen, die noch nicht als Owner hinzugefügt wurden
+      // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
       if (member.status === 'active' && member.user_id && !addedIds.has(member.user_id)) {
         let displayName = 'Unbekannt';
         let email = '';

@@ -68,7 +68,7 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
             status,
             permissions,
             invitation_email,
-            user:users (
+            user:workspace_members_user_id_fkey (
               id,
               email,
               firstname,

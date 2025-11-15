@@ -79,6 +79,17 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
       if (ownerError) throw ownerError;
       if (membersError) throw membersError;
 
+      console.log('[useResponsiblePeople] Raw membersData:', {
+        count: membersData?.length || 0,
+        members: (membersData || []).map(m => ({
+          id: m.id,
+          user_id: m.user_id,
+          status: m.status,
+          permissions: m.permissions,
+          invitation_email: m.invitation_email
+        }))
+      });
+
       const memberUserIds = (membersData || [])
         .map((member) => member.user_id)
         .filter((id): id is string => Boolean(id) && id !== workspaceOwnerId);
@@ -96,12 +107,41 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         (memberProfiles || []).map(profile => [profile.id, profile])
       );
 
+      // Filter: Nur aktive Mitglieder mit Bearbeitungsberechtigung
+      // Ein Mitglied ist berechtigt wenn:
+      // 1. Status ist 'active'
+      // 2. user_id ist gesetzt (Einladung wurde angenommen)
+      // 3. can_edit === true (explizit gesetzt) ODER permissions ist null/undefined (Standard = bearbeitungsberechtigt)
       const eligibleMembers = (membersData as WorkspaceMemberRow[] | null)?.filter((member) => {
-        if (!member.user_id) return false;
-        if (member.user_id === workspaceOwnerId) return false;
+        if (!member.user_id) {
+          console.log('[useResponsiblePeople] Filtered out - no user_id:', member.id);
+          return false;
+        }
+        if (member.user_id === workspaceOwnerId) {
+          console.log('[useResponsiblePeople] Filtered out - is owner:', member.user_id);
+          return false;
+        }
+        if (member.status !== 'active') {
+          console.log('[useResponsiblePeople] Filtered out - not active:', member.id, member.status);
+          return false;
+        }
+        
         const canEdit = member.permissions?.can_edit;
-        // Nur Mitglieder mit explizit can_edit === true akzeptieren
-        return canEdit === true;
+        // Wenn permissions null/undefined ist, nehmen wir an dass es bearbeitungsberechtigt ist (Standard)
+        // Wenn permissions gesetzt ist, muss can_edit explizit true sein
+        const isEligible = member.permissions === null || member.permissions === undefined 
+          ? true 
+          : canEdit === true;
+        
+        if (!isEligible) {
+          console.log('[useResponsiblePeople] Filtered out - no edit permission:', {
+            id: member.id,
+            permissions: member.permissions,
+            can_edit: canEdit
+          });
+        }
+        
+        return isEligible;
       }) ?? [];
 
       console.log('[useResponsiblePeople] Gefundene Mitglieder:', {
@@ -110,7 +150,9 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         members: eligibleMembers.map(m => ({
           user_id: m.user_id,
           can_edit: m.permissions?.can_edit,
-          status: m.status
+          permissions: m.permissions,
+          status: m.status,
+          invitation_email: m.invitation_email
         }))
       });
 
@@ -202,6 +244,8 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
   useEffect(() => {
     if (!workspaceOwnerId) return;
 
+    console.log('[useResponsiblePeople] Setting up Realtime subscription for workspace:', workspaceOwnerId);
+
     const channel = supabase
       .channel(`responsible_people_${workspaceOwnerId}`)
       .on(
@@ -212,13 +256,23 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
           table: 'workspace_members',
           filter: `workspace_owner_id=eq.${workspaceOwnerId}`
         },
-        () => {
+        (payload) => {
+          console.log('[useResponsiblePeople] Realtime event received:', {
+            event: payload.eventType,
+            table: payload.table,
+            new: payload.new,
+            old: payload.old
+          });
+          // Refetch when workspace members change (invitation accepted, member removed, permissions updated)
           fetchResponsiblePeople();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[useResponsiblePeople] Realtime subscription status:', status);
+      });
 
     return () => {
+      console.log('[useResponsiblePeople] Cleaning up Realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [workspaceOwnerId, supabase, fetchResponsiblePeople]);

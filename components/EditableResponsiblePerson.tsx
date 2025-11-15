@@ -3,13 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Loader2, Check } from 'lucide-react';
 import ResponsiblePersonAvatar from './ResponsiblePersonAvatar';
-
-interface ResponsiblePersonOption {
-  id: string; // UUID des Users
-  name: string; // Display name (nur für Anzeige, nicht zum Speichern!)
-  type: 'owner' | 'member';
-  email?: string;
-}
+import { ResponsiblePersonOption } from '@/hooks/useResponsiblePeople';
 
 interface EditableResponsiblePersonProps {
   value: string | null | undefined; // UUID
@@ -17,13 +11,8 @@ interface EditableResponsiblePersonProps {
   onSave: (videoId: string, field: string, value: string) => Promise<void>;
   editable?: boolean;
   isLoading?: boolean;
-  workspaceOwner?: { id: string; firstname: string; lastname: string; email: string };
-  workspaceMembers?: Array<{ 
-    id: string; 
-    user_id?: string | null;
-    status?: 'pending' | 'active' | 'removed';
-    user?: { firstname?: string; lastname?: string; email: string } 
-  }>;
+  options?: ResponsiblePersonOption[];
+  isOptionsLoading?: boolean;
 }
 
 /**
@@ -42,8 +31,8 @@ export default function EditableResponsiblePerson({
   onSave,
   editable = true,
   isLoading = false,
-  workspaceOwner,
-  workspaceMembers = []
+  options = [],
+  isOptionsLoading = false
 }: EditableResponsiblePersonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
@@ -91,92 +80,6 @@ export default function EditableResponsiblePerson({
     }
   }, [isOpen]);
 
-  // Build options list with UUIDs - MUST be reactive to workspaceMembers changes!
-  const options = React.useMemo(() => {
-    const opts: ResponsiblePersonOption[] = [];
-    const addedIds = new Set<string>(); // Track bereits hinzugefügte IDs
-    let kosmamediaId: string | null = null;
-
-    // STEP 0: Find kosmamedia ID from workspace members
-    (workspaceMembers || []).forEach((member) => {
-      if (member.user?.email?.toLowerCase().includes('kosmamedia')) {
-        kosmamediaId = member.user_id || null;
-      }
-    });
-
-    // STEP 1: Add kosmamedia FIRST (if found)
-    if (kosmamediaId) {
-      opts.push({
-        id: kosmamediaId,
-        name: 'kosmamedia',
-        type: 'member',
-        email: 'kosmamedia'
-      });
-      addedIds.add(kosmamediaId);
-    }
-
-    // STEP 2: Add workspace owner SECOND
-    if (workspaceOwner && workspaceOwner.id) {
-      const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
-      const displayName = ownerName || workspaceOwner.email.split('@')[0];
-      opts.push({
-        id: workspaceOwner.id,
-        name: displayName,
-        type: 'owner',
-        email: workspaceOwner.email
-      });
-      addedIds.add(workspaceOwner.id);
-    }
-
-    // STEP 3: Add ALL other workspace members with their REAL names
-    (workspaceMembers || []).forEach((member) => {
-      // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
-      if (member.status === 'active' && member.user_id && !addedIds.has(member.user_id)) {
-        let displayName = 'Unbekannt';
-        let email = '';
-        
-        if (member.user) {
-          const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
-          displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
-          email = member.user.email;
-        } else if ('invitation_email' in member && typeof (member as {invitation_email?: string}).invitation_email === 'string') {
-          // Fallback: Verwende invitation_email wenn user-Daten fehlen
-          email = (member as {invitation_email: string}).invitation_email;
-          displayName = email.split('@')[0];
-        }
-        
-        opts.push({
-          id: member.user_id,
-          name: displayName,
-          type: 'member',
-          email: email
-        });
-        addedIds.add(member.user_id);
-      }
-    });
-
-    // DEBUG: Log welche Options gebaut wurden
-    console.log('[EditableResponsiblePerson] 📋 Built options:', opts.length, 'total');
-    console.log('  ├─ owner:', opts.filter(o => o.type === 'owner').length);
-    console.log('  └─ members:', opts.filter(o => o.type === 'member').length);
-    console.log('[EditableResponsiblePerson] 📝 Details:');
-    opts.forEach((o, i) => {
-      console.log(`  ${i+1}. [${o.type}] ${o.name} (${o.id.substring(0, 8)}...)`);
-    });
-    console.log('[EditableResponsiblePerson] 📥 Input data:');
-    console.log('  ├─ workspaceOwner:', workspaceOwner ? workspaceOwner.email : 'NONE');
-    console.log('  └─ workspaceMembers count:', workspaceMembers?.length || 0);
-    if (workspaceMembers && workspaceMembers.length > 0) {
-      console.log('[EditableResponsiblePerson] 👥 WorkspaceMembers details:');
-      workspaceMembers.forEach((m, i) => {
-        const name = m.user ? `${m.user.firstname || ''} ${m.user.lastname || ''}`.trim() || m.user.email : 'no user data';
-        console.log(`  ${i+1}. [${m.status}] ${name} (${m.user_id?.substring(0, 8) || 'no ID'}...)`);
-      });
-    }
-
-    return opts;
-  }, [workspaceOwner, workspaceMembers]);
-
   const handleSelect = async (option: ResponsiblePersonOption) => {
     setIsOpen(false);
     
@@ -214,7 +117,7 @@ export default function EditableResponsiblePerson({
     <div ref={dropdownRef} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        disabled={isSaving || isLoading}
+        disabled={isSaving || isLoading || isOptionsLoading || options.length === 0}
         className={`
           w-full min-h-[44px] px-3 py-2
           flex items-center justify-between gap-2
@@ -231,7 +134,7 @@ export default function EditableResponsiblePerson({
         />
         
         <div className="flex items-center gap-2">
-          {(isSaving || isLoading) && (
+          {(isSaving || isLoading || isOptionsLoading) && (
             <Loader2 className="w-4 h-4 text-neutral-400 animate-spin" />
           )}
           <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -275,7 +178,7 @@ export default function EditableResponsiblePerson({
             
             {options.length === 0 && (
               <div className="px-3 py-2 text-sm text-neutral-500 text-center">
-                Keine Optionen verfügbar
+                {isOptionsLoading ? 'Lade Optionen...' : 'Keine Optionen verfügbar'}
               </div>
             )}
           </div>

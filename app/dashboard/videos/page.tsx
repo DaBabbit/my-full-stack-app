@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
-import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import { useVideosQuery, useVideoMutations, type Video } from '@/hooks/useVideosQuery';
 import { useRealtimeVideos } from '@/hooks/useRealtimeVideos';
 import { useTabFocusRefetch } from '@/hooks/useTabFocusRefetch';
@@ -21,6 +20,7 @@ import EditableDate from '@/components/EditableDate';
 import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
 import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
 import ResponsiblePersonDropdownSimple from '@/components/ResponsiblePersonDropdownSimple';
+import { useResponsiblePeople } from '@/hooks/useResponsiblePeople';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import BulkEditBar from '@/components/BulkEditBar';
 import { FileUploadModal } from '@/components/FileUploadModal';
@@ -122,7 +122,22 @@ export default function VideosPage() {
   const searchParams = useSearchParams();
   const permissions = usePermissions();
   const { sharedWorkspaces } = useSharedWorkspaces();
-  const { members: workspaceMembers } = useWorkspaceMembers();
+  const {
+    options: responsibleOptions,
+    isLoading: responsibleOptionsLoading,
+    personMap: responsiblePersonMap
+  } = useResponsiblePeople(user?.id);
+  const filterPersonOptions = React.useMemo(() => {
+    return responsibleOptions.map((option) => {
+      const person = responsiblePersonMap[option.id];
+      return {
+        id: option.id,
+        firstname: person?.firstname || option.name,
+        lastname: person?.lastname || '',
+        email: person?.email || option.email
+      };
+    });
+  }, [responsibleOptions, responsiblePersonMap]);
   
   // React Query Hooks - isLoading nur beim ersten Load, nicht bei Background Refetch
   const { 
@@ -1608,8 +1623,8 @@ export default function VideosPage() {
                 await handleFieldSave(videoId, field, value);
               }}
               editable={permissions.canEditVideos}
-              workspaceOwner={workspaceOwner}
-              workspaceMembers={workspaceMembers}
+              options={responsibleOptions}
+              isOptionsLoading={responsibleOptionsLoading}
             />
           </td>
         );
@@ -1741,7 +1756,8 @@ export default function VideosPage() {
     selectedVideoIds,
     permissions,
     workspaceOwner,
-    workspaceMembers,
+    responsibleOptions,
+    responsibleOptionsLoading,
     handleVideoSelection,
     handleUpdateStatus,
     handleFieldSave,
@@ -2165,13 +2181,7 @@ export default function VideosPage() {
                 });
                 return reverseMap;
               })()}
-              personMap={Object.fromEntries(
-                workspaceMembers.map(m => [m.user_id, { 
-                  firstname: m.user?.firstname || '', 
-                  lastname: m.user?.lastname || '', 
-                  email: m.user?.email || m.invitation_email || '' 
-                }])
-              )}
+              personMap={responsiblePersonMap}
             />
 
             {/* Tabellen-Content - sieht aus wie Fortsetzung */}
@@ -2553,8 +2563,8 @@ export default function VideosPage() {
                   <ResponsiblePersonDropdownSimple
                     value={newVideo.responsible_person}
                     onChange={(value) => setNewVideo({ ...newVideo, responsible_person: value })}
-                    workspaceOwner={workspaceOwner}
-                    workspaceMembers={workspaceMembers}
+                    options={responsibleOptions}
+                    isOptionsLoading={responsibleOptionsLoading}
                   />
                 </div>
 
@@ -2703,8 +2713,8 @@ export default function VideosPage() {
                   <ResponsiblePersonDropdownSimple
                     value={editingVideo.responsible_person || ''}
                     onChange={(value) => setEditingVideo({ ...editingVideo, responsible_person: value })}
-                    workspaceOwner={workspaceOwner}
-                    workspaceMembers={workspaceMembers}
+                    options={responsibleOptions}
+                    isOptionsLoading={responsibleOptionsLoading}
                   />
                 </div>
 
@@ -2912,15 +2922,7 @@ export default function VideosPage() {
           currentValue={activeFilters[filterSubmenuOpen]}
           onApply={(value) => handleAddFilter(filterSubmenuOpen, value)}
           statusOptions={['Idee', 'Warten auf Aufnahme', 'In Bearbeitung', 'Schnitt abgeschlossen', 'Hochgeladen']}
-          personOptions={[
-            ...(workspaceOwner ? [workspaceOwner] : []),
-            ...workspaceMembers.map(m => ({
-              id: m.user_id,
-              firstname: m.user?.firstname || '',
-              lastname: m.user?.lastname || '',
-              email: m.user?.email || m.invitation_email || ''
-            }))
-          ]}
+          personOptions={filterPersonOptions}
           locationOptions={Array.from(new Set(videos.map(v => v.storage_location).filter(Boolean) as string[]))}
         />
       )}
@@ -2936,6 +2938,8 @@ export default function VideosPage() {
             message: message
           });
         }}
+        responsibleOptions={responsibleOptions}
+        isOptionsLoading={responsibleOptionsLoading}
       />
 
       {/* Toast Notifications */}

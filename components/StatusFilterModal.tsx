@@ -8,8 +8,8 @@ import EditableCell from './EditableCell';
 import EditableDescription from './EditableDescription';
 import EditableResponsiblePerson from './EditableResponsiblePerson';
 import CustomDropdown from './CustomDropdown';
-import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import { useAuth } from '@/contexts/AuthContext';
+import { useResponsiblePeople } from '@/hooks/useResponsiblePeople';
 
 interface StatusFilterModalProps {
   isOpen: boolean;
@@ -20,8 +20,6 @@ interface StatusFilterModalProps {
   onDelete: (videoId: string) => Promise<void>;
   canEdit: boolean;
   canDelete: boolean;
-  workspaceOwner?: { id: string; firstname: string; lastname: string; email: string };
-  workspaceMembers?: Array<{ id: string; user?: { firstname?: string; lastname?: string; email: string } }>;
 }
 
 const statusOptions = [
@@ -78,7 +76,10 @@ export default function StatusFilterModal({
 }: StatusFilterModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
-  const { members: workspaceMembers } = useWorkspaceMembers();
+  const {
+    options: responsibleOptions,
+    isLoading: responsibleOptionsLoading
+  } = useResponsiblePeople(user?.id);
 
   // Body scroll lock - Verbesserte Version
   useEffect(() => {
@@ -120,16 +121,6 @@ export default function StatusFilterModal({
   const statusColor = getStatusColor(status);
 
   // Workspace Owner Info
-  const workspaceOwner = useMemo(() => {
-    if (!user) return undefined;
-    return {
-      id: user.id,
-      email: user.email || '',
-      firstname: user.user_metadata?.firstname || '',
-      lastname: user.user_metadata?.lastname || '',
-    };
-  }, [user]);
-
   // Reset search on close
   useEffect(() => {
     if (!isOpen) {
@@ -271,8 +262,8 @@ export default function StatusFilterModal({
                                 videoId={video.id}
                                 onSave={onFieldSave}
                                 editable={canEdit}
-                                workspaceOwner={workspaceOwner}
-                                workspaceMembers={workspaceMembers}
+                                options={responsibleOptions}
+                                isOptionsLoading={responsibleOptionsLoading}
                               />
                             </td>
 

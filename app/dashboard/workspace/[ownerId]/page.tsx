@@ -18,6 +18,7 @@ import EditableDate from '@/components/EditableDate';
 import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
 import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
 import ResponsiblePersonDropdownSimple from '@/components/ResponsiblePersonDropdownSimple';
+import { useResponsiblePeople } from '@/hooks/useResponsiblePeople';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import BulkEditBar from '@/components/BulkEditBar';
 import { FileUploadModal } from '@/components/FileUploadModal';
@@ -167,116 +168,22 @@ export default function SharedWorkspacePage() {
     email: currentWorkspace.owner_email
   } : undefined;
   
-  // Load ALL workspace members who have access to THIS workspace (ownerId)
-  const [workspaceMembers, setWorkspaceMembers] = useState<Array<{ 
-    id: string; 
-    user_id: string;
-    status: 'pending' | 'active' | 'removed';
-    user?: { firstname?: string; lastname?: string; email: string } 
-  }>>([]);
-
-  // Fetch workspace members for THIS workspace
-  useEffect(() => {
-    const fetchWorkspaceMembers = async () => {
-      if (!ownerId) return;
-      
-      try {
-        // Fetch all ACTIVE members of THIS workspace (including owner)
-        const { data: members, error } = await supabase
-          .from('workspace_members')
-          .select('id, user_id, status, invitation_email')
-          .eq('workspace_owner_id', ownerId)
-          .eq('status', 'active');
-        
-        if (error) throw error;
-        
-        // For each member, fetch user details
-        const membersWithDetails = await Promise.all((members || []).map(async (member: { id: string; user_id: string; status: string; invitation_email?: string }): Promise<{
-          id: string;
-          user_id: string;
-          status: 'pending' | 'active' | 'removed';
-          user?: { firstname?: string; lastname?: string; email: string };
-        }> => {
-          if (!member.user_id) {
-            return {
-              id: member.id,
-              user_id: member.user_id,
-              status: member.status as 'pending' | 'active' | 'removed',
-              user: member.invitation_email ? {
-                email: member.invitation_email,
-                firstname: '',
-                lastname: ''
-              } : undefined
-            };
-          }
-          
-          try {
-            const { data: userData } = await supabase
-              .from('users')
-              .select('id, email, firstname, lastname')
-              .eq('id', member.user_id)
-              .single();
-            
-            if (userData) {
-              return {
-                id: member.id,
-                user_id: member.user_id,
-                status: member.status as 'pending' | 'active' | 'removed',
-                user: {
-                  email: userData.email || member.invitation_email || '',
-                  firstname: userData.firstname || '',
-                  lastname: userData.lastname || ''
-                }
-              };
-            }
-          } catch (err) {
-            console.error('[Workspace Members] Error fetching user:', err);
-          }
-          
-          return {
-            id: member.id,
-            user_id: member.user_id,
-            status: member.status as 'pending' | 'active' | 'removed',
-            user: member.invitation_email ? {
-              email: member.invitation_email,
-              firstname: '',
-              lastname: ''
-            } : undefined
-          };
-        }));
-        
-        setWorkspaceMembers(membersWithDetails);
-      } catch (error) {
-        console.error('[Workspace Members] Error loading members:', error);
-      }
-    };
-    
-    fetchWorkspaceMembers();
-    
-    // 🔥 Realtime Subscription für workspace_members Änderungen
-    const channel = supabase
-      .channel(`workspace_members_${ownerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'workspace_members',
-          filter: `workspace_owner_id=eq.${ownerId}`
-        },
-        (payload) => {
-          console.log('[Workspace Members] Realtime event:', payload);
-          // Refetch members when any change occurs
-          fetchWorkspaceMembers();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[Workspace Members] Cleaning up Realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [ownerId, supabase]);
+  const {
+    options: responsibleOptions,
+    isLoading: responsibleOptionsLoading,
+    personMap: responsiblePersonMap
+  } = useResponsiblePeople(ownerId);
+  const filterPersonOptions = useMemo(() => {
+    return responsibleOptions.map((option) => {
+      const person = responsiblePersonMap[option.id];
+      return {
+        id: option.id,
+        firstname: person?.firstname || option.name,
+        lastname: person?.lastname || '',
+        email: person?.email || option.email
+      };
+    });
+  }, [responsibleOptions, responsiblePersonMap]);
   
   // Dynamic sidebar items including shared workspaces
   const sidebarItems = [
@@ -1726,8 +1633,8 @@ export default function SharedWorkspacePage() {
                 await handleFieldSave(videoId, field, value);
               }}
               editable={permissions.can_edit}
-              workspaceOwner={workspaceOwner}
-              workspaceMembers={workspaceMembers}
+              options={responsibleOptions}
+              isOptionsLoading={responsibleOptionsLoading}
             />
           </td>
         );
@@ -1862,7 +1769,8 @@ export default function SharedWorkspacePage() {
     selectedVideoIds,
     permissions,
     workspaceOwner,
-    workspaceMembers,
+    responsibleOptions,
+    responsibleOptionsLoading,
     handleVideoSelection,
     handleUpdateStatus,
     handleFieldSave,
@@ -2282,13 +2190,7 @@ export default function SharedWorkspacePage() {
                 });
                 return reverseMap;
               })()}
-              personMap={Object.fromEntries(
-                workspaceMembers.map(m => [m.id, { 
-                  firstname: m.user?.firstname || '', 
-                  lastname: m.user?.lastname || '', 
-                  email: m.user?.email || '' 
-                }])
-              )}
+              personMap={responsiblePersonMap}
             />
 
             {/* Tabellen-Content - sieht aus wie Fortsetzung */}
@@ -2673,8 +2575,8 @@ export default function SharedWorkspacePage() {
                   <ResponsiblePersonDropdownSimple
                     value={newVideo.responsible_person}
                     onChange={(value) => setNewVideo({ ...newVideo, responsible_person: value })}
-                    workspaceOwner={workspaceOwner}
-                    workspaceMembers={workspaceMembers}
+                    options={responsibleOptions}
+                    isOptionsLoading={responsibleOptionsLoading}
                   />
                 </div>
 
@@ -2823,8 +2725,8 @@ export default function SharedWorkspacePage() {
                   <ResponsiblePersonDropdownSimple
                     value={editingVideo.responsible_person || ''}
                     onChange={(value) => setEditingVideo({ ...editingVideo, responsible_person: value })}
-                    workspaceOwner={workspaceOwner}
-                    workspaceMembers={workspaceMembers}
+                    options={responsibleOptions}
+                    isOptionsLoading={responsibleOptionsLoading}
                   />
                 </div>
 
@@ -3026,15 +2928,7 @@ export default function SharedWorkspacePage() {
           currentValue={activeFilters[filterSubmenuOpen]}
           onApply={(value) => handleAddFilter(filterSubmenuOpen, value)}
           statusOptions={['Idee', 'Warten auf Aufnahme', 'In Bearbeitung', 'Schnitt abgeschlossen', 'Hochgeladen']}
-          personOptions={[
-            ...(workspaceOwner ? [workspaceOwner] : []),
-            ...workspaceMembers.map(m => ({
-              id: m.id,
-              firstname: m.user?.firstname || '',
-              lastname: m.user?.lastname || '',
-              email: m.user?.email || ''
-            }))
-          ]}
+          personOptions={filterPersonOptions}
           locationOptions={Array.from(new Set(videos.map(v => v.storage_location).filter(Boolean) as string[]))}
         />
       )}

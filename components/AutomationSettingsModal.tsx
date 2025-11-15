@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Loader2 } from 'lucide-react';
+import { ResponsiblePersonOption } from '@/hooks/useResponsiblePeople';
 
 interface AutomationSettings {
   id?: string;
@@ -21,6 +22,8 @@ interface AutomationSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (message: string) => void; // Callback für Toast
+  responsibleOptions: ResponsiblePersonOption[];
+  isOptionsLoading?: boolean;
 }
 
 interface AvailablePerson {
@@ -29,13 +32,16 @@ interface AvailablePerson {
   type: 'none' | 'owner' | 'member';
 }
 
-export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: AutomationSettingsModalProps) {
+export function AutomationSettingsModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  responsibleOptions,
+  isOptionsLoading = false
+}: AutomationSettingsModalProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
-  // Available persons for assignment
-  const [availablePersons, setAvailablePersons] = useState<AvailablePerson[]>([]);
   
   // Settings (one row per user)
   const [settings, setSettings] = useState<AutomationSettings>({
@@ -65,130 +71,14 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
   const loadSettings = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // 1. Load available persons (Keine Automatisierung + kosmamedia + owner + ALL workspace members)
-      const persons: AvailablePerson[] = [];
-      const addedIds = new Set<string>();
-      let kosmamediaId: string | null = null;
-      
-      // Add "Keine Automatisierung" option
-      persons.push({
-        id: '',
-        name: 'Keine Automatisierung',
-        type: 'none'
-      });
-      
-      // Load workspace members to find kosmamedia
-      const { data: members } = await supabase
-        .from('workspace_members')
-        .select('id, user_id, invitation_email')
-        .eq('workspace_owner_id', user?.id)
-        .eq('status', 'active');
-      
-      // Find kosmamedia ID
-      if (members && Array.isArray(members)) {
-        for (const member of members) {
-          if (!member.user_id) continue;
-          try {
-            const { data: userData } = await supabase
-              .from('users')
-              .select('id, email')
-              .eq('id', member.user_id)
-              .single();
-            
-            if (userData && userData.email?.toLowerCase().includes('kosmamedia')) {
-              kosmamediaId = userData.id;
-              break;
-            }
-          } catch (err) {
-            console.error('[AutomationSettings] Error checking member:', err);
-          }
-        }
-      }
-      
-      // Add kosmamedia FIRST (if found)
-      if (kosmamediaId) {
-        persons.push({
-          id: kosmamediaId,
-          name: 'kosmamedia',
-          type: 'member'
-        });
-        addedIds.add(kosmamediaId);
-      }
-      
-      // Add self (owner) SECOND
-      if (user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('id, firstname, lastname, email')
-          .eq('id', user.id)
-          .single();
-        
-        if (profile) {
-          const displayName = profile.firstname && profile.lastname 
-            ? `${profile.firstname} ${profile.lastname}` 
-            : profile.email.split('@')[0];
-          persons.push({
-            id: profile.id,
-            name: displayName,
-            type: 'owner'
-          });
-          addedIds.add(profile.id);
-        }
-      }
-      
-      // Add ALL other workspace members with their REAL names
-      if (members && Array.isArray(members)) {
-        for (const member of members) {
-          if (!member.user_id || addedIds.has(member.user_id)) continue;
-          
-          try {
-            // Fetch user details separately
-            const { data: userData } = await supabase
-              .from('users')
-              .select('id, email, firstname, lastname')
-              .eq('id', member.user_id)
-              .single();
-            
-            if (userData && userData.id) {
-              const displayName = userData.firstname && userData.lastname 
-                ? `${userData.firstname} ${userData.lastname}` 
-                : userData.email?.split('@')[0] || member.invitation_email?.split('@')[0] || 'Unbekannt';
-              
-              persons.push({
-                id: userData.id,
-                name: displayName,
-                type: 'member'
-              });
-              addedIds.add(userData.id);
-            }
-          } catch (err) {
-            // Fallback: use invitation_email if user data fetch fails
-            if (member.invitation_email) {
-              persons.push({
-                id: member.user_id,
-                name: member.invitation_email.split('@')[0],
-                type: 'member'
-              });
-              addedIds.add(member.user_id);
-            }
-            console.error('[AutomationSettings] Error fetching user for member:', member.user_id, err);
-          }
-        }
-      }
-      
-      console.log('[AutomationSettings] ✅ Available persons:', persons.length, persons);
-      setAvailablePersons(persons);
-      
-      // 2. Load existing automation settings
+
+      // Load existing automation settings
       const { data: existingSettings } = await supabase
         .from('automation_settings')
         .select('*')
         .eq('user_id', user?.id)
         .is('workspace_owner_id', null)
         .maybeSingle();
-      
-      console.log('[AutomationSettings] Existing settings:', existingSettings);
       
       if (existingSettings) {
         setSettings(existingSettings);
@@ -256,6 +146,24 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
 
   if (!isOpen) return null;
 
+  const availablePersons = useMemo<AvailablePerson[]>(() => {
+    const persons: AvailablePerson[] = [
+      { id: '', name: 'Keine Automatisierung', type: 'none' }
+    ];
+
+    responsibleOptions.forEach((option) => {
+      persons.push({
+        id: option.id,
+        name: option.role === 'kosmamedia' ? 'kosmamedia' : option.name,
+        type: option.role === 'owner' ? 'owner' : 'member'
+      });
+    });
+
+    return persons;
+  }, [responsibleOptions]);
+
+  const isReady = !loading && !isOptionsLoading;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -291,11 +199,7 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
 
           {/* Content */}
           <div className="p-6 overflow-y-auto max-h-[calc(80vh-180px)]">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-              </div>
-            ) : (
+            {isReady ? (
               <>
                 {/* Info Box */}
                 <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
@@ -349,6 +253,10 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
                   </div>
                 </div>
               </>
+            ) : (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              </div>
             )}
           </div>
 
@@ -362,7 +270,7 @@ export function AutomationSettingsModal({ isOpen, onClose, onSuccess }: Automati
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || loading}
+              disabled={saving || !isReady}
               className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving ? (

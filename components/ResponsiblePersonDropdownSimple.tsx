@@ -3,24 +3,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import ResponsiblePersonAvatar from './ResponsiblePersonAvatar';
-
-interface ResponsiblePersonOption {
-  id: string;
-  name: string;
-  type: 'owner' | 'member';
-  email?: string;
-}
+import { ResponsiblePersonOption } from '@/hooks/useResponsiblePeople';
 
 interface ResponsiblePersonDropdownSimpleProps {
   value: string;
   onChange: (value: string) => void;
-  workspaceOwner?: { id: string; firstname: string; lastname: string; email: string };
-  workspaceMembers?: Array<{ 
-    id: string; 
-    user_id?: string | null;
-    status?: 'pending' | 'active' | 'removed';
-    user?: { firstname?: string; lastname?: string; email: string } 
-  }>;
+  options?: ResponsiblePersonOption[];
+  isOptionsLoading?: boolean;
 }
 
 /**
@@ -34,8 +23,8 @@ interface ResponsiblePersonDropdownSimpleProps {
 export default function ResponsiblePersonDropdownSimple({
   value,
   onChange,
-  workspaceOwner,
-  workspaceMembers = []
+  options = [],
+  isOptionsLoading = false
 }: ResponsiblePersonDropdownSimpleProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
@@ -76,73 +65,6 @@ export default function ResponsiblePersonDropdownSimple({
     }
   }, [isOpen]);
 
-  // Build options list with UUIDs - MUST be reactive to workspaceMembers changes!
-  const options = React.useMemo(() => {
-    const opts: ResponsiblePersonOption[] = [];
-    const addedIds = new Set<string>();
-    let kosmamediaId: string | null = null;
-
-    // STEP 0: Find kosmamedia ID from workspace members
-    workspaceMembers.forEach((member) => {
-      if (member.user?.email?.toLowerCase().includes('kosmamedia')) {
-        kosmamediaId = member.user_id || null;
-      }
-    });
-
-    // STEP 1: Add kosmamedia FIRST (if found)
-    if (kosmamediaId) {
-      opts.push({
-        id: kosmamediaId,
-        name: 'kosmamedia',
-        type: 'member',
-        email: 'kosmamedia'
-      });
-      addedIds.add(kosmamediaId);
-    }
-
-    // STEP 2: Add workspace owner SECOND
-    if (workspaceOwner && workspaceOwner.id) {
-      const ownerName = `${workspaceOwner.firstname || ''} ${workspaceOwner.lastname || ''}`.trim();
-      const displayName = ownerName || workspaceOwner.email.split('@')[0];
-      opts.push({
-        id: workspaceOwner.id,
-        name: displayName,
-        type: 'owner',
-        email: workspaceOwner.email
-      });
-      addedIds.add(workspaceOwner.id);
-    }
-
-    // STEP 3: Add ALL other workspace members with their REAL names
-    workspaceMembers.forEach((member) => {
-      // Nur aktive Members mit user_id anzeigen, die noch nicht hinzugefügt wurden
-      if (member.status === 'active' && member.user_id && !addedIds.has(member.user_id)) {
-        let displayName = 'Unbekannt';
-        let email = '';
-        
-        if (member.user) {
-          const memberName = `${member.user.firstname || ''} ${member.user.lastname || ''}`.trim();
-          displayName = memberName || member.user.email?.split('@')[0] || 'Unbekannt';
-          email = member.user.email;
-        } else if ('invitation_email' in member && typeof (member as {invitation_email?: string}).invitation_email === 'string') {
-          // Fallback: Verwende invitation_email wenn user-Daten fehlen
-          email = (member as {invitation_email: string}).invitation_email;
-          displayName = email.split('@')[0];
-        }
-        
-        opts.push({
-          id: member.user_id,
-          name: displayName,
-          type: 'member',
-          email: email
-        });
-        addedIds.add(member.user_id);
-      }
-    });
-
-    return opts;
-  }, [workspaceOwner, workspaceMembers]);
-
   const handleSelect = (option: ResponsiblePersonOption) => {
     onChange(option.id); // UUID speichern!
     setIsOpen(false);
@@ -153,6 +75,7 @@ export default function ResponsiblePersonDropdownSimple({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        disabled={isOptionsLoading || options.length === 0}
         className={`
           w-full px-3 py-2
           flex items-center justify-between gap-2
@@ -163,9 +86,9 @@ export default function ResponsiblePersonDropdownSimple({
           ${isOpen ? 'ring-2 ring-white/50' : ''}
         `}
       >
-        <ResponsiblePersonAvatar 
-          responsiblePerson={value || null} 
-          size="sm" 
+        <ResponsiblePersonAvatar
+          responsiblePerson={value || null}
+          size="sm"
           showFullName={true}
         />
         
@@ -211,7 +134,7 @@ export default function ResponsiblePersonDropdownSimple({
             
             {options.length === 0 && (
               <div className="px-3 py-2 text-sm text-neutral-500 text-center">
-                Keine Optionen verfügbar
+                {isOptionsLoading ? 'Lade Optionen...' : 'Keine Optionen verfügbar'}
               </div>
             )}
           </div>

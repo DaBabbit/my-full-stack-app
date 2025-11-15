@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
+import { isKosmamediaEmail } from '@/utils/responsiblePeople';
 
 interface ResponsiblePersonAvatarProps {
   responsiblePerson: string | null | undefined; // UUID
@@ -76,9 +77,9 @@ export default function ResponsiblePersonAvatar({
           const { data, error } = await supabase
             .from('users')
             .select('id, firstname, lastname, email')
-            .ilike('email', '%kosmamedia%')
+            .ilike('email', 'kosmamedia@%')
             .limit(1)
-            .single();
+            .maybeSingle();
 
           if (error) {
             console.error('[ResponsiblePersonAvatar] Error fetching kosmamedia:', error);
@@ -162,7 +163,7 @@ export default function ResponsiblePersonAvatar({
     );
   }
 
-  const isKosmamedia = userProfile.email?.toLowerCase().includes('kosmamedia');
+  const isKosmamedia = isKosmamediaEmail(userProfile.email);
 
   if (isKosmamedia) {
     return (

@@ -54,7 +54,10 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
 
     setIsLoading(true);
     try {
-      const [{ data: ownerData, error: ownerError }, { data: membersData, error: membersError }] = await Promise.all([
+      const [
+        { data: ownerData, error: ownerError },
+        { data: membersData, error: membersError }
+      ] = await Promise.all([
         supabase
           .from('users')
           .select('id, firstname, lastname, email')
@@ -67,13 +70,7 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
             user_id,
             status,
             permissions,
-            invitation_email,
-            user:workspace_members_user_id_fkey (
-              id,
-              email,
-              firstname,
-              lastname
-            )
+            invitation_email
           `)
           .eq('workspace_owner_id', workspaceOwnerId)
           .eq('status', 'active')
@@ -82,7 +79,24 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
       if (ownerError) throw ownerError;
       if (membersError) throw membersError;
 
-      const eligibleMembers = (membersData as unknown as WorkspaceMemberRow[] | null)?.filter((member) => {
+      const memberUserIds = (membersData || [])
+        .map((member) => member.user_id)
+        .filter((id): id is string => Boolean(id) && id !== workspaceOwnerId);
+
+      const { data: memberProfiles, error: memberProfilesError } = memberUserIds.length > 0
+        ? await supabase
+            .from('users')
+            .select('id, email, firstname, lastname')
+            .in('id', memberUserIds)
+        : { data: [], error: null };
+
+      if (memberProfilesError) throw memberProfilesError;
+
+      const userProfileMap = new Map(
+        (memberProfiles || []).map(profile => [profile.id, profile])
+      );
+
+      const eligibleMembers = (membersData as WorkspaceMemberRow[] | null)?.filter((member) => {
         if (!member.user_id) return false;
         if (member.user_id === workspaceOwnerId) return false;
         const canEdit = member.permissions?.can_edit;
@@ -91,12 +105,13 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
       }) ?? [];
 
       const memberOptions: ResponsiblePersonOption[] = eligibleMembers.map((member) => {
-        const email = member.user?.email || member.invitation_email || '';
+        const profile = userProfileMap.get(member.user_id as string);
+        const email = profile?.email || member.invitation_email || '';
         return {
           id: member.user_id as string,
           name: buildDisplayName({
-            firstname: member.user?.firstname,
-            lastname: member.user?.lastname,
+            firstname: profile?.firstname,
+            lastname: profile?.lastname,
             email
           }) || email,
           email,

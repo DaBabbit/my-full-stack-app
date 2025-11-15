@@ -52,6 +52,20 @@ export default function ResponsiblePersonAvatar({
 
       setLoading(true);
       
+      // Check if it's the kosmamedia fallback UUID
+      const KOSMAMEDIA_FALLBACK_UUID = '00000000-0000-0000-0000-000000000000';
+      if (responsiblePerson === KOSMAMEDIA_FALLBACK_UUID) {
+        // Fallback kosmamedia option - create mock profile
+        setUserProfile({
+          id: KOSMAMEDIA_FALLBACK_UUID,
+          email: 'kosmamedia@kosmamedia.de',
+          firstname: null,
+          lastname: null
+        });
+        setLoading(false);
+        return;
+      }
+      
       // Check if responsiblePerson is a UUID (format: 8-4-4-4-12)
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const isUUID = uuidRegex.test(responsiblePerson);

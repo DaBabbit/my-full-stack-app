@@ -100,9 +100,19 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         if (!member.user_id) return false;
         if (member.user_id === workspaceOwnerId) return false;
         const canEdit = member.permissions?.can_edit;
-        // Standardmäßig als editierbar betrachten, sofern nicht explizit false
-        return canEdit === undefined ? true : Boolean(canEdit);
+        // Nur Mitglieder mit explizit can_edit === true akzeptieren
+        return canEdit === true;
       }) ?? [];
+
+      console.log('[useResponsiblePeople] Gefundene Mitglieder:', {
+        total: membersData?.length || 0,
+        eligible: eligibleMembers.length,
+        members: eligibleMembers.map(m => ({
+          user_id: m.user_id,
+          can_edit: m.permissions?.can_edit,
+          status: m.status
+        }))
+      });
 
       const memberOptions: ResponsiblePersonOption[] = eligibleMembers.map((member) => {
         const profile = userProfileMap.get(member.user_id as string);
@@ -128,13 +138,27 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         supabase,
         excludeIds,
         fallbackName: 'kosmamedia',
-        configuredId: ENV_KOSMAMEDIA_USER_ID || undefined
+        configuredId: ENV_KOSMAMEDIA_USER_ID || undefined,
+        workspaceOwnerId
       });
 
       const orderedOptions: ResponsiblePersonOption[] = [];
+      // kosmamedia muss IMMER vorhanden sein
       if (kosmamediaOption) {
         orderedOptions.push(kosmamediaOption);
         excludeIds.add(kosmamediaOption.id);
+        console.log('[useResponsiblePeople] kosmamedia gefunden:', kosmamediaOption);
+      } else {
+        // Fallback: Virtuelle kosmamedia-Option erstellen
+        const fallbackKosmamediaOption: ResponsiblePersonOption = {
+          id: '00000000-0000-0000-0000-000000000000', // Feste UUID für kosmamedia Fallback
+          name: 'kosmamedia',
+          email: 'kosmamedia@kosmamedia.de',
+          role: 'kosmamedia'
+        };
+        orderedOptions.push(fallbackKosmamediaOption);
+        excludeIds.add(fallbackKosmamediaOption.id);
+        console.warn('[useResponsiblePeople] kosmamedia nicht gefunden, verwende Fallback-Option');
       }
 
       if (ownerData) {
@@ -152,6 +176,13 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         .sort((a, b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
 
       orderedOptions.push(...uniqueMemberOptions);
+
+      console.log('[useResponsiblePeople] Finale Options-Liste:', {
+        total: orderedOptions.length,
+        kosmamedia: orderedOptions.find(o => o.role === 'kosmamedia')?.name,
+        owner: orderedOptions.find(o => o.role === 'owner')?.name,
+        members: orderedOptions.filter(o => o.role === 'member').map(o => o.name)
+      });
 
       setOptions(orderedOptions);
       setError(null);
@@ -221,12 +252,14 @@ async function resolveKosmamediaOption({
   supabase,
   excludeIds,
   fallbackName,
-  configuredId
+  configuredId,
+  workspaceOwnerId
 }: {
   supabase: ReturnType<typeof useAuth>['supabase'];
   excludeIds: Set<string>;
   fallbackName: string;
   configuredId?: string;
+  workspaceOwnerId: string;
 }): Promise<ResponsiblePersonOption | null> {
   const seenIds = new Set(excludeIds);
   const tryUser = async (id: string | null | undefined) => {
@@ -277,17 +310,29 @@ async function resolveKosmamediaOption({
   const strictCandidate = pickCandidate(isKosmamediaEmail);
   const fallbackCandidate = strictCandidate || pickCandidate(() => true);
 
-  if (!fallbackCandidate) {
-    return null;
+  if (fallbackCandidate) {
+    seenIds.add(fallbackCandidate.id);
+    console.log('[useResponsiblePeople] kosmamedia Account gefunden:', {
+      id: fallbackCandidate.id,
+      email: fallbackCandidate.email
+    });
+    return {
+      id: fallbackCandidate.id,
+      name: fallbackName,
+      email: fallbackCandidate.email,
+      role: 'kosmamedia'
+    };
   }
 
-  seenIds.add(fallbackCandidate.id);
-
-  return {
-    id: fallbackCandidate.id,
-    name: fallbackName,
-    email: fallbackCandidate.email,
-    role: 'kosmamedia'
-  };
+  // Wenn kein Account gefunden wird, versuche einen kosmamedia-Account zu erstellen
+  console.log('[useResponsiblePeople] Versuche kosmamedia-Account zu erstellen...');
+  
+  // Versuche einen kosmamedia-Account in der users-Tabelle zu erstellen/anlegen
+  // Da wir keinen Auth-User erstellen können, verwenden wir einen Fallback mit fester UUID
+  // Der Account wird später in Supabase manuell erstellt werden müssen
+  // Für jetzt: Verwende Fallback-Option (wird in fetchResponsiblePeople behandelt)
+  console.warn('[useResponsiblePeople] kosmamedia-Account nicht gefunden. Fallback wird verwendet.');
+  
+  return null; // Fallback wird in fetchResponsiblePeople behandelt
 }
 

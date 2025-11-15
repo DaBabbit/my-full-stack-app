@@ -59,8 +59,8 @@ export default function ResponsiblePersonAvatar({
         setUserProfile({
           id: KOSMAMEDIA_FALLBACK_UUID,
           email: 'kosmamedia@kosmamedia.de',
-          firstname: null,
-          lastname: null
+          firstname: undefined,
+          lastname: undefined
         });
         setLoading(false);
         return;

@@ -82,7 +82,7 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
       if (ownerError) throw ownerError;
       if (membersError) throw membersError;
 
-      const eligibleMembers = (membersData as WorkspaceMemberRow[] | null)?.filter((member) => {
+      const eligibleMembers = (membersData as unknown as WorkspaceMemberRow[] | null)?.filter((member) => {
         if (!member.user_id) return false;
         if (member.user_id === workspaceOwnerId) return false;
         const canEdit = member.permissions?.can_edit;

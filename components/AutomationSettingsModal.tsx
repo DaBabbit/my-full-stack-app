@@ -144,8 +144,6 @@ export function AutomationSettingsModal({
     }
   };
 
-  if (!isOpen) return null;
-
   const availablePersons = useMemo<AvailablePerson[]>(() => {
     const persons: AvailablePerson[] = [
       { id: '', name: 'Keine Automatisierung', type: 'none' }

@@ -89,6 +89,17 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
           invitation_email: m.invitation_email
         }))
       });
+      
+      // Detailed log of each member
+      (membersData || []).forEach((m, idx) => {
+        console.log(`[useResponsiblePeople] Member ${idx + 1}:`, {
+          id: m.id,
+          user_id: m.user_id,
+          status: m.status,
+          permissions: m.permissions,
+          invitation_email: m.invitation_email
+        });
+      });
 
       const memberUserIds = (membersData || [])
         .map((member) => member.user_id)
@@ -147,13 +158,24 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
       console.log('[useResponsiblePeople] Gefundene Mitglieder:', {
         total: membersData?.length || 0,
         eligible: eligibleMembers.length,
-        members: eligibleMembers.map(m => ({
+        eligibleMembers: eligibleMembers.map(m => ({
           user_id: m.user_id,
           can_edit: m.permissions?.can_edit,
           permissions: m.permissions,
           status: m.status,
           invitation_email: m.invitation_email
         }))
+      });
+      
+      // Detailed log for each eligible member
+      eligibleMembers.forEach((m, idx) => {
+        console.log(`[useResponsiblePeople] Eligible Member ${idx + 1}:`, {
+          user_id: m.user_id,
+          permissions: JSON.stringify(m.permissions),
+          can_edit: m.permissions?.can_edit,
+          status: m.status,
+          invitation_email: m.invitation_email
+        });
       });
 
       const memberOptions: ResponsiblePersonOption[] = eligibleMembers.map((member) => {
@@ -223,7 +245,13 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         total: orderedOptions.length,
         kosmamedia: orderedOptions.find(o => o.role === 'kosmamedia')?.name,
         owner: orderedOptions.find(o => o.role === 'owner')?.name,
-        members: orderedOptions.filter(o => o.role === 'member').map(o => o.name)
+        members: orderedOptions.filter(o => o.role === 'member').map(o => o.name),
+        allOptions: orderedOptions.map(o => ({
+          id: o.id,
+          name: o.name,
+          role: o.role,
+          email: o.email
+        }))
       });
 
       setOptions(orderedOptions);

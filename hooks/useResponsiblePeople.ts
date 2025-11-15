@@ -193,10 +193,9 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         };
       });
 
-      const excludeIds = new Set<string>([
-        workspaceOwnerId,
-        ...memberOptions.map((member) => member.id)
-      ]);
+      // excludeIds sollte NUR workspaceOwnerId enthalten, NICHT die memberOptions!
+      // memberOptions werden später zu orderedOptions hinzugefügt
+      const excludeIds = new Set<string>([workspaceOwnerId]);
 
       const kosmamediaOption = await resolveKosmamediaOption({
         supabase,

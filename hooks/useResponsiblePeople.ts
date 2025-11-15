@@ -118,11 +118,22 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         (memberProfiles || []).map(profile => [profile.id, profile])
       );
 
+      // Sammle zuerst alle User IDs mit kosmamedia E-Mail (diese werden später separat als kosmamedia hinzugefügt)
+      const kosmamediaUserIds = new Set<string>();
+      for (const member of (membersData as WorkspaceMemberRow[] || [])) {
+        if (member.user_id && member.invitation_email && isKosmamediaEmail(member.invitation_email)) {
+          kosmamediaUserIds.add(member.user_id);
+          console.log('[useResponsiblePeople] Found kosmamedia user in members:', member.user_id, member.invitation_email);
+        }
+      }
+
       // Filter: Nur aktive Mitglieder mit Bearbeitungsberechtigung
       // Ein Mitglied ist berechtigt wenn:
       // 1. Status ist 'active'
       // 2. user_id ist gesetzt (Einladung wurde angenommen)
-      // 3. can_edit === true (explizit gesetzt) ODER permissions ist null/undefined (Standard = bearbeitungsberechtigt)
+      // 3. NICHT der Owner ist
+      // 4. NICHT kosmamedia ist (wird separat hinzugefügt)
+      // 5. can_edit === true (explizit gesetzt) ODER permissions ist null/undefined (Standard = bearbeitungsberechtigt)
       const eligibleMembers = (membersData as WorkspaceMemberRow[] | null)?.filter((member) => {
         if (!member.user_id) {
           console.log('[useResponsiblePeople] Filtered out - no user_id:', member.id);
@@ -130,6 +141,10 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         }
         if (member.user_id === workspaceOwnerId) {
           console.log('[useResponsiblePeople] Filtered out - is owner:', member.user_id);
+          return false;
+        }
+        if (kosmamediaUserIds.has(member.user_id)) {
+          console.log('[useResponsiblePeople] Filtered out - is kosmamedia (will be added separately):', member.user_id);
           return false;
         }
         if (member.status !== 'active') {
@@ -193,16 +208,16 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
         };
       });
 
-      // excludeIds sollte NUR workspaceOwnerId enthalten, NICHT die memberOptions!
-      // memberOptions werden später zu orderedOptions hinzugefügt
-      const excludeIds = new Set<string>([workspaceOwnerId]);
+      // excludeIds sollte workspaceOwnerId UND alle kosmamedia User IDs enthalten
+      const excludeIds = new Set<string>([workspaceOwnerId, ...kosmamediaUserIds]);
 
       const kosmamediaOption = await resolveKosmamediaOption({
         supabase,
         excludeIds,
         fallbackName: 'kosmamedia',
         configuredId: ENV_KOSMAMEDIA_USER_ID || undefined,
-        workspaceOwnerId
+        workspaceOwnerId,
+        kosmamediaUserIds
       });
 
       const orderedOptions: ResponsiblePersonOption[] = [];
@@ -334,14 +349,36 @@ async function resolveKosmamediaOption({
   excludeIds,
   fallbackName,
   configuredId,
-  workspaceOwnerId
+  workspaceOwnerId,
+  kosmamediaUserIds
 }: {
   supabase: ReturnType<typeof useAuth>['supabase'];
   excludeIds: Set<string>;
   fallbackName: string;
   configuredId?: string;
   workspaceOwnerId: string;
+  kosmamediaUserIds: Set<string>;
 }): Promise<ResponsiblePersonOption | null> {
+  // Wenn kosmamedia bereits als Member gefunden wurde, verwende diese User ID
+  if (kosmamediaUserIds.size > 0) {
+    const kosmamediaUserId = Array.from(kosmamediaUserIds)[0]; // Nimm den ersten
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, firstname, lastname, email')
+      .eq('id', kosmamediaUserId)
+      .maybeSingle();
+    
+    if (!error && data) {
+      console.log('[useResponsiblePeople] Using kosmamedia from members:', data);
+      return {
+        id: data.id,
+        name: fallbackName,
+        email: data.email,
+        role: 'kosmamedia'
+      };
+    }
+  }
+
   const seenIds = new Set(excludeIds);
   const tryUser = async (id: string | null | undefined) => {
     if (!id || seenIds.has(id)) return null;

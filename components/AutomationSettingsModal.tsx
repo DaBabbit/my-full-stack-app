@@ -164,6 +164,8 @@ export function AutomationSettingsModal({
 
   const isReady = !loading && !isOptionsLoading;
 
+  if (!isOpen) return null;
+
   return (
     <AnimatePresence>
       {isOpen && (

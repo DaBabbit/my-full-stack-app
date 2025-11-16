@@ -93,7 +93,7 @@ export default function ResponsiblePersonDropdownSimple({
           responsiblePerson={value || null}
           size="sm"
           showFullName={true}
-          preloadedUserData={value ? personMap[value] : null}
+          preloadedUserData={value && personMap[value] ? { id: value, ...personMap[value] } : null}
         />
         
         <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -126,7 +126,7 @@ export default function ResponsiblePersonDropdownSimple({
                       responsiblePerson={option.id} 
                       size="sm" 
                       showFullName={false}
-                      preloadedUserData={personMap[option.id]}
+                      preloadedUserData={personMap[option.id] ? { id: option.id, ...personMap[option.id] } : null}
                     />
                     <span className="text-neutral-200 text-sm truncate">{option.name}</span>
                   </div>

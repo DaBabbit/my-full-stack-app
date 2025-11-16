@@ -10,6 +10,8 @@ interface ResponsiblePersonDropdownSimpleProps {
   onChange: (value: string) => void;
   options?: ResponsiblePersonOption[];
   isOptionsLoading?: boolean;
+  // OPTIMIZATION: personMap für schnellere Avatar-Anzeige
+  personMap?: Record<string, { firstname?: string; lastname?: string; email: string }>;
 }
 
 /**
@@ -24,7 +26,8 @@ export default function ResponsiblePersonDropdownSimple({
   value,
   onChange,
   options = [],
-  isOptionsLoading = false
+  isOptionsLoading = false,
+  personMap = {}
 }: ResponsiblePersonDropdownSimpleProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
@@ -90,6 +93,7 @@ export default function ResponsiblePersonDropdownSimple({
           responsiblePerson={value || null}
           size="sm"
           showFullName={true}
+          preloadedUserData={value ? personMap[value] : null}
         />
         
         <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -122,6 +126,7 @@ export default function ResponsiblePersonDropdownSimple({
                       responsiblePerson={option.id} 
                       size="sm" 
                       showFullName={false}
+                      preloadedUserData={personMap[option.id]}
                     />
                     <span className="text-neutral-200 text-sm truncate">{option.name}</span>
                   </div>

@@ -10,6 +10,13 @@ interface ResponsiblePersonAvatarProps {
   size?: 'sm' | 'md' | 'lg';
   showFullName?: boolean;
   className?: string;
+  // Optional: Pre-loaded user data to avoid DB queries
+  preloadedUserData?: {
+    id: string;
+    firstname?: string | null;
+    lastname?: string | null;
+    email: string;
+  } | null;
 }
 
 interface UserProfile {
@@ -31,7 +38,8 @@ export default function ResponsiblePersonAvatar({
   responsiblePerson,
   size = 'md',
   showFullName = false,
-  className = ''
+  className = '',
+  preloadedUserData = null
 }: ResponsiblePersonAvatarProps) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,16 +58,29 @@ export default function ResponsiblePersonAvatar({
         return;
       }
 
+      // OPTIMIZATION: Use preloaded data if available (avoids DB query)
+      if (preloadedUserData && preloadedUserData.id === responsiblePerson) {
+        setUserProfile({
+          id: preloadedUserData.id,
+          firstname: preloadedUserData.firstname || undefined,
+          lastname: preloadedUserData.lastname || undefined,
+          email: preloadedUserData.email
+        });
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       
       // Check if it's the kosmamedia fallback UUID
       const KOSMAMEDIA_FALLBACK_UUID = '00000000-0000-0000-0000-000000000000';
-      if (responsiblePerson === KOSMAMEDIA_FALLBACK_UUID) {
-        // Fallback kosmamedia option - create mock profile
+      const KOSMAMEDIA_USER_ID = '00000000-1111-2222-3333-444444444444';
+      if (responsiblePerson === KOSMAMEDIA_FALLBACK_UUID || responsiblePerson === KOSMAMEDIA_USER_ID) {
+        // kosmamedia option - create mock profile
         setUserProfile({
-          id: KOSMAMEDIA_FALLBACK_UUID,
+          id: responsiblePerson,
           email: 'kosmamedia@kosmamedia.de',
-          firstname: undefined,
+          firstname: 'kosmamedia',
           lastname: undefined
         });
         setLoading(false);
@@ -117,7 +138,7 @@ export default function ResponsiblePersonAvatar({
     };
 
     fetchUserProfile();
-  }, [responsiblePerson]);
+  }, [responsiblePerson, preloadedUserData]);
 
   // Initialen extrahieren (Vorname + Nachname)
   const getInitials = (user: UserProfile) => {

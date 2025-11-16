@@ -13,6 +13,8 @@ interface EditableResponsiblePersonProps {
   isLoading?: boolean;
   options?: ResponsiblePersonOption[];
   isOptionsLoading?: boolean;
+  // OPTIMIZATION: personMap für schnellere Avatar-Anzeige
+  personMap?: Record<string, { firstname?: string; lastname?: string; email: string }>;
 }
 
 /**
@@ -32,7 +34,8 @@ export default function EditableResponsiblePerson({
   editable = true,
   isLoading = false,
   options = [],
-  isOptionsLoading = false
+  isOptionsLoading = false,
+  personMap = {}
 }: EditableResponsiblePersonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
@@ -108,6 +111,7 @@ export default function EditableResponsiblePerson({
           responsiblePerson={value} 
           size="sm" 
           showFullName={false}
+          preloadedUserData={value ? personMap[value] : null}
         />
       </div>
     );
@@ -131,6 +135,7 @@ export default function EditableResponsiblePerson({
           responsiblePerson={selectedValue} 
           size="sm" 
           showFullName={false}
+          preloadedUserData={selectedValue ? personMap[selectedValue] : null}
         />
         
         <div className="flex items-center gap-2">
@@ -167,6 +172,7 @@ export default function EditableResponsiblePerson({
                       responsiblePerson={option.id} 
                       size="sm" 
                       showFullName={true}
+                      preloadedUserData={personMap[option.id]}
                     />
                   </div>
                   {isSelected && (

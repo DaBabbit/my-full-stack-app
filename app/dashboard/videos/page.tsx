@@ -1625,6 +1625,7 @@ export default function VideosPage() {
               editable={permissions.canEditVideos}
               options={responsibleOptions}
               isOptionsLoading={responsibleOptionsLoading}
+              personMap={responsiblePersonMap}
             />
           </td>
         );
@@ -2565,6 +2566,7 @@ export default function VideosPage() {
                     onChange={(value) => setNewVideo({ ...newVideo, responsible_person: value })}
                     options={responsibleOptions}
                     isOptionsLoading={responsibleOptionsLoading}
+                    personMap={responsiblePersonMap}
                   />
                 </div>
 
@@ -2715,6 +2717,7 @@ export default function VideosPage() {
                     onChange={(value) => setEditingVideo({ ...editingVideo, responsible_person: value })}
                     options={responsibleOptions}
                     isOptionsLoading={responsibleOptionsLoading}
+                    personMap={responsiblePersonMap}
                   />
                 </div>
 

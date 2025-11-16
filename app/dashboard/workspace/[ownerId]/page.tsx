@@ -1635,6 +1635,7 @@ export default function SharedWorkspacePage() {
               editable={permissions.can_edit}
               options={responsibleOptions}
               isOptionsLoading={responsibleOptionsLoading}
+              personMap={responsiblePersonMap}
             />
           </td>
         );
@@ -2577,6 +2578,7 @@ export default function SharedWorkspacePage() {
                     onChange={(value) => setNewVideo({ ...newVideo, responsible_person: value })}
                     options={responsibleOptions}
                     isOptionsLoading={responsibleOptionsLoading}
+                    personMap={responsiblePersonMap}
                   />
                 </div>
 
@@ -2727,6 +2729,7 @@ export default function SharedWorkspacePage() {
                     onChange={(value) => setEditingVideo({ ...editingVideo, responsible_person: value })}
                     options={responsibleOptions}
                     isOptionsLoading={responsibleOptionsLoading}
+                    personMap={responsiblePersonMap}
                   />
                 </div>
 

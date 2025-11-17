@@ -31,13 +31,24 @@ export function useRealtimeVideos(userId?: string) {
           console.log('[useRealtimeVideos] 📡 Realtime event received:', payload.eventType);
           console.log('[useRealtimeVideos] 📦 Payload:', payload.new || payload.old);
           
-          // Explizit refetchen (sofortiges Neuladen der Daten)
+          // WICHTIG: storage_location Update loggen für Debugging
+          if (payload.new?.storage_location && !payload.old?.storage_location) {
+            console.log('[useRealtimeVideos] 🎯 Storage Location hinzugefügt:', payload.new.storage_location);
+          }
+          
+          // DOPPELT ABSICHERN: Erst invalidieren, dann refetchen
+          // Invalidate = Cache als "stale" markieren
+          queryClient.invalidateQueries({ 
+            queryKey: ['videos', 'own', userId]
+          });
+          
+          // Refetch = Sofort neue Daten holen
           queryClient.refetchQueries({ 
             queryKey: ['videos', 'own', userId],
             type: 'active'
           });
           
-          console.log('[useRealtimeVideos] ✅ Refetching videos now - UI will update immediately');
+          console.log('[useRealtimeVideos] ✅ Cache invalidated + Refetching videos now - UI will update immediately');
         }
       )
       .subscribe((status) => {
@@ -77,13 +88,22 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
           console.log('[useRealtimeWorkspaceVideos] 📡 Realtime event received:', payload.eventType);
           console.log('[useRealtimeWorkspaceVideos] 📦 Payload:', payload.new || payload.old);
           
-          // Explizit refetchen (sofortiges Neuladen der Daten)
+          // WICHTIG: storage_location Update loggen für Debugging
+          if (payload.new?.storage_location && !payload.old?.storage_location) {
+            console.log('[useRealtimeWorkspaceVideos] 🎯 Storage Location hinzugefügt:', payload.new.storage_location);
+          }
+          
+          // DOPPELT ABSICHERN: Erst invalidieren, dann refetchen
+          queryClient.invalidateQueries({ 
+            queryKey: ['videos', 'workspace', ownerId]
+          });
+          
           queryClient.refetchQueries({ 
             queryKey: ['videos', 'workspace', ownerId],
             type: 'active'
           });
           
-          console.log('[useRealtimeWorkspaceVideos] ✅ Refetching workspace videos now - UI will update immediately');
+          console.log('[useRealtimeWorkspaceVideos] ✅ Cache invalidated + Refetching workspace videos now - UI will update immediately');
         }
       )
       .subscribe((status) => {

@@ -194,9 +194,8 @@ export function FileUploadModal({
             </div>
           </motion.div>
         </div>
-      )}
-    </AnimatePresence>
-  );
+      </AnimatePresence>
+    );
   }
 
   return (
@@ -230,154 +229,153 @@ export function FileUploadModal({
               className="relative bg-neutral-900 border border-neutral-700 rounded-3xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden pointer-events-auto"
               style={{ maxHeight: '95vh' }}
             >
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-neutral-700 bg-gradient-to-r from-neutral-900 to-neutral-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                  <FolderOpen className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-white">
-                    Video-Dateien verwalten
-                  </h2>
-                  <p className="text-sm text-neutral-400">
-                    {videoName}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={onClose}
-                className="text-neutral-400 hover:text-white transition-colors"
-                aria-label="Schließen"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Instructions Bar */}
-            <div className="px-6 py-4 bg-blue-500/5 border-b border-blue-500/20">
-              <div className="flex items-start gap-3">
-                <Upload className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-neutral-300 font-medium mb-1">
-                    📁 Alle Dateien für dieses Video hier ablegen
-                  </p>
-                  <p className="text-xs text-neutral-400">
-                    Rohmaterial, Schnitt-Projekte, fertige Videos, Thumbnails - einfach per Drag & Drop ins Fenster ziehen oder direkt im Ordner hochladen.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-2 px-6 py-3 bg-neutral-800/50 border-b border-neutral-700">
-              <button
-                onClick={openInNewWindow}
-                className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors"
-              >
-                <FolderOpen className="w-4 h-4" />
-                <span className="text-sm">Ordner durchsuchen</span>
-              </button>
-            </div>
-
-            {/* Upload Content */}
-            <div className="px-6 py-6" style={{ maxHeight: 'calc(95vh - 280px)', overflowY: 'auto' }}>
-              <NextcloudUploader
-                videoId={videoId}
-                videoName={videoName}
-                nextcloudPath={nextcloudPath}
-                onUploadSuccess={handleUploadSuccess}
-                onUploadError={onUploadError}
-              />
-            </div>
-
-            {/* Automatisierungs-Prompt nach Upload */}
-            <AnimatePresence>
-              {showAutomationPrompt && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute inset-0 flex items-center justify-center z-50 p-4"
-                >
-                  <motion.div 
-                    initial={{ scale: 0.92, opacity: 0, y: 20 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.92, opacity: 0, y: 20 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-slate-700/50 rounded-3xl p-8 max-w-md w-full shadow-2xl backdrop-blur-xl"
-                  >
-                    {/* Blitz-Icon */}
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/30">
-                      <Zap className="w-10 h-10 text-blue-400" strokeWidth={2} />
-                    </div>
-
-                    <h3 className="text-2xl font-bold text-white text-center mb-3">
-                      Alle Dateien hochgeladen
-                    </h3>
-
-                    <p className="text-base text-neutral-300 text-center mb-8">
-                      Waren das alle Dateien, die für die Bearbeitung nötig sind?
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-neutral-700 bg-gradient-to-r from-neutral-900 to-neutral-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                    <FolderOpen className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">
+                      Video-Dateien verwalten
+                    </h2>
+                    <p className="text-sm text-neutral-400">
+                      {videoName}
                     </p>
+                  </div>
+                </div>
 
-                    {/* Info-Box */}
-                    <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-                      <p className="text-sm text-blue-200 text-center leading-relaxed">
-                        Bei Bestätigung wird der Status auf <span className="font-semibold text-white">&quot;In Bearbeitung (Schnitt)&quot;</span> gesetzt und <span className="font-semibold text-white">kosmamedia</span> automatisch als zuständige Person zugewiesen.
+                <button
+                  onClick={onClose}
+                  className="text-neutral-400 hover:text-white transition-colors"
+                  aria-label="Schließen"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Instructions Bar */}
+              <div className="px-6 py-4 bg-blue-500/5 border-b border-blue-500/20">
+                <div className="flex items-start gap-3">
+                  <Upload className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-neutral-300 font-medium mb-1">
+                      📁 Alle Dateien für dieses Video hier ablegen
+                    </p>
+                    <p className="text-xs text-neutral-400">
+                      Rohmaterial, Schnitt-Projekte, fertige Videos, Thumbnails - einfach per Drag & Drop ins Fenster ziehen oder direkt im Ordner hochladen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 px-6 py-3 bg-neutral-800/50 border-b border-neutral-700">
+                <button
+                  onClick={openInNewWindow}
+                  className="flex items-center gap-2 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  <span className="text-sm">Ordner durchsuchen</span>
+                </button>
+              </div>
+
+              {/* Upload Content */}
+              <div className="px-6 py-6" style={{ maxHeight: 'calc(95vh - 280px)', overflowY: 'auto' }}>
+                <NextcloudUploader
+                  videoId={videoId}
+                  videoName={videoName}
+                  nextcloudPath={nextcloudPath}
+                  onUploadSuccess={handleUploadSuccess}
+                  onUploadError={onUploadError}
+                />
+              </div>
+
+              {/* Automatisierungs-Prompt nach Upload */}
+              <AnimatePresence>
+                {showAutomationPrompt && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute inset-0 flex items-center justify-center z-50 p-4"
+                  >
+                    <motion.div 
+                      initial={{ scale: 0.92, opacity: 0, y: 20 }}
+                      animate={{ scale: 1, opacity: 1, y: 0 }}
+                      exit={{ scale: 0.92, opacity: 0, y: 20 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-slate-700/50 rounded-3xl p-8 max-w-md w-full shadow-2xl backdrop-blur-xl"
+                    >
+                      {/* Blitz-Icon */}
+                      <div className="w-20 h-20 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/30">
+                        <Zap className="w-10 h-10 text-blue-400" strokeWidth={2} />
+                      </div>
+
+                      <h3 className="text-2xl font-bold text-white text-center mb-3">
+                        Alle Dateien hochgeladen
+                      </h3>
+
+                      <p className="text-base text-neutral-300 text-center mb-8">
+                        Waren das alle Dateien, die für die Bearbeitung nötig sind?
                       </p>
-                    </div>
 
-                    {/* Buttons */}
-                    <div className="flex flex-col gap-3">
-                      {/* Option 1: Status ändern */}
-                      <button
-                        onClick={triggerAutomation}
-                        disabled={isTriggering}
-                        className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all font-semibold shadow-lg hover:shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                      >
-                        {isTriggering ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Wird verarbeitet...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="w-5 h-5" strokeWidth={2} />
-                            <span>Ja, Status auf &quot;In Bearbeitung&quot; setzen</span>
-                          </>
-                        )}
-                      </button>
+                      {/* Info-Box */}
+                      <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                        <p className="text-sm text-blue-200 text-center leading-relaxed">
+                          Bei Bestätigung wird der Status auf <span className="font-semibold text-white">&quot;In Bearbeitung (Schnitt)&quot;</span> gesetzt und <span className="font-semibold text-white">kosmamedia</span> automatisch als zuständige Person zugewiesen.
+                        </p>
+                      </div>
 
-                      {/* Option 2: Weitere Dateien hochladen */}
-                      <button
-                        onClick={dismissAutomationPrompt}
-                        disabled={isTriggering}
-                        className="w-full px-6 py-4 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-neutral-600 text-neutral-200 rounded-xl transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                      >
-                        <Upload className="w-5 h-5" />
-                        <span>Weitere Dateien hochladen</span>
-                      </button>
+                      {/* Buttons */}
+                      <div className="flex flex-col gap-3">
+                        {/* Option 1: Status ändern */}
+                        <button
+                          onClick={triggerAutomation}
+                          disabled={isTriggering}
+                          className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all font-semibold shadow-lg hover:shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          {isTriggering ? (
+                            <>
+                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Wird verarbeitet...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-5 h-5" strokeWidth={2} />
+                              <span>Ja, Status auf &quot;In Bearbeitung&quot; setzen</span>
+                            </>
+                          )}
+                        </button>
 
-                      {/* Option 3: Nein danke (schließt alles) */}
-                      <button
-                        onClick={onClose}
-                        disabled={isTriggering}
-                        className="w-full px-6 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Nein danke, fertig
-                      </button>
-                    </div>
+                        {/* Option 2: Weitere Dateien hochladen */}
+                        <button
+                          onClick={dismissAutomationPrompt}
+                          disabled={isTriggering}
+                          className="w-full px-6 py-4 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-neutral-600 text-neutral-200 rounded-xl transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          <Upload className="w-5 h-5" />
+                          <span>Weitere Dateien hochladen</span>
+                        </button>
+
+                        {/* Option 3: Nein danke (schließt alles) */}
+                        <button
+                          onClick={onClose}
+                          disabled={isTriggering}
+                          className="w-full px-6 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Nein danke, fertig
+                        </button>
+                      </div>
+                    </motion.div>
                   </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           </div>
         </>
       )}
     </AnimatePresence>
   );
 }
-

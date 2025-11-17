@@ -20,16 +20,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Create QueryClient instance per component to avoid sharing state between requests
+  // ⚡ PERFORMANCE: Optimierter QueryClient mit Memory-Management
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 1000 * 60 * 5, // 5 Minuten - Daten gelten als fresh
-        gcTime: 1000 * 60 * 10, // 10 Minuten - Cache-Zeit
-        refetchOnWindowFocus: true, // Automatisch bei Tab-Fokus refetchen
-        refetchOnMount: true,
-        refetchOnReconnect: true,
-        retry: 2, // 2 Retry-Versuche bei Fehlern
+        staleTime: 30 * 1000, // 30 Sekunden - Realtime aktualisiert automatisch
+        gcTime: 5 * 60 * 1000, // 5 Minuten Garbage Collection (reduziert von 10min)
+        refetchOnWindowFocus: false, // Aus - Realtime übernimmt Updates
+        refetchOnMount: true, // Refetch beim Component Mount
+        refetchOnReconnect: true, // Refetch bei Reconnect
+        retry: 1, // Nur 1 Retry (reduziert von 2)
       },
     },
   }));

@@ -37,6 +37,11 @@ export interface ResponsiblePersonOption {
 // Feste kosmamedia User ID - dieser Account existiert IMMER in Supabase
 const KOSMAMEDIA_USER_ID = process.env.NEXT_PUBLIC_KOSMAMEDIA_USER_ID || '00000000-1111-2222-3333-444444444444';
 
+// 🎯 PERFORMANCE: Cache für kosmamedia um wiederholte DB-Abfragen zu vermeiden
+let kosmamediaCache: ResponsiblePersonOption | null = null;
+let kosmamediaCacheTime = 0;
+const KOSMAMEDIA_CACHE_TTL = 5 * 60 * 1000; // 5 Minuten Cache
+
 export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
   const { user, supabase } = useAuth();
   const [options, setOptions] = useState<ResponsiblePersonOption[]>([]);
@@ -212,43 +217,53 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
       // excludeIds sollte workspaceOwnerId UND alle kosmamedia User IDs enthalten
       const excludeIds = new Set<string>([workspaceOwnerId, ...kosmamediaUserIds]);
 
-      // Lade kosmamedia IMMER direkt von der festen User ID
+      // ⚡ PERFORMANCE: Nutze gecachte kosmamedia Option um DB-Queries zu vermeiden
+      const now = Date.now();
       let kosmamediaOption: ResponsiblePersonOption | null = null;
-      try {
-        const { data: kosmamediaUser, error: kosmamediaError } = await supabase
-          .from('users')
-          .select('id, firstname, lastname, email')
-          .eq('id', KOSMAMEDIA_USER_ID)
-          .maybeSingle();
-        
-        if (!kosmamediaError && kosmamediaUser) {
-          kosmamediaOption = {
-            id: kosmamediaUser.id,
-            name: 'kosmamedia',
-            email: kosmamediaUser.email || 'kosmamedia@kosmamedia.de',
-            role: 'kosmamedia'
-          };
-          console.log('[useResponsiblePeople] kosmamedia Account geladen:', kosmamediaOption);
-        } else {
-          console.warn('[useResponsiblePeople] kosmamedia Account nicht gefunden in DB:', kosmamediaError);
-          // Fallback: Virtuelle Option wenn Account nicht existiert
+      
+      if (kosmamediaCache && (now - kosmamediaCacheTime) < KOSMAMEDIA_CACHE_TTL) {
+        // Cache ist noch gültig
+        kosmamediaOption = kosmamediaCache;
+      } else {
+        // Cache abgelaufen oder leer - neu laden
+        try {
+          const { data: kosmamediaUser, error: kosmamediaError } = await supabase
+            .from('users')
+            .select('id, firstname, lastname, email')
+            .eq('id', KOSMAMEDIA_USER_ID)
+            .maybeSingle();
+          
+          if (!kosmamediaError && kosmamediaUser) {
+            kosmamediaOption = {
+              id: kosmamediaUser.id,
+              name: 'kosmamedia',
+              email: kosmamediaUser.email || 'kosmamedia@kosmamedia.de',
+              role: 'kosmamedia'
+            };
+          } else {
+            // Fallback: Virtuelle Option wenn Account nicht existiert
+            kosmamediaOption = {
+              id: KOSMAMEDIA_USER_ID,
+              name: 'kosmamedia',
+              email: 'kosmamedia@kosmamedia.de',
+              role: 'kosmamedia'
+            };
+          }
+          
+          // Cache aktualisieren
+          kosmamediaCache = kosmamediaOption;
+          kosmamediaCacheTime = now;
+        } catch (err) {
+          // Fallback: Virtuelle Option
           kosmamediaOption = {
             id: KOSMAMEDIA_USER_ID,
             name: 'kosmamedia',
             email: 'kosmamedia@kosmamedia.de',
             role: 'kosmamedia'
           };
-          console.log('[useResponsiblePeople] Verwende kosmamedia Fallback-Option');
+          kosmamediaCache = kosmamediaOption;
+          kosmamediaCacheTime = now;
         }
-      } catch (err) {
-        console.error('[useResponsiblePeople] Fehler beim Laden von kosmamedia:', err);
-        // Fallback: Virtuelle Option
-        kosmamediaOption = {
-          id: KOSMAMEDIA_USER_ID,
-          name: 'kosmamedia',
-          email: 'kosmamedia@kosmamedia.de',
-          role: 'kosmamedia'
-        };
       }
 
       const orderedOptions: ResponsiblePersonOption[] = [];
@@ -300,41 +315,11 @@ export function useResponsiblePeople(targetWorkspaceOwnerId?: string | null) {
     fetchResponsiblePeople();
   }, [fetchResponsiblePeople]);
 
-  useEffect(() => {
-    if (!workspaceOwnerId) return;
-
-    console.log('[useResponsiblePeople] Setting up Realtime subscription for workspace:', workspaceOwnerId);
-
-    const channel = supabase
-      .channel(`responsible_people_${workspaceOwnerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'workspace_members',
-          filter: `workspace_owner_id=eq.${workspaceOwnerId}`
-        },
-        (payload) => {
-          console.log('[useResponsiblePeople] Realtime event received:', {
-            event: payload.eventType,
-            table: payload.table,
-            new: payload.new,
-            old: payload.old
-          });
-          // Refetch when workspace members change (invitation accepted, member removed, permissions updated)
-          fetchResponsiblePeople();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[useResponsiblePeople] Realtime subscription status:', status);
-      });
-
-    return () => {
-      console.log('[useResponsiblePeople] Cleaning up Realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [workspaceOwnerId, supabase, fetchResponsiblePeople]);
+  // ⚡ PERFORMANCE OPTIMIZATION: Realtime Subscription entfernt!
+  // Problem: Jedes Dropdown erstellt eine eigene Realtime-Subscription
+  // Lösung: Nutze die globale useRealtimeVideos Subscription
+  // Workspace Members Updates sind selten und werden über useWorkspaceInvitations gehandelt
+  // Bei Bedarf kann der User die Seite refreshen oder wir triggern ein Re-fetch über einen globalen Event
 
   const personMap = useMemo(() => {
     return Object.fromEntries(

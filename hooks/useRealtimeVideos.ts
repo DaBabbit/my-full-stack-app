@@ -14,7 +14,9 @@ export function useRealtimeVideos(userId?: string) {
   useEffect(() => {
     if (!userId) return;
 
-    console.log('[useRealtimeVideos] 📡 Setting up Realtime subscription for user:', userId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[useRealtimeVideos] 📡 Setting up Realtime subscription for user:', userId);
+    }
     
     // Echtes Supabase Realtime (kein Polling!)
     const channel = supabase
@@ -28,12 +30,11 @@ export function useRealtimeVideos(userId?: string) {
           filter: `user_id=eq.${userId}` // Server-side filter
         },
         (payload: any) => {
-          console.log('[useRealtimeVideos] 📡 Realtime event received:', payload.eventType);
-          console.log('[useRealtimeVideos] 📦 Payload:', payload.new || payload.old);
-          
-          // WICHTIG: storage_location Update loggen für Debugging
+          // Nur wichtige Events loggen
           if (payload.new?.storage_location && !payload.old?.storage_location) {
             console.log('[useRealtimeVideos] 🎯 Storage Location hinzugefügt:', payload.new.storage_location);
+          } else if (process.env.NODE_ENV === 'development') {
+            console.log('[useRealtimeVideos] 📡 Event:', payload.eventType);
           }
           
           // DOPPELT ABSICHERN: Erst invalidieren, dann refetchen
@@ -48,15 +49,21 @@ export function useRealtimeVideos(userId?: string) {
             type: 'active'
           });
           
-          console.log('[useRealtimeVideos] ✅ Cache invalidated + Refetching videos now - UI will update immediately');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[useRealtimeVideos] ✅ Cache invalidiert + Refetch gestartet');
+          }
         }
       )
       .subscribe((status) => {
-        console.log('[useRealtimeVideos] 🔌 Connection status:', status);
+        if (process.env.NODE_ENV === 'development' || status === 'SUBSCRIPTION_ERROR') {
+          console.log('[useRealtimeVideos] 🔌 Status:', status);
+        }
       });
     
     return () => {
-      console.log('[useRealtimeVideos] 🧹 Cleaning up Realtime subscription');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[useRealtimeVideos] 🧹 Cleanup');
+      }
       supabase.removeChannel(channel);
     };
   }, [userId, queryClient]);
@@ -71,7 +78,9 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
   useEffect(() => {
     if (!ownerId) return;
 
-    console.log('[useRealtimeWorkspaceVideos] 📡 Setting up Realtime subscription for workspace:', ownerId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[useRealtimeWorkspaceVideos] 📡 Setting up Realtime subscription for workspace:', ownerId);
+    }
     
     // Echtes Supabase Realtime für Workspace
     const channel = supabase
@@ -85,12 +94,11 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
           filter: `user_id=eq.${ownerId}` // Filter für Workspace Owner
         },
         (payload: any) => {
-          console.log('[useRealtimeWorkspaceVideos] 📡 Realtime event received:', payload.eventType);
-          console.log('[useRealtimeWorkspaceVideos] 📦 Payload:', payload.new || payload.old);
-          
-          // WICHTIG: storage_location Update loggen für Debugging
+          // Nur wichtige Events loggen
           if (payload.new?.storage_location && !payload.old?.storage_location) {
             console.log('[useRealtimeWorkspaceVideos] 🎯 Storage Location hinzugefügt:', payload.new.storage_location);
+          } else if (process.env.NODE_ENV === 'development') {
+            console.log('[useRealtimeWorkspaceVideos] 📡 Event:', payload.eventType);
           }
           
           // DOPPELT ABSICHERN: Erst invalidieren, dann refetchen
@@ -103,15 +111,21 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
             type: 'active'
           });
           
-          console.log('[useRealtimeWorkspaceVideos] ✅ Cache invalidated + Refetching workspace videos now - UI will update immediately');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[useRealtimeWorkspaceVideos] ✅ Cache invalidiert + Refetch gestartet');
+          }
         }
       )
       .subscribe((status) => {
-        console.log('[useRealtimeWorkspaceVideos] 🔌 Connection status:', status);
+        if (process.env.NODE_ENV === 'development' || status === 'SUBSCRIPTION_ERROR') {
+          console.log('[useRealtimeWorkspaceVideos] 🔌 Status:', status);
+        }
       });
     
     return () => {
-      console.log('[useRealtimeWorkspaceVideos] 🧹 Cleaning up workspace Realtime subscription');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[useRealtimeWorkspaceVideos] 🧹 Cleanup');
+      }
       supabase.removeChannel(channel);
     };
   }, [ownerId, queryClient]);

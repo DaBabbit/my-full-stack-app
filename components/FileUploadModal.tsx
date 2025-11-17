@@ -194,9 +194,10 @@ export function FileUploadModal({
             </div>
           </motion.div>
         </div>
-      </AnimatePresence>
-    );
-  }
+      )}
+    </AnimatePresence>
+  );
+}
 
   return (
     <AnimatePresence>
@@ -214,8 +215,6 @@ export function FileUploadModal({
           />
           
           <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-
-
           {/* Upload Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -375,7 +374,8 @@ export function FileUploadModal({
               )}
             </AnimatePresence>
           </motion.div>
-        </div>
+          </div>
+        </>
       )}
     </AnimatePresence>
   );

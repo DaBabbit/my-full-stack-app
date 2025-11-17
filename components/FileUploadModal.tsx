@@ -197,7 +197,7 @@ export function FileUploadModal({
       )}
     </AnimatePresence>
   );
-}
+  }
 
   return (
     <AnimatePresence>
@@ -215,21 +215,21 @@ export function FileUploadModal({
           />
           
           <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          {/* Upload Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ 
-              opacity: showAutomationPrompt ? 0.3 : 1, 
-              scale: showAutomationPrompt ? 0.98 : 1, 
-              y: 0,
-              filter: showAutomationPrompt ? 'blur(3px)' : 'blur(0px)'
-            }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative bg-neutral-900 border border-neutral-700 rounded-3xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden pointer-events-auto"
-            style={{ maxHeight: '95vh' }}
-          >
+            {/* Upload Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ 
+                opacity: showAutomationPrompt ? 0.3 : 1, 
+                scale: showAutomationPrompt ? 0.98 : 1, 
+                y: 0,
+                filter: showAutomationPrompt ? 'blur(3px)' : 'blur(0px)'
+              }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-neutral-900 border border-neutral-700 rounded-3xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden pointer-events-auto"
+              style={{ maxHeight: '95vh' }}
+            >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-neutral-700 bg-gradient-to-r from-neutral-900 to-neutral-800">
               <div className="flex items-center gap-3">

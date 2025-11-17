@@ -201,19 +201,20 @@ export function FileUploadModal({
   return (
     <AnimatePresence>
       {isOpen && storageLocation && (
-        <div 
-          className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-300 ${
-            showAutomationPrompt ? 'bg-black/40 backdrop-blur-md' : ''
-          }`}
-        >
+        <>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: showAutomationPrompt ? 0 : 1 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className={`absolute inset-0 ${showAutomationPrompt ? '' : 'bg-black/60 backdrop-blur-sm'}`}
+            className={`fixed inset-0 z-50 transition-all duration-300 ${
+              showAutomationPrompt ? 'bg-black/40 backdrop-blur-md' : 'bg-black/60 backdrop-blur-sm'
+            }`}
           />
+          
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+          >
 
           {/* Upload Modal */}
           <motion.div
@@ -226,7 +227,8 @@ export function FileUploadModal({
             }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="relative bg-neutral-900 border border-neutral-700 rounded-3xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-neutral-900 border border-neutral-700 rounded-3xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden pointer-events-auto"
             style={{ maxHeight: '95vh' }}
           >
             {/* Header */}

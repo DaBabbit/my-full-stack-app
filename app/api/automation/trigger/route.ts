@@ -67,19 +67,14 @@ export async function POST(request: NextRequest) {
     if (allFilesUploaded) {
       updates.status = 'In Bearbeitung (Schnitt)';
       
-      // Automatische Zuständigkeit: kosmamedia
-      // Suche kosmamedia User
-      const { data: kosmamediaUser } = await supabaseAdmin
-        .from('users')
-        .select('id')
-        .ilike('email', '%kosmamedia%')
-        .limit(1)
-        .single();
-
-      if (kosmamediaUser) {
-        updates.responsible_person = kosmamediaUser.id;
-        notificationMessage = `Video "${video.title}" ist nun in Bearbeitung. Du wurdest als zuständige Person zugewiesen.`;
-      }
+      // 🔒 HART-KODIERT: Automatische Zuständigkeit kosmamedia
+      // Nutze feste kosmamedia User ID
+      const KOSMAMEDIA_USER_ID = process.env.NEXT_PUBLIC_KOSMAMEDIA_USER_ID || '00000000-1111-2222-3333-444444444444';
+      
+      updates.responsible_person = KOSMAMEDIA_USER_ID;
+      notificationMessage = `Video "${video.title}" ist nun in Bearbeitung. Du wurdest als zuständige Person zugewiesen.`;
+      
+      console.log('[Automation] 🔒 Hart-kodiert: kosmamedia wird automatisch zugewiesen');
 
       updates.last_updated = new Date().toISOString();
     }

@@ -60,24 +60,17 @@ export async function POST(
     
     console.log('[AutoAssign] 🔍 Checking automation rules for status:', newStatus);
     
-    // System-definierte Automatisierungen (immer aktiv)
+    // 🔒 HART-KODIERT: System-definierte Automatisierungen (immer aktiv)
+    // Diese Status-Übergänge weisen IMMER kosmamedia zu
     if (newStatus === 'In Bearbeitung (Schnitt)' || newStatus === 'Schnitt abgeschlossen' || newStatus === 'Hochgeladen') {
       console.log('[AutoAssign] 🔧 System automation triggered for status:', newStatus);
-      // Automatisch kosmamedia zuweisen
-      const { data: kosmamediaUser } = await supabaseAdmin
-        .from('users')
-        .select('id')
-        .ilike('email', '%kosmamedia%')
-        .limit(1)
-        .single();
-
-      if (kosmamediaUser) {
-        newResponsiblePerson = kosmamediaUser.id;
-        shouldNotify = true;
-        console.log('[AutoAssign] ✅ System-Automatisierung: kosmamedia zugewiesen:', kosmamediaUser.id);
-      } else {
-        console.log('[AutoAssign] ⚠️ Kosmamedia user nicht gefunden');
-      }
+      
+      // Nutze feste kosmamedia User ID
+      const KOSMAMEDIA_USER_ID = process.env.NEXT_PUBLIC_KOSMAMEDIA_USER_ID || '00000000-1111-2222-3333-444444444444';
+      
+      newResponsiblePerson = KOSMAMEDIA_USER_ID;
+      shouldNotify = true;
+      console.log('[AutoAssign] ✅ System-Automatisierung (hart-kodiert): kosmamedia zugewiesen:', KOSMAMEDIA_USER_ID);
     } 
     // Benutzerdefinierte Automatisierungen für "Idee" und "Warten auf Aufnahme"
     else if (newStatus === 'Idee' || newStatus === 'Warten auf Aufnahme') {

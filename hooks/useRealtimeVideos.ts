@@ -55,7 +55,7 @@ export function useRealtimeVideos(userId?: string) {
         }
       )
       .subscribe((status) => {
-        if (process.env.NODE_ENV === 'development' || status === 'SUBSCRIPTION_ERROR') {
+        if (process.env.NODE_ENV === 'development' || status !== 'SUBSCRIBED') {
           console.log('[useRealtimeVideos] 🔌 Status:', status);
         }
       });
@@ -117,7 +117,7 @@ export function useRealtimeWorkspaceVideos(ownerId?: string) {
         }
       )
       .subscribe((status) => {
-        if (process.env.NODE_ENV === 'development' || status === 'SUBSCRIPTION_ERROR') {
+        if (process.env.NODE_ENV === 'development' || status !== 'SUBSCRIBED') {
           console.log('[useRealtimeWorkspaceVideos] 🔌 Status:', status);
         }
       });

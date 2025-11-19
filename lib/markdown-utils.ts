@@ -191,23 +191,29 @@ export function markdownToHtml(markdown: string): string {
     // Inline code: `code` → <code>code</code>
     html = html.replace(/`([^`]+)`/gim, '<code>$1</code>');
 
-    // Unordered lists: - item → <ul><li>item</li></ul>
-    html = html.replace(/^\- (.+)$/gim, '<li>$1</li>');
-    html = html.replace(/(<li>[\s\S]*<\/li>)/, '<ul>$1</ul>');
-
-    // Ordered lists: 1. item → <ol><li>item</li></ol>
-    html = html.replace(/^\d+\. (.+)$/gim, '<li>$1</li>');
-
+    // IMPORTANT: Process task lists BEFORE normal lists
     // Process line by line to handle task lists properly
     const lines = html.split('\n');
     const processedLines: string[] = [];
     let inTaskList = false;
+    let inUnorderedList = false;
+    let inOrderedList = false;
 
     lines.forEach((line) => {
       // Check for task list items: - [ ] or - [x] (case insensitive)
       const taskMatch = line.match(/^-\s*\[\s*([x ])\s*\]\s*(.*)$/i);
       
       if (taskMatch) {
+        // Close any open regular lists
+        if (inUnorderedList) {
+          processedLines.push('</ul>');
+          inUnorderedList = false;
+        }
+        if (inOrderedList) {
+          processedLines.push('</ol>');
+          inOrderedList = false;
+        }
+        
         const isChecked = taskMatch[1].toLowerCase() === 'x';
         const content = taskMatch[2].trim();
         
@@ -220,18 +226,76 @@ export function markdownToHtml(markdown: string): string {
         processedLines.push(
           `<li data-type="taskItem" data-checked="${isChecked}"><label><input type="checkbox" ${isChecked ? 'checked' : ''}><span>${content}</span></label></li>`
         );
-      } else {
+      } 
+      // Check for unordered list items (but not task lists)
+      else if (line.match(/^-\s+(.+)$/)) {
+        // Close task list if open
         if (inTaskList) {
           processedLines.push('</ul>');
           inTaskList = false;
+        }
+        // Close ordered list if open
+        if (inOrderedList) {
+          processedLines.push('</ol>');
+          inOrderedList = false;
+        }
+        
+        if (!inUnorderedList) {
+          processedLines.push('<ul>');
+          inUnorderedList = true;
+        }
+        
+        const content = line.replace(/^-\s+(.+)$/, '$1');
+        processedLines.push(`<li>${content}</li>`);
+      }
+      // Check for ordered list items
+      else if (line.match(/^\d+\.\s+(.+)$/)) {
+        // Close task list if open
+        if (inTaskList) {
+          processedLines.push('</ul>');
+          inTaskList = false;
+        }
+        // Close unordered list if open
+        if (inUnorderedList) {
+          processedLines.push('</ul>');
+          inUnorderedList = false;
+        }
+        
+        if (!inOrderedList) {
+          processedLines.push('<ol>');
+          inOrderedList = true;
+        }
+        
+        const content = line.replace(/^\d+\.\s+(.+)$/, '$1');
+        processedLines.push(`<li>${content}</li>`);
+      }
+      else {
+        // Close any open lists
+        if (inTaskList) {
+          processedLines.push('</ul>');
+          inTaskList = false;
+        }
+        if (inUnorderedList) {
+          processedLines.push('</ul>');
+          inUnorderedList = false;
+        }
+        if (inOrderedList) {
+          processedLines.push('</ol>');
+          inOrderedList = false;
         }
         processedLines.push(line);
       }
     });
 
-    // Close task list if still open
+    // Close any still open lists
     if (inTaskList) {
       processedLines.push('</ul>');
+    }
+    if (inUnorderedList) {
+      processedLines.push('</ul>');
+    }
+    if (inOrderedList) {
+      processedLines.push('</ol>');
     }
 
     html = processedLines.join('\n');

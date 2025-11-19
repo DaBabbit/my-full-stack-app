@@ -38,6 +38,7 @@ import { supabase } from '@/utils/supabase';
 interface TipTapEditorProps {
   videoId: string;
   editable?: boolean;
+  storageLocation?: string;
   onSaveSuccess?: () => void;
   onSaveError?: (error: string) => void;
 }
@@ -47,6 +48,7 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 export function TipTapEditor({ 
   videoId, 
   editable = true,
+  storageLocation,
   onSaveSuccess,
   onSaveError
 }: TipTapEditorProps) {
@@ -56,6 +58,7 @@ export function TipTapEditor({
   const saveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const [showImageInput, setShowImageInput] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // TipTap Editor Setup
   const editor = useEditor({
@@ -69,6 +72,8 @@ export function TipTapEditor({
         HTMLAttributes: {
           class: 'max-w-full h-auto rounded-lg',
         },
+        inline: false,
+        allowBase64: true,
       }),
       Link.configure({
         openOnClick: false,
@@ -113,6 +118,35 @@ export function TipTapEditor({
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-[300px] max-h-[600px] overflow-y-auto px-4 py-3',
       },
+      handleDrop: (view, event, slice, moved) => {
+        if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
+          const file = event.dataTransfer.files[0];
+          
+          // Check if it's an image
+          if (file.type.startsWith('image/')) {
+            event.preventDefault();
+            handleImageUpload(file, view.state.selection.from);
+            return true;
+          }
+        }
+        return false;
+      },
+      handlePaste: (view, event) => {
+        const items = event.clipboardData?.items;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+              const file = items[i].getAsFile();
+              if (file) {
+                event.preventDefault();
+                handleImageUpload(file, view.state.selection.from);
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      },
     },
     onUpdate: ({ editor }) => {
       // Auto-save debouncing
@@ -141,6 +175,76 @@ export function TipTapEditor({
       }
     };
   }, []);
+
+  /**
+   * Upload Image to Nextcloud
+   */
+  const handleImageUpload = async (file: File, position?: number) => {
+    if (!storageLocation) {
+      console.error('[TipTap] No storage location available');
+      if (onSaveError) {
+        onSaveError('Kein Speicherort vorhanden. Bitte legen Sie zuerst einen Speicherort fest.');
+      }
+      return;
+    }
+
+    setIsUploadingImage(true);
+    console.log('[TipTap] Uploading image:', file.name);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Keine aktive Session');
+      }
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('videoId', videoId);
+
+      // Upload to Nextcloud via API
+      const response = await fetch('/api/nextcloud/upload-image', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[TipTap] Upload failed:', response.status, errorText);
+        throw new Error('Fehler beim Hochladen des Bildes');
+      }
+
+      const data = await response.json();
+      console.log('[TipTap] Image uploaded successfully:', data.imageUrl);
+
+      // Insert image into editor at the specified position or current cursor
+      if (editor) {
+        if (position !== undefined) {
+          editor.chain().focus().insertContentAt(position, {
+            type: 'image',
+            attrs: { src: data.imageUrl },
+          }).run();
+        } else {
+          editor.chain().focus().setImage({ src: data.imageUrl }).run();
+        }
+      }
+
+      if (onSaveSuccess) {
+        onSaveSuccess();
+      }
+
+    } catch (error) {
+      console.error('[TipTap] Image upload error:', error);
+      if (onSaveError) {
+        onSaveError('Fehler beim Hochladen des Bildes');
+      }
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   /**
    * Load Markdown content from Nextcloud
@@ -555,21 +659,27 @@ export function TipTapEditor({
           </ToolbarButton>
         </div>
 
-        {/* Save Status */}
+        {/* Save & Upload Status */}
         <div className="ml-auto flex items-center gap-2">
-          {saveStatus === 'saving' && (
+          {isUploadingImage && (
+            <div className="flex items-center gap-2 text-purple-400 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Lädt Bild hoch...</span>
+            </div>
+          )}
+          {!isUploadingImage && saveStatus === 'saving' && (
             <div className="flex items-center gap-2 text-blue-400 text-sm">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Speichert...</span>
             </div>
           )}
-          {saveStatus === 'saved' && (
+          {!isUploadingImage && saveStatus === 'saved' && (
             <div className="flex items-center gap-2 text-green-400 text-sm">
               <Check className="w-4 h-4" />
               <span>Gespeichert</span>
             </div>
           )}
-          {saveStatus === 'error' && (
+          {!isUploadingImage && saveStatus === 'error' && (
             <div className="flex items-center gap-2 text-red-400 text-sm">
               <AlertCircle className="w-4 h-4" />
               <span>Fehler</span>

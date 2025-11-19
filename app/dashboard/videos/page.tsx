@@ -2726,6 +2726,34 @@ export default function VideosPage() {
                         placeholder="https://youtube.com/watch?v=..."
                       />
                     </div>
+
+                    {/* Speicherort & Upload Buttons - nur bei Status "Idee" oder "Warten auf Aufnahme" */}
+                    {(editingVideo.status === 'Idee' || editingVideo.status === 'Warten auf Aufnahme') && (
+                      <div className="md:col-span-2 flex gap-3">
+                        {editingVideo.storage_location && (
+                          <a
+                            href={editingVideo.storage_location}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors text-sm border border-neutral-700"
+                          >
+                            <FolderOpen className="w-4 h-4" />
+                            <span>Speicherort</span>
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUploadModalVideo(editingVideo);
+                            setShowUploadModal(true);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span>Dateien hochladen</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2745,6 +2773,7 @@ export default function VideosPage() {
                 </div>
                 <TipTapEditor
                   videoId={editingVideo.id}
+                  storageLocation={editingVideo.storage_location}
                   editable={permissions.canEditVideos}
                 />
               </div>

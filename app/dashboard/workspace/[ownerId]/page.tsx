@@ -2775,7 +2775,7 @@ export default function SharedWorkspacePage() {
                 </div>
                 <TipTapEditor
                   videoId={editingVideo.id}
-                  editable={canEdit}
+                  editable={permissions.can_edit}
                 />
               </div>
 

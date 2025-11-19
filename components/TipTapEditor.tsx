@@ -122,7 +122,7 @@ export function TipTapEditor({
 
       saveTimeoutRef.current = setTimeout(() => {
         handleAutoSave(editor.getHTML());
-      }, 10000); // 10 seconds
+      }, 2000); // 2 seconds
     },
   });
 
@@ -297,13 +297,15 @@ export function TipTapEditor({
     active, 
     disabled, 
     children, 
-    title 
+    title,
+    className 
   }: { 
     onClick: () => void; 
     active?: boolean; 
     disabled?: boolean; 
     children: React.ReactNode;
     title: string;
+    className?: string;
   }) => (
     <button
       type="button"
@@ -317,6 +319,7 @@ export function TipTapEditor({
           : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
         }
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+        ${className || ''}
       `}
     >
       {children}
@@ -473,11 +476,66 @@ export function TipTapEditor({
           <ToolbarButton
             onClick={handleAddTable}
             active={editor.isActive('table')}
-            title="Tabelle einfügen"
+            title="Tabelle einfügen (3x3)"
           >
             <TableIcon className="w-4 h-4" />
           </ToolbarButton>
         </div>
+
+        {/* Table Operations - Only show when cursor is in a table */}
+        {editor.isActive('table') && (
+          <div className="flex gap-1 border-r border-neutral-700 pr-2">
+            <ToolbarButton
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+              title="Zeile davor einfügen"
+              className="text-xs"
+            >
+              ↑ Zeile
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+              title="Zeile danach einfügen"
+              className="text-xs"
+            >
+              ↓ Zeile
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().deleteRow().run()}
+              title="Zeile löschen"
+              className="text-xs"
+            >
+              ✕ Zeile
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+              title="Spalte davor einfügen"
+              className="text-xs"
+            >
+              ← Spalte
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+              title="Spalte danach einfügen"
+              className="text-xs"
+            >
+              → Spalte
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+              title="Spalte löschen"
+              className="text-xs"
+            >
+              ✕ Spalte
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().deleteTable().run()}
+              title="Tabelle löschen"
+              className="text-xs text-red-400 hover:text-red-300"
+            >
+              ✕ Tabelle
+            </ToolbarButton>
+          </div>
+        )}
 
         {/* Undo/Redo */}
         <div className="flex gap-1">
@@ -611,16 +669,54 @@ export function TipTapEditor({
         .ProseMirror .task-item {
           display: flex;
           align-items: flex-start;
-          margin-bottom: 0.25em;
+          margin-bottom: 0.5em;
         }
         
         .ProseMirror .task-item > label {
-          margin-right: 0.5em;
+          margin-right: 0.75em;
+          margin-top: 0.125em;
           user-select: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+        }
+        
+        .ProseMirror .task-item > label > input[type="checkbox"] {
+          width: 1.25em;
+          height: 1.25em;
+          cursor: pointer;
+          appearance: none;
+          border: 2px solid #525252;
+          border-radius: 0.25em;
+          background-color: #171717;
+          position: relative;
+          transition: all 0.15s ease;
+        }
+        
+        .ProseMirror .task-item > label > input[type="checkbox"]:hover {
+          border-color: #737373;
+          background-color: #262626;
+        }
+        
+        .ProseMirror .task-item > label > input[type="checkbox"]:checked {
+          background-color: #3b82f6;
+          border-color: #3b82f6;
+        }
+        
+        .ProseMirror .task-item > label > input[type="checkbox"]:checked::after {
+          content: '✓';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: #ffffff;
+          font-size: 0.9em;
+          font-weight: bold;
         }
         
         .ProseMirror .task-item > div {
           flex: 1;
+          line-height: 1.5;
         }
         
         .ProseMirror blockquote {

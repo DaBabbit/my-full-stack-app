@@ -24,6 +24,23 @@ const turndownService = new TurndownService({
 turndownService.use(gfm);
 
 // Custom Rules für bessere Markdown-Ausgabe
+
+// Task List Items (TipTap format)
+turndownService.addRule('taskListItem', {
+  filter: (node) => {
+    return (
+      node.nodeName === 'LI' &&
+      node.getAttribute('data-type') === 'taskItem'
+    );
+  },
+  replacement: (content, node) => {
+    const isChecked = node.getAttribute('data-checked') === 'true';
+    const checkbox = isChecked ? '[x]' : '[ ]';
+    return `- ${checkbox} ${content}\n`;
+  }
+});
+
+// Fallback for plain checkbox inputs
 turndownService.addRule('checkbox', {
   filter: (node) => {
     return (
@@ -175,8 +192,11 @@ export function markdownToHtml(markdown: string): string {
     html = html.replace(/^\d+\. (.+)$/gim, '<li>$1</li>');
 
     // Task lists: - [ ] item or - [x] item
-    html = html.replace(/^\- \[ \] (.+)$/gim, '<li data-checked="false">$1</li>');
-    html = html.replace(/^\- \[x\] (.+)$/gim, '<li data-checked="true">$1</li>');
+    html = html.replace(/^-\s*\[\s*\]\s*(.+)$/gim, '<li data-type="taskItem" data-checked="false">$1</li>');
+    html = html.replace(/^-\s*\[x\]\s*(.+)$/gim, '<li data-type="taskItem" data-checked="true">$1</li>');
+    
+    // Wrap task items in task list
+    html = html.replace(/(<li data-type="taskItem"[\s\S]*?<\/li>)/g, '<ul data-type="taskList">$1</ul>');
 
     // Blockquotes: > text → <blockquote>text</blockquote>
     html = html.replace(/^\> (.+)$/gim, '<blockquote>$1</blockquote>');

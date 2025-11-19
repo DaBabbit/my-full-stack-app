@@ -2649,21 +2649,6 @@ export default function VideosPage() {
                       storageLocation={editingVideo.storage_location}
                       status={editingVideo.status}
                     />
-                    
-                    {/* Speicherort & Download Links */}
-                    <div className="mt-4 space-y-2">
-                      {editingVideo.storage_location && (
-                        <a
-                          href={editingVideo.storage_location}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors text-sm"
-                        >
-                          <FolderOpen className="w-4 h-4" />
-                          <span>Speicherort öffnen</span>
-                        </a>
-                      )}
-                    </div>
                   </div>
                 )}
                 
@@ -2673,15 +2658,13 @@ export default function VideosPage() {
                     {/* Video Titel */}
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-neutral-300 mb-2">
-                        Video Titel *
+                        Video Titel
                       </label>
                       <input
                         type="text"
                         value={editingVideo.name}
-                        onChange={(e) => setEditingVideo({ ...editingVideo, name: e.target.value })}
-                        className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                        placeholder="z.B. Mein YouTube Tutorial"
-                        required
+                        readOnly
+                        className="w-full px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-lg text-neutral-400 cursor-not-allowed"
                       />
                     </div>
 
@@ -2757,8 +2740,7 @@ export default function VideosPage() {
                 </div>
                 <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-4">
                   <p className="text-xs text-blue-300/80">
-                    💡 Hier werden zusätzliche Hinweise dokumentiert, die für die Bearbeitung des Videos nötig sind. 
-                    Alle Änderungen werden automatisch alle 10 Sekunden gespeichert.
+                    💡 Hier werden zusätzliche Hinweise dokumentiert, die für die Bearbeitung des Videos nötig sind.
                   </p>
                 </div>
                 <TipTapEditor

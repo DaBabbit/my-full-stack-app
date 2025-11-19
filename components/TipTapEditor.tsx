@@ -126,10 +126,12 @@ export function TipTapEditor({
     },
   });
 
-  // Load initial content from Nextcloud
+  // Load initial content from Nextcloud when editor is ready
   useEffect(() => {
-    loadMarkdownContent();
-  }, [videoId]);
+    if (editor && !editor.isDestroyed) {
+      loadMarkdownContent();
+    }
+  }, [videoId, editor]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -144,7 +146,14 @@ export function TipTapEditor({
    * Load Markdown content from Nextcloud
    */
   const loadMarkdownContent = async () => {
+    if (!editor) {
+      console.warn('[TipTap] Editor not ready yet');
+      return;
+    }
+
     setIsLoading(true);
+    console.log('[TipTap] Loading content for video:', videoId);
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -158,16 +167,27 @@ export function TipTapEditor({
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[TipTap] Load failed:', response.status, errorText);
         throw new Error('Fehler beim Laden der Markdown-Datei');
       }
 
       const data = await response.json();
+      console.log('[TipTap] Loaded markdown content:', data.content?.substring(0, 100));
       
-      if (data.content) {
+      if (data.content && data.content.trim()) {
         // Convert Markdown to HTML and set in editor
         const html = markdownToHtml(data.content);
-        editor?.commands.setContent(html);
-        setLastSavedContent(data.content);
+        console.log('[TipTap] Converted to HTML:', html.substring(0, 100));
+        
+        // Ensure editor is ready and set content
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(html);
+          setLastSavedContent(data.content);
+          console.log('[TipTap] Content set successfully');
+        }
+      } else {
+        console.log('[TipTap] No content found, using template');
       }
 
     } catch (error) {

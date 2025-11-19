@@ -67,18 +67,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Nextcloud configuration
-    const webdavUrl = process.env.NEXTCLOUD_BASE_URL + process.env.NEXTCLOUD_WEBDAV_PATH;
-    const uploadsUrl = process.env.NEXTCLOUD_BASE_URL + process.env.NEXTCLOUD_UPLOADS_PATH;
+    const baseUrl = process.env.NEXTCLOUD_BASE_URL;
+    const webdavPath = process.env.NEXTCLOUD_WEBDAV_PATH;
+    const uploadsPath = process.env.NEXTCLOUD_UPLOADS_PATH;
     const username = process.env.NEXTCLOUD_USERNAME;
     const password = process.env.NEXTCLOUD_APP_PASSWORD;
 
-    if (!webdavUrl || !uploadsUrl || !username || !password) {
+    if (!baseUrl || !webdavPath || !uploadsPath || !username || !password) {
       console.error('[API] Missing Nextcloud credentials');
       return NextResponse.json(
         { error: 'Server-Konfigurationsfehler' },
         { status: 500 }
       );
     }
+
+    const webdavUrl = baseUrl + webdavPath;
+    const uploadsUrl = baseUrl + uploadsPath;
 
     // Convert File to Buffer
     const arrayBuffer = await file.arrayBuffer();

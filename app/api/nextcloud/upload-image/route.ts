@@ -84,10 +84,6 @@ export async function POST(request: NextRequest) {
     const webdavUrl = baseUrl + webdavPath;
     const uploadsUrl = baseUrl + uploadsPath;
 
-    // Convert File to Buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
     // Create safe filename
     const timestamp = Date.now();
     const safeFileName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
@@ -96,10 +92,7 @@ export async function POST(request: NextRequest) {
     console.log('[API] Uploading to Nextcloud path:', targetPath);
 
     // Upload to Nextcloud
-    await uploadFile({
-      file: buffer,
-      fileName: safeFileName,
-      targetPath: video.nextcloud_path,
+    await uploadFile(file, {
       webdavUrl,
       uploadsUrl,
       username,

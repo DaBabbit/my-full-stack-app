@@ -7,10 +7,21 @@ export async function POST(request: NextRequest) {
   try {
     console.log('[API] /api/nextcloud/upload-image - POST request');
 
-    // Get user session
+    // Get user session from Authorization header OR cookies
+    const authHeader = request.headers.get('Authorization');
     const cookieStore = cookies();
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { session } } = await supabase.auth.getSession();
+    
+    let session = null;
+    
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { data: { session: tokenSession } } = await supabase.auth.getSession();
+      session = tokenSession;
+    } else {
+      const { data: { session: cookieSession } } = await supabase.auth.getSession();
+      session = cookieSession;
+    }
 
     if (!session) {
       console.error('[API] No active session');
@@ -19,6 +30,8 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+    
+    console.log('[API] Session found for user:', session.user.id);
 
     // Parse FormData
     const formData = await request.formData();

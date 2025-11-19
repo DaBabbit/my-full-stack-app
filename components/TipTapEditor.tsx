@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
@@ -690,18 +690,9 @@ export function TipTapEditor({
         </div>
       )}
       
-      {/* Bubble Menu for Tables */}
-      {editor && (
-        <BubbleMenu
-          editor={editor}
-          tippyOptions={{ 
-            duration: 100,
-            placement: 'top',
-            offset: [0, 10]
-          }}
-          shouldShow={({ editor }) => editor.isActive('table')}
-          className="bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl px-2 py-1 flex gap-1"
-        >
+      {/* Table Controls - Show when table is active */}
+      {editor?.isActive('table') && (
+        <div className="border-b border-neutral-700 bg-neutral-800/50 p-2 flex gap-1 flex-wrap">
           <button
             onClick={() => editor.chain().focus().addRowBefore().run()}
             className="px-3 py-1.5 hover:bg-neutral-700 rounded text-neutral-300 text-xs transition-colors"
@@ -753,7 +744,7 @@ export function TipTapEditor({
           >
             ✕ Tabelle
           </button>
-        </BubbleMenu>
+        </div>
       )}
 
       {/* Editor Content */}

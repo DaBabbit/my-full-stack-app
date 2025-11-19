@@ -69,6 +69,8 @@ export function TipTapEditor({
         heading: {
           levels: [1, 2, 3],
         },
+        // Disable link from StarterKit to configure it separately
+        link: false,
       }),
       Image.configure({
         HTMLAttributes: {
@@ -285,8 +287,17 @@ export function TipTapEditor({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[TipTap] Load failed:', response.status, errorText);
+        const errorData = await response.json();
+        console.error('[TipTap] Load failed:', response.status, errorData);
+        
+        // If video has no nextcloud_path yet, show template and allow editing
+        if (response.status === 404 && errorData.error?.includes('Nextcloud-Pfad')) {
+          console.log('[TipTap] Video has no storage location yet, using template');
+          // Editor will show placeholder/template - this is OK
+          setIsLoading(false);
+          return;
+        }
+        
         throw new Error('Fehler beim Laden der Markdown-Datei');
       }
 
@@ -331,6 +342,12 @@ export function TipTapEditor({
       return;
     }
 
+    // Don't try to save if video has no storage location yet
+    if (!storageLocation) {
+      console.warn('[TipTap] Cannot save: No storage location set for this video yet');
+      return;
+    }
+
     setSaveStatus('saving');
 
     try {
@@ -352,6 +369,14 @@ export function TipTapEditor({
       });
 
       if (!response.ok) {
+        const errorData = await response.json();
+        
+        // If video has no nextcloud_path, show helpful message
+        if (response.status === 404 && errorData.error?.includes('Nextcloud-Pfad')) {
+          console.warn('[TipTap] Cannot save: Video has no storage location yet');
+          return; // Don't show error - just skip save
+        }
+        
         throw new Error('Fehler beim Speichern');
       }
 

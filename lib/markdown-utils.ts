@@ -31,8 +31,8 @@ turndownService.addRule('checkbox', {
       node.getAttribute('type') === 'checkbox'
     );
   },
-  replacement: (content, node: HTMLInputElement) => {
-    return node.checked ? '[x] ' : '[ ] ';
+  replacement: (content, node) => {
+    return (node as HTMLInputElement).checked ? '[x] ' : '[ ] ';
   }
 });
 

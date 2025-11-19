@@ -195,7 +195,7 @@ export function TipTapEditor({
 
     try {
       // Refresh session before upload to avoid 401
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
         console.error('[TipTap] Session error:', sessionError);
@@ -204,6 +204,7 @@ export function TipTapEditor({
         if (!refreshedSession) {
           throw new Error('Keine aktive Session. Bitte neu anmelden.');
         }
+        session = refreshedSession;
       }
 
       console.log('[TipTap] Session valid, uploading...');

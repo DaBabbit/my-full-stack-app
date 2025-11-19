@@ -15,6 +15,7 @@ import ErrorModal from '@/components/ErrorModal';
 import EditableCell from '@/components/EditableCell';
 import EditableDescription from '@/components/EditableDescription';
 import EditableDate from '@/components/EditableDate';
+import { TipTapEditor } from '@/components/TipTapEditor';
 import EditableResponsiblePerson from '@/components/EditableResponsiblePerson';
 import ResponsiblePersonAvatar from '@/components/ResponsiblePersonAvatar';
 import ResponsiblePersonDropdownSimple from '@/components/ResponsiblePersonDropdownSimple';
@@ -106,7 +107,6 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'upload', label: 'Datei hochladen', resizable: true },
   { id: 'storage_location', label: 'Speicherort', resizable: true },
   { id: 'inspiration_source', label: 'Inspiration', resizable: true },
-  { id: 'description', label: 'Beschreibung', resizable: true },
   { id: 'updated_at', label: 'Aktualisiert', resizable: true },
   { id: 'actions', label: 'Aktionen', fixed: true, resizable: false }
 ];
@@ -715,6 +715,11 @@ export default function SharedWorkspacePage() {
     if (!editingVideo) return;
 
     try {
+      // Trigger manual save of TipTap editor before closing
+      if (typeof (window as any).__tipTapManualSave === 'function') {
+        (window as any).__tipTapManualSave();
+      }
+
       updateVideo({
         id: editingVideo.id,
         updates: {
@@ -722,7 +727,7 @@ export default function SharedWorkspacePage() {
           publication_date: editingVideo.publication_date || null,
           responsible_person: editingVideo.responsible_person || null,
           inspiration_source: editingVideo.inspiration_source || null,
-          description: editingVideo.description || null,
+          // description field removed - now handled by TipTap editor
         },
         ownerId
       });
@@ -1711,19 +1716,6 @@ export default function SharedWorkspacePage() {
           </td>
         );
 
-      case 'description':
-        return (
-          <td key={`${video.id}-description`} className="py-4 px-4 max-w-xs border-r border-neutral-800/30">
-            <EditableDescription
-              value={video.description}
-              videoId={video.id}
-              onSave={handleFieldSave}
-              editable={permissions.can_edit}
-              placeholder="Beschreibung hinzufügen"
-            />
-          </td>
-        );
-
       case 'actions':
         return (
           <td key={`${video.id}-actions`} className="py-4 px-4">
@@ -2656,113 +2648,137 @@ export default function SharedWorkspacePage() {
             >
             <h3 className="text-xl font-semibold mb-6 text-white">✏️ Video bearbeiten</h3>
             
-            {/* Layout: Player links (bei entsprechendem Status), Form rechts */}
-            <div className="flex flex-col lg:flex-row gap-6">
-              {/* Video Preview Player - nur bei Status "Schnitt abgeschlossen" oder "Hochgeladen" */}
-              {(editingVideo.status === 'Schnitt abgeschlossen' || editingVideo.status === 'Hochgeladen') && (
-                <div className="lg:w-1/3 flex-shrink-0">
-                  <VideoPreviewPlayer
-                    videoId={editingVideo.id}
-                    storageLocation={editingVideo.storage_location}
-                    status={editingVideo.status}
-                  />
-                </div>
-              )}
-              
-              {/* Edit Form */}
-              <div className="flex-1">
             <form onSubmit={handleUpdateVideo}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Video Titel */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-neutral-300 mb-2">
-                    Video Titel *
-                  </label>
-                  <input
-                    type="text"
-                    value={editingVideo.name}
-                    onChange={(e) => setEditingVideo({ ...editingVideo, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                    placeholder="z.B. Mein YouTube Tutorial"
-                    required
-                  />
-                </div>
+              {/* Layout: Left Column (Preview), Right Column (Metadata) */}
+              <div className="flex flex-col lg:flex-row gap-6 mb-6">
+                {/* Left Column: Video Preview - nur bei Status "Schnitt abgeschlossen" oder "Hochgeladen" */}
+                {(editingVideo.status === 'Schnitt abgeschlossen' || editingVideo.status === 'Hochgeladen') && (
+                  <div className="lg:w-1/3 flex-shrink-0">
+                    <VideoPreviewPlayer
+                      videoId={editingVideo.id}
+                      storageLocation={editingVideo.storage_location}
+                      status={editingVideo.status}
+                    />
+                    
+                    {/* Speicherort & Download Links */}
+                    <div className="mt-4 space-y-2">
+                      {editingVideo.storage_location && (
+                        <a
+                          href={editingVideo.storage_location}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors text-sm"
+                        >
+                          <FolderOpen className="w-4 h-4" />
+                          <span>Speicherort öffnen</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Right Column: Metadata Fields */}
+                <div className="flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Video Titel */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-neutral-300 mb-2">
+                        Video Titel *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingVideo.name}
+                        onChange={(e) => setEditingVideo({ ...editingVideo, name: e.target.value })}
+                        className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                        placeholder="z.B. Mein YouTube Tutorial"
+                        required
+                      />
+                    </div>
 
-                {/* Status */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-300 mb-2">
-                    Status
-                  </label>
-                  <CustomDropdown
-                    options={[
-                      { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
-                      { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
-                      { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
-                      { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
-                      { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
-                    ]}
-                    value={editingVideo.status}
-                    onChange={(status) => setEditingVideo({ ...editingVideo, status })}
-                  />
-                </div>
+                    {/* Status */}
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-300 mb-2">
+                        Status
+                      </label>
+                      <CustomDropdown
+                        options={[
+                          { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
+                          { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
+                          { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
+                          { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                          { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
+                        ]}
+                        value={editingVideo.status}
+                        onChange={(status) => setEditingVideo({ ...editingVideo, status })}
+                      />
+                    </div>
 
-                {/* Veröffentlichungsdatum */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-300 mb-2">
-                    Geplantes Veröffentlichungsdatum
-                  </label>
-                  <input
-                    type="date"
-                    value={editingVideo.publication_date || ''}
-                    onChange={(e) => setEditingVideo({ ...editingVideo, publication_date: e.target.value })}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                  />
-                </div>
+                    {/* Veröffentlichungsdatum */}
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-300 mb-2">
+                        Veröffentlichungsdatum
+                      </label>
+                      <input
+                        type="date"
+                        value={editingVideo.publication_date || ''}
+                        onChange={(e) => setEditingVideo({ ...editingVideo, publication_date: e.target.value })}
+                        className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                      />
+                    </div>
 
-                {/* Verantwortliche Person */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-neutral-300 mb-2">
-                    Verantwortliche Person
-                  </label>
-                  <ResponsiblePersonDropdownSimple
-                    value={editingVideo.responsible_person || ''}
-                    onChange={(value) => setEditingVideo({ ...editingVideo, responsible_person: value })}
-                    options={responsibleOptions}
-                    isOptionsLoading={responsibleOptionsLoading}
-                    personMap={responsiblePersonMap}
-                  />
-                </div>
+                    {/* Verantwortliche Person */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-neutral-300 mb-2">
+                        Verantwortliche Person
+                      </label>
+                      <ResponsiblePersonDropdownSimple
+                        value={editingVideo.responsible_person || ''}
+                        onChange={(value) => setEditingVideo({ ...editingVideo, responsible_person: value })}
+                        options={responsibleOptions}
+                        isOptionsLoading={responsibleOptionsLoading}
+                        personMap={responsiblePersonMap}
+                      />
+                    </div>
 
-                {/* Inspiration Quelle */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-neutral-300 mb-2">
-                    Inspiration Quelle
-                  </label>
-                  <input
-                    type="url"
-                    value={editingVideo.inspiration_source || ''}
-                    onChange={(e) => setEditingVideo({ ...editingVideo, inspiration_source: e.target.value })}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                    placeholder="https://youtube.com/watch?v=..."
-                  />
-                </div>
-
-                {/* Beschreibung */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-neutral-300 mb-2">
-                    Beschreibung
-                  </label>
-                  <textarea
-                    value={editingVideo.description || ''}
-                    onChange={(e) => setEditingVideo({ ...editingVideo, description: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white resize-none"
-                    placeholder="Kurze Beschreibung des Videos..."
-                  />
+                    {/* Inspiration Quelle */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-neutral-300 mb-2">
+                        Inspiration Quelle
+                      </label>
+                      <input
+                        type="url"
+                        value={editingVideo.inspiration_source || ''}
+                        onChange={(e) => setEditingVideo({ ...editingVideo, inspiration_source: e.target.value })}
+                        className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                        placeholder="https://youtube.com/watch?v=..."
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex gap-4 justify-end mt-6">
+              {/* Anforderungen & Briefing Section - Full Width */}
+              <div className="mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">📋</span>
+                    <h4 className="text-lg font-semibold text-white">Anforderungen & Briefing</h4>
+                  </div>
+                </div>
+                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-blue-300/80">
+                    💡 Hier werden zusätzliche Hinweise dokumentiert, die für die Bearbeitung des Videos nötig sind. 
+                    Alle Änderungen werden automatisch alle 10 Sekunden gespeichert.
+                  </p>
+                </div>
+                <TipTapEditor
+                  videoId={editingVideo.id}
+                  editable={canEdit}
+                />
+              </div>
+
+              {/* Footer Action Bar */}
+              <div className="flex gap-4 justify-end pt-4 border-t border-neutral-700">
                 <button
                   type="button"
                   onClick={() => {
@@ -2781,8 +2797,6 @@ export default function SharedWorkspacePage() {
                 </button>
               </div>
             </form>
-              </div>
-            </div>
             </motion.div>
           </motion.div>
         )}

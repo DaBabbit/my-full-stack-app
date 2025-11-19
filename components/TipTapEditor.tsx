@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
@@ -30,7 +30,8 @@ import {
   Redo,
   Loader2,
   Check,
-  AlertCircle
+  AlertCircle,
+  Upload
 } from 'lucide-react';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown-utils';
 import { supabase } from '@/utils/supabase';
@@ -56,9 +57,10 @@ export function TipTapEditor({
   const [isLoading, setIsLoading] = useState(true);
   const [lastSavedContent, setLastSavedContent] = useState<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const [showImageInput, setShowImageInput] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
+  const [showImageUpload, setShowImageUpload] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // TipTap Editor Setup
   const editor = useEditor({
@@ -431,17 +433,6 @@ export function TipTapEditor({
   );
 
   /**
-   * Add Image Handler
-   */
-  const handleAddImage = () => {
-    if (imageUrl) {
-      editor?.chain().focus().setImage({ src: imageUrl }).run();
-      setImageUrl('');
-      setShowImageInput(false);
-    }
-  };
-
-  /**
    * Add Link Handler
    */
   const handleAddLink = () => {
@@ -571,8 +562,8 @@ export function TipTapEditor({
             <LinkIcon className="w-4 h-4" />
           </ToolbarButton>
           <ToolbarButton
-            onClick={() => setShowImageInput(!showImageInput)}
-            active={showImageInput}
+            onClick={() => setShowImageUpload(!showImageUpload)}
+            active={showImageUpload}
             title="Bild einfügen"
           >
             <ImageIcon className="w-4 h-4" />
@@ -586,60 +577,6 @@ export function TipTapEditor({
           </ToolbarButton>
         </div>
 
-        {/* Table Operations - Only show when cursor is in a table */}
-        {editor.isActive('table') && (
-          <div className="flex gap-1 border-r border-neutral-700 pr-2">
-            <ToolbarButton
-              onClick={() => editor.chain().focus().addRowBefore().run()}
-              title="Zeile davor einfügen"
-              className="text-xs"
-            >
-              ↑ Zeile
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor.chain().focus().addRowAfter().run()}
-              title="Zeile danach einfügen"
-              className="text-xs"
-            >
-              ↓ Zeile
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor.chain().focus().deleteRow().run()}
-              title="Zeile löschen"
-              className="text-xs"
-            >
-              ✕ Zeile
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor.chain().focus().addColumnBefore().run()}
-              title="Spalte davor einfügen"
-              className="text-xs"
-            >
-              ← Spalte
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor.chain().focus().addColumnAfter().run()}
-              title="Spalte danach einfügen"
-              className="text-xs"
-            >
-              → Spalte
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor.chain().focus().deleteColumn().run()}
-              title="Spalte löschen"
-              className="text-xs"
-            >
-              ✕ Spalte
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor.chain().focus().deleteTable().run()}
-              title="Tabelle löschen"
-              className="text-xs text-red-400 hover:text-red-300"
-            >
-              ✕ Tabelle
-            </ToolbarButton>
-          </div>
-        )}
 
         {/* Undo/Redo */}
         <div className="flex gap-1">
@@ -688,34 +625,135 @@ export function TipTapEditor({
         </div>
       </div>
 
-      {/* Image Input (shown when ImageIcon is clicked) */}
-      {showImageInput && (
-        <div className="border-b border-neutral-700 bg-neutral-800/50 p-3 flex gap-2">
-          <input
-            type="text"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="Bild-URL eingeben..."
-            className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-          />
-          <button
-            type="button"
-            onClick={handleAddImage}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-          >
-            Einfügen
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setShowImageInput(false);
-              setImageUrl('');
+      {/* Image Upload Area (shown when ImageIcon is clicked) */}
+      {showImageUpload && (
+        <div className="border-b border-neutral-700 bg-neutral-800/50 p-6">
+          <div
+            onDragEnter={() => setIsDraggingImage(true)}
+            onDragLeave={() => setIsDraggingImage(false)}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDraggingImage(true);
             }}
-            className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm transition-colors"
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDraggingImage(false);
+              const file = e.dataTransfer.files[0];
+              if (file && file.type.startsWith('image/')) {
+                handleImageUpload(file);
+                setShowImageUpload(false);
+              }
+            }}
+            onClick={() => fileInputRef.current?.click()}
+            className={`
+              relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all
+              ${isDraggingImage 
+                ? 'border-blue-500 bg-blue-500/10' 
+                : 'border-neutral-600 bg-neutral-900/50 hover:border-neutral-500 hover:bg-neutral-900'
+              }
+            `}
           >
-            Abbrechen
-          </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  handleImageUpload(file);
+                  setShowImageUpload(false);
+                }
+              }}
+              className="hidden"
+            />
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <Upload className="w-8 h-8 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-neutral-200 font-medium">
+                  <span className="text-blue-400 underline">Zum Hochladen klicken</span> oder Drag & Drop
+                </p>
+                <p className="text-neutral-400 text-sm mt-1">Maximale Dateigröße: 5MB</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end mt-3">
+            <button
+              type="button"
+              onClick={() => setShowImageUpload(false)}
+              className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm transition-colors"
+            >
+              Abbrechen
+            </button>
+          </div>
         </div>
+      )}
+      
+      {/* Bubble Menu for Tables */}
+      {editor && (
+        <BubbleMenu
+          editor={editor}
+          tippyOptions={{ 
+            duration: 100,
+            placement: 'top',
+            offset: [0, 10]
+          }}
+          shouldShow={({ editor }) => editor.isActive('table')}
+          className="bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl px-2 py-1 flex gap-1"
+        >
+          <button
+            onClick={() => editor.chain().focus().addRowBefore().run()}
+            className="px-3 py-1.5 hover:bg-neutral-700 rounded text-neutral-300 text-xs transition-colors"
+            title="Zeile davor einfügen"
+          >
+            ↑ Zeile
+          </button>
+          <button
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            className="px-3 py-1.5 hover:bg-neutral-700 rounded text-neutral-300 text-xs transition-colors"
+            title="Zeile danach einfügen"
+          >
+            ↓ Zeile
+          </button>
+          <button
+            onClick={() => editor.chain().focus().deleteRow().run()}
+            className="px-3 py-1.5 hover:bg-neutral-700 rounded text-neutral-300 text-xs transition-colors"
+            title="Zeile löschen"
+          >
+            ✕ Zeile
+          </button>
+          <div className="w-px h-6 bg-neutral-700 mx-1"></div>
+          <button
+            onClick={() => editor.chain().focus().addColumnBefore().run()}
+            className="px-3 py-1.5 hover:bg-neutral-700 rounded text-neutral-300 text-xs transition-colors"
+            title="Spalte davor einfügen"
+          >
+            ← Spalte
+          </button>
+          <button
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            className="px-3 py-1.5 hover:bg-neutral-700 rounded text-neutral-300 text-xs transition-colors"
+            title="Spalte danach einfügen"
+          >
+            → Spalte
+          </button>
+          <button
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+            className="px-3 py-1.5 hover:bg-neutral-700 rounded text-neutral-300 text-xs transition-colors"
+            title="Spalte löschen"
+          >
+            ✕ Spalte
+          </button>
+          <div className="w-px h-6 bg-neutral-700 mx-1"></div>
+          <button
+            onClick={() => editor.chain().focus().deleteTable().run()}
+            className="px-3 py-1.5 hover:bg-red-900/50 rounded text-red-400 text-xs transition-colors"
+            title="Tabelle löschen"
+          >
+            ✕ Tabelle
+          </button>
+        </BubbleMenu>
       )}
 
       {/* Editor Content */}

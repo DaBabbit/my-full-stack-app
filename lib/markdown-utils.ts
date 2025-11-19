@@ -191,12 +191,42 @@ export function markdownToHtml(markdown: string): string {
     // Ordered lists: 1. item → <ol><li>item</li></ol>
     html = html.replace(/^\d+\. (.+)$/gim, '<li>$1</li>');
 
-    // Task lists: - [ ] item or - [x] item
-    html = html.replace(/^-\s*\[\s*\]\s*(.+)$/gim, '<li data-type="taskItem" data-checked="false">$1</li>');
-    html = html.replace(/^-\s*\[x\]\s*(.+)$/gim, '<li data-type="taskItem" data-checked="true">$1</li>');
-    
-    // Wrap task items in task list
-    html = html.replace(/(<li data-type="taskItem"[\s\S]*?<\/li>)/g, '<ul data-type="taskList">$1</ul>');
+    // Process line by line to handle task lists properly
+    const lines = html.split('\n');
+    const processedLines: string[] = [];
+    let inTaskList = false;
+
+    lines.forEach((line) => {
+      // Check for task list items: - [ ] or - [x]
+      const taskMatch = line.match(/^-\s*\[([ x])\]\s*(.*)$/);
+      
+      if (taskMatch) {
+        const isChecked = taskMatch[1] === 'x';
+        const content = taskMatch[2];
+        
+        if (!inTaskList) {
+          processedLines.push('<ul data-type="taskList">');
+          inTaskList = true;
+        }
+        
+        processedLines.push(
+          `<li data-type="taskItem" data-checked="${isChecked}"><label><input type="checkbox" ${isChecked ? 'checked' : ''}><span>${content}</span></label></li>`
+        );
+      } else {
+        if (inTaskList) {
+          processedLines.push('</ul>');
+          inTaskList = false;
+        }
+        processedLines.push(line);
+      }
+    });
+
+    // Close task list if still open
+    if (inTaskList) {
+      processedLines.push('</ul>');
+    }
+
+    html = processedLines.join('\n');
 
     // Blockquotes: > text → <blockquote>text</blockquote>
     html = html.replace(/^\> (.+)$/gim, '<blockquote>$1</blockquote>');

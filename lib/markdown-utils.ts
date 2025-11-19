@@ -98,7 +98,7 @@ export function markdownToHtml(markdown: string): string {
 
     // Unordered lists: - item → <ul><li>item</li></ul>
     html = html.replace(/^\- (.+)$/gim, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    html = html.replace(/(<li>[\s\S]*<\/li>)/, '<ul>$1</ul>');
 
     // Ordered lists: 1. item → <ol><li>item</li></ol>
     html = html.replace(/^\d+\. (.+)$/gim, '<li>$1</li>');

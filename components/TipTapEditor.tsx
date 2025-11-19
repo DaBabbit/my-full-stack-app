@@ -204,12 +204,9 @@ export function TipTapEditor({
       formData.append('file', file);
       formData.append('videoId', videoId);
 
-      // Upload to Nextcloud via API
+      // Upload to Nextcloud via API (don't include Authorization header - use cookies)
       const response = await fetch('/api/nextcloud/upload-image', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
         body: formData,
       });
 

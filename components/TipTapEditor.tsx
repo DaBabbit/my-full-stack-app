@@ -194,26 +194,36 @@ export function TipTapEditor({
     console.log('[TipTap] Uploading image:', file.name);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Keine aktive Session');
+      // Refresh session before upload to avoid 401
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('[TipTap] Session error:', sessionError);
+        // Try to refresh the session
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        if (!refreshedSession) {
+          throw new Error('Keine aktive Session. Bitte neu anmelden.');
+        }
       }
+
+      console.log('[TipTap] Session valid, uploading...');
 
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('file', file);
       formData.append('videoId', videoId);
 
-      // Upload to Nextcloud via API (don't include Authorization header - use cookies)
+      // Upload to Nextcloud via API (uses cookies for auth)
       const response = await fetch('/api/nextcloud/upload-image', {
         method: 'POST',
+        credentials: 'include', // Ensure cookies are sent
         body: formData,
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[TipTap] Upload failed:', response.status, errorText);
-        throw new Error('Fehler beim Hochladen des Bildes');
+        throw new Error(`Upload fehlgeschlagen: ${response.status}`);
       }
 
       const data = await response.json();
@@ -238,7 +248,7 @@ export function TipTapEditor({
     } catch (error) {
       console.error('[TipTap] Image upload error:', error);
       if (onSaveError) {
-        onSaveError('Fehler beim Hochladen des Bildes');
+        onSaveError(error instanceof Error ? error.message : 'Fehler beim Hochladen des Bildes');
       }
     } finally {
       setIsUploadingImage(false);

@@ -25,7 +25,7 @@ turndownService.use(gfm);
 
 // Custom Rules für bessere Markdown-Ausgabe
 
-// Task List Items (TipTap format)
+// Task List Items (TipTap format) - MUST come before checkbox rule
 turndownService.addRule('taskListItem', {
   filter: (node) => {
     return (
@@ -36,20 +36,27 @@ turndownService.addRule('taskListItem', {
   replacement: (content, node) => {
     const isChecked = node.getAttribute('data-checked') === 'true';
     const checkbox = isChecked ? '[x]' : '[ ]';
-    return `- ${checkbox} ${content}\n`;
+    
+    // Remove any checkbox symbols from content (they get duplicated)
+    const cleanContent = content
+      .replace(/^\s*\[x\]\s*/gi, '')
+      .replace(/^\s*\[\s*\]\s*/gi, '')
+      .trim();
+    
+    return `- ${checkbox} ${cleanContent}\n`;
   }
 });
 
-// Fallback for plain checkbox inputs
-turndownService.addRule('checkbox', {
+// Remove checkbox input elements completely (they are handled by taskListItem)
+turndownService.addRule('removeCheckboxInputs', {
   filter: (node) => {
     return (
       node.nodeName === 'INPUT' &&
       node.getAttribute('type') === 'checkbox'
     );
   },
-  replacement: (content, node) => {
-    return (node as HTMLInputElement).checked ? '[x] ' : '[ ] ';
+  replacement: () => {
+    return ''; // Don't render checkbox inputs - parent taskItem handles it
   }
 });
 
@@ -197,18 +204,19 @@ export function markdownToHtml(markdown: string): string {
     let inTaskList = false;
 
     lines.forEach((line) => {
-      // Check for task list items: - [ ] or - [x]
-      const taskMatch = line.match(/^-\s*\[([ x])\]\s*(.*)$/);
+      // Check for task list items: - [ ] or - [x] (case insensitive)
+      const taskMatch = line.match(/^-\s*\[\s*([x ])\s*\]\s*(.*)$/i);
       
       if (taskMatch) {
-        const isChecked = taskMatch[1] === 'x';
-        const content = taskMatch[2];
+        const isChecked = taskMatch[1].toLowerCase() === 'x';
+        const content = taskMatch[2].trim();
         
         if (!inTaskList) {
           processedLines.push('<ul data-type="taskList">');
           inTaskList = true;
         }
         
+        // Create proper TipTap task item structure
         processedLines.push(
           `<li data-type="taskItem" data-checked="${isChecked}"><label><input type="checkbox" ${isChecked ? 'checked' : ''}><span>${content}</span></label></li>`
         );

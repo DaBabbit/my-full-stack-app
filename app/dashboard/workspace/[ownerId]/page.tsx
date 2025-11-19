@@ -716,7 +716,9 @@ export default function SharedWorkspacePage() {
 
     try {
       // Trigger manual save of TipTap editor before closing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (typeof (window as any).__tipTapManualSave === 'function') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__tipTapManualSave();
       }
 

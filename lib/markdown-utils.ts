@@ -31,7 +31,7 @@ turndownService.addRule('checkbox', {
       node.getAttribute('type') === 'checkbox'
     );
   },
-  replacement: (content, node: any) => {
+  replacement: (content, node: HTMLInputElement) => {
     return node.checked ? '[x] ' : '[ ] ';
   }
 });
@@ -136,20 +136,7 @@ export function isValidMarkdown(markdown: string): boolean {
     return false;
   }
   
-  // Basic validation: Check for common markdown patterns
-  const markdownPatterns = [
-    /^#{1,6}\s/m,        // Headings
-    /\*\*.*\*\*/,        // Bold
-    /\_.*\_/,            // Italic
-    /\[.*\]\(.*\)/,      // Links
-    /^\-\s/m,            // Unordered lists
-    /^\d+\.\s/m,         // Ordered lists
-    /^\>\s/m,            // Blockquotes
-    /```[\s\S]*```/,     // Code blocks
-  ];
-
-  // If any pattern matches, it's likely valid markdown
-  // If none match but it's a string, it's still valid (plain text)
+  // Any string is valid markdown (plain text is valid markdown)
   return true;
 }
 

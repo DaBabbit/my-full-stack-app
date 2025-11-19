@@ -7,10 +7,10 @@ import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
 import { 
   Bold, 
@@ -260,9 +260,11 @@ export function TipTapEditor({
   // Expose manual save to parent component
   useEffect(() => {
     if (editor) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).__tipTapManualSave = handleManualSave;
     }
     return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (window as any).__tipTapManualSave;
     };
   }, [editor, handleManualSave]);

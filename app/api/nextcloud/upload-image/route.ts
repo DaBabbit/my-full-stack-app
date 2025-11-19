@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { uploadFile } from '@/lib/nextcloud-upload';
+import { uploadFileToNextcloud } from '@/lib/nextcloud-upload-server';
 
 /**
  * Authenticate user from Authorization header
@@ -127,22 +127,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const webdavUrl = baseUrl + webdavPath;
-    const uploadsUrl = baseUrl + uploadsPath;
-
     // Create safe filename
     const timestamp = Date.now();
     const safeFileName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const targetPath = `${video.nextcloud_path}/${safeFileName}`;
 
-    console.log('[API] Uploading to Nextcloud path:', targetPath);
+    console.log('[API] Uploading to Nextcloud path:', video.nextcloud_path);
 
-    // Upload to Nextcloud
-    await uploadFile(file, {
-      webdavUrl,
-      uploadsUrl,
+    // Convert File to Buffer for server-side upload
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Upload to Nextcloud using server-side function
+    await uploadFileToNextcloud(buffer, safeFileName, {
+      targetPath: video.nextcloud_path,
       username,
       password,
+      baseUrl,
+      webdavPath,
     });
 
     console.log('[API] Image uploaded successfully');

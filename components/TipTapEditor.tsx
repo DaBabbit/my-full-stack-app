@@ -213,10 +213,12 @@ export function TipTapEditor({
       formData.append('file', file);
       formData.append('videoId', videoId);
 
-      // Upload to Nextcloud via API (uses cookies for auth)
+      // Upload to Nextcloud via API (use Bearer token for auth)
       const response = await fetch('/api/nextcloud/upload-image', {
         method: 'POST',
-        credentials: 'include', // Ensure cookies are sent
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: formData,
       });
 

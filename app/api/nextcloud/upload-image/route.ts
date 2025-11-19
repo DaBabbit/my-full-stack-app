@@ -1,27 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { uploadFile } from '@/lib/nextcloud-upload';
+
+/**
+ * Authenticate user from Authorization header
+ */
+async function authenticateUser(request: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return { user: null, error: 'Supabase-Konfiguration fehlt' };
+  }
+
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { user: null, error: 'Kein Authorization Header' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+  if (error || !user) {
+    return { user: null, error: error?.message || 'Ungültiger Token' };
+  }
+
+  return { user, error: null };
+}
 
 export async function POST(request: NextRequest) {
   try {
     console.log('[API] /api/nextcloud/upload-image - POST request');
 
-    // Get user session from cookies
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    // Authenticate user
+    const { user, error: authError } = await authenticateUser(request);
     
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-      console.error('[API] No active session');
+    if (authError || !user) {
+      console.error('[API] Authentication failed:', authError);
       return NextResponse.json(
-        { error: 'Nicht autorisiert' },
+        { error: 'Nicht autorisiert', details: authError },
         { status: 401 }
       );
     }
     
-    console.log('[API] Session found for user:', session.user.id);
+    console.log('[API] Session found for user:', user.id);
 
     // Parse FormData
     const formData = await request.formData();
@@ -46,10 +75,15 @@ export async function POST(request: NextRequest) {
 
     console.log('[API] Uploading image:', file.name, 'for video:', videoId);
 
+    // Create Supabase client for data queries
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Fetch video details
     const { data: video, error: videoError } = await supabase
       .from('videos')
-      .select('id, nextcloud_path, storage_location')
+      .select('id, nextcloud_path, storage_location, user_id')
       .eq('id', videoId)
       .single();
 
@@ -58,6 +92,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Video nicht gefunden' },
         { status: 404 }
+      );
+    }
+
+    // Check if user owns the video or has access
+    if (video.user_id !== user.id) {
+      console.error('[API] User does not own this video');
+      return NextResponse.json(
+        { error: 'Keine Berechtigung für dieses Video' },
+        { status: 403 }
       );
     }
 

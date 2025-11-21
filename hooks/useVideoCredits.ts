@@ -17,12 +17,14 @@ export function useVideoCredits(userId?: string) {
         throw new Error('User ID ist erforderlich');
       }
 
-      // Hole User-Subscription für Abrechnungszeitraum
+      // Hole User-Subscription für Abrechnungszeitraum (aus subscriptions-Tabelle)
       const { data: subscription, error: subError } = await supabase
-        .from('user_subscriptions')
-        .select('billing_cycle_start, billing_cycle_end, monthly_video_limit')
+        .from('subscriptions')
+        .select('current_period_end, status')
         .eq('user_id', userId)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (subError && subError.code !== 'PGRST116') { // PGRST116 = not found
         console.error('[useVideoCredits] Error loading subscription:', subError);
@@ -33,9 +35,12 @@ export function useVideoCredits(userId?: string) {
       let billingStart: Date;
       let billingEnd: Date;
 
-      if (subscription?.billing_cycle_start && subscription?.billing_cycle_end) {
-        billingStart = new Date(subscription.billing_cycle_start);
-        billingEnd = new Date(subscription.billing_cycle_end);
+      if (subscription?.current_period_end) {
+        // Verwende echten Stripe-Abrechnungszeitraum
+        billingEnd = new Date(subscription.current_period_end);
+        // Berechne Start als 30 Tage vor Ende (monatliches Abo)
+        billingStart = new Date(billingEnd);
+        billingStart.setDate(billingStart.getDate() - 30);
       } else {
         // Fallback: Aktueller Kalendermonat
         billingStart = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -58,7 +63,7 @@ export function useVideoCredits(userId?: string) {
 
       // Zähle die Credits (jedes Video in diesen Status = 1 Credit)
       const currentCredits = data?.length || 0;
-      const monthlyLimit = subscription?.monthly_video_limit || 12; // Aus DB oder Fallback
+      const monthlyLimit = 12; // Fester Wert für alle Abos
 
       console.log('[useVideoCredits] Credits:', {
         currentCredits,
@@ -66,6 +71,7 @@ export function useVideoCredits(userId?: string) {
         percentage: (currentCredits / monthlyLimit) * 100,
         billingStart: billingStart.toISOString(),
         billingEnd: billingEnd.toISOString(),
+        subscriptionEnd: subscription?.current_period_end,
         videos: data
       });
 

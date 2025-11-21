@@ -30,6 +30,19 @@ export function VideoCreditsBadge({
     setMounted(true);
   }, []);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showInfoModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showInfoModal]);
+
   // Berechne verbleibende Tage
   const getRemainingDays = () => {
     if (!billingEnd) return 0;

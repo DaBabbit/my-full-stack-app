@@ -109,11 +109,13 @@ export class MixpostClient {
   async uploadMedia(file: File | Buffer, filename: string): Promise<MixpostMedia> {
     const formData = new FormData();
     
-    if (file instanceof Buffer) {
+    if (Buffer.isBuffer(file)) {
+      // Convert Buffer to Blob for FormData
       const blob = new Blob([file]);
       formData.append('file', blob, filename);
     } else {
-      formData.append('file', file);
+      // File object
+      formData.append('file', file, filename);
     }
 
     const url = `${this.baseUrl}/api/v1/media/upload`;

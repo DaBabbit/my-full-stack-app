@@ -24,7 +24,8 @@ import {
   ArrowRight,
   Lock,
   FileText,
-  Users
+  Users,
+  Share2
 } from 'lucide-react';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 
@@ -624,11 +625,37 @@ function ProfileContent() {
               )}
             </motion.div>
 
-            {/* Rechnungen */}
+            {/* Social Media Accounts */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
+                className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 transition-all duration-300"
+              >
+                <div className="flex items-center mb-4">
+                  <div className="p-2 bg-blue-500/20 rounded-xl mr-3">
+                    <Share2 className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">Social Media</h3>
+                </div>
+                
+                <p className="text-neutral-400 mb-4">
+                  Verbinde deine Social Media Accounts für automatisches Video-Publishing
+                </p>
+                <button
+                  onClick={() => router.push('/profile/social-media')}
+                  className="w-full p-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-2xl transition-all duration-300 border border-neutral-700 hover:border-neutral-600 flex items-center justify-center gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Accounts verwalten
+                </button>
+              </motion.div>
+
+            {/* Rechnungen */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
                 className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-neutral-500 transition-all duration-300"
               >
                 <div className="flex items-center mb-4">
@@ -674,7 +701,7 @@ function ProfileContent() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0.25 }}
                 className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-md rounded-3xl p-6 border border-blue-500/30 hover:border-blue-400/50 transition-all duration-300"
               >
                 <div className="flex items-center mb-4">

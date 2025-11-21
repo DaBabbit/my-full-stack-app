@@ -9,6 +9,7 @@ import NotificationBell from '@/components/NotificationBell';
 import VideoStatusChart from '@/components/VideoStatusChart';
 import StatusFilterModal from '@/components/StatusFilterModal';
 import { VideoCreditsBadge } from '@/components/VideoCreditsBadge';
+import SocialMediaAnalytics from '@/components/SocialMediaAnalytics';
 import { useVideoCredits } from '@/hooks/useVideoCredits';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
@@ -403,15 +404,23 @@ export default function Dashboard() {
               <SubscriptionWarning className="mt-6" />
             </div>
 
-            {/* Video Status Chart */}
-            <div className="mb-8">
-              <VideoStatusChart 
-                videos={videos}
-                onStatusClick={(status) => {
-                  setSelectedStatus(status);
-                  setFilterModalOpen(true);
-                }}
-              />
+            {/* Analytics Grid - Video Status & Social Media */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* Video Status Chart */}
+              <div>
+                <VideoStatusChart 
+                  videos={videos}
+                  onStatusClick={(status) => {
+                    setSelectedStatus(status);
+                    setFilterModalOpen(true);
+                  }}
+                />
+              </div>
+
+              {/* Social Media Analytics */}
+              <div>
+                <SocialMediaAnalytics />
+              </div>
             </div>
 
         {/* Quick Actions */}

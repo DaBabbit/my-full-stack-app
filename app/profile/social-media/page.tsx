@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/utils/supabase/client';
 import { motion } from 'framer-motion';
 import {
   Youtube,
@@ -134,7 +135,20 @@ export default function SocialMediaPage() {
   const loadAccounts = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/social-media/accounts');
+      
+      // Get Supabase session for Bearer token
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Keine Session gefunden');
+      }
+      
+      const response = await fetch('/api/social-media/accounts', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -161,9 +175,20 @@ export default function SocialMediaPage() {
     try {
       setConnectingPlatform(platform);
       
+      // Get Supabase session for Bearer token
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Keine Session gefunden');
+      }
+      
       const response = await fetch('/api/social-media/connect', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ platform })
       });
 
@@ -197,9 +222,20 @@ export default function SocialMediaPage() {
     try {
       setDeletingAccount(accountId);
       
+      // Get Supabase session for Bearer token
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Keine Session gefunden');
+      }
+      
       const response = await fetch('/api/social-media/accounts', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ accountId })
       });
 

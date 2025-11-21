@@ -1060,9 +1060,9 @@ export default function SharedWorkspacePage() {
     }
   };
 
-  // Prüfe ob Spalte sortierbar ist (nur Name und Veröffentlichung)
+  // Prüfe ob Spalte sortierbar ist (Name, Veröffentlichung und Aktualisiert)
   const canSortColumn = (columnId: string): boolean => {
-    return columnId === 'title' || columnId === 'publication_date';
+    return columnId === 'title' || columnId === 'publication_date' || columnId === 'updated_at';
   };
 
   // Filter & Sort Handlers
@@ -1075,7 +1075,7 @@ export default function SharedWorkspacePage() {
       addToast({
         type: 'warning',
         title: 'Sortierung nicht verfügbar',
-        message: 'Sortierung ist nur für "Name" und "Veröffentlichung" verfügbar.',
+        message: 'Sortierung ist nur für "Name", "Veröffentlichung" und "Aktualisiert" verfügbar.',
         duration: 2000
       });
       return;

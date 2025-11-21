@@ -22,11 +22,14 @@ interface StatusFilterModalProps {
   canDelete: boolean;
 }
 
-const statusOptions = [
+// kosmamedia User ID
+const KOSMAMEDIA_USER_ID = process.env.NEXT_PUBLIC_KOSMAMEDIA_USER_ID || '00000000-1111-2222-3333-444444444444';
+
+const getStatusOptions = (isKosmamedia: boolean) => [
   { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
   { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
   { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung', icon: Scissors, iconColor: 'text-purple-400' },
-  { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+  { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400', disabled: !isKosmamedia },
   { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
 ];
 
@@ -76,6 +79,11 @@ export default function StatusFilterModal({
 }: StatusFilterModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
+  
+  // Prüfe ob aktueller User kosmamedia ist
+  const isKosmamedia = user?.id === KOSMAMEDIA_USER_ID;
+  const statusOptions = getStatusOptions(isKosmamedia);
+  
   const {
     options: responsibleOptions,
     isLoading: responsibleOptionsLoading

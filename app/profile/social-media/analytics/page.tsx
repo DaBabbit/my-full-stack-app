@@ -9,7 +9,6 @@ import {
   Eye,
   Heart,
   MousePointer,
-  Calendar,
   Youtube,
   Instagram,
   Facebook,

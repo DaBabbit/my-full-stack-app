@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const state = searchParams.get('state');
-    const code = searchParams.get('code');
     const accountId = searchParams.get('account_id'); // Mixpost should return this
     const error = searchParams.get('error');
 

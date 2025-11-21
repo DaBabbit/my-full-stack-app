@@ -12,11 +12,9 @@ import {
   Twitter,
   Video,
   CheckCircle,
-  XCircle,
   Loader2,
   ExternalLink,
-  Trash2,
-  RefreshCw
+  Trash2
 } from 'lucide-react';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 
@@ -348,7 +346,7 @@ export default function SocialMediaPage() {
           transition={{ delay: 0.2 }}
           className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6"
         >
-          <h3 className="text-lg font-semibold text-white mb-2">ℹ️ So funktioniert's</h3>
+          <h3 className="text-lg font-semibold text-white mb-2">ℹ️ So funktioniert&apos;s</h3>
           <ul className="space-y-2 text-sm text-neutral-300">
             <li>• Verbinde deine Social Media Accounts mit einem Klick</li>
             <li>• Videos können automatisch nach Fertigstellung veröffentlicht werden</li>

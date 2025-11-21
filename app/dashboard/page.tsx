@@ -8,6 +8,8 @@ import DashboardSkeleton from '@/components/DashboardSkeleton';
 import NotificationBell from '@/components/NotificationBell';
 import VideoStatusChart from '@/components/VideoStatusChart';
 import StatusFilterModal from '@/components/StatusFilterModal';
+import { VideoCreditsBadge } from '@/components/VideoCreditsBadge';
+import { useVideoCredits } from '@/hooks/useVideoCredits';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSharedWorkspaces } from '@/hooks/useSharedWorkspaces';
 import { useVideosQuery, useVideoMutations } from '@/hooks/useVideosQuery';
@@ -81,6 +83,9 @@ export default function Dashboard() {
   
   // React Query für Videos
   const { data: videos = [], isLoading } = useVideosQuery(user?.id);
+  
+  // Lade Videocredits
+  const { data: creditsData, isLoading: creditsLoading } = useVideoCredits(user?.id);
   
   // Setup Realtime
   useRealtimeVideos(user?.id);
@@ -205,6 +210,13 @@ export default function Dashboard() {
           <div className="flex items-center space-x-3">
             {/* Notifications */}
             <NotificationBell />
+
+            {/* Videocredits Badge */}
+            <VideoCreditsBadge
+              currentCredits={creditsData?.currentCredits || 0}
+              monthlyLimit={creditsData?.monthlyLimit || 12}
+              isLoading={creditsLoading}
+            />
 
             {/* User Menu */}
             <div className="relative user-dropdown">

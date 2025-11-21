@@ -30,6 +30,8 @@ import { Tooltip } from '@/components/Tooltip';
 import { TableColumnsSettings, type ColumnConfig } from '@/components/TableColumnsSettings';
 import { AutomationSettingsModal } from '@/components/AutomationSettingsModal';
 import { ViewTabs } from '@/components/ViewTabs';
+import { VideoCreditsBadge } from '@/components/VideoCreditsBadge';
+import { useVideoCredits } from '@/hooks/useVideoCredits';
 import { ViewCreateModal } from '@/components/ViewCreateModal';
 import { DraggableTableHeader, getVisibleColumnOrder } from '@/components/DraggableTableHeader';
 import { useTableSettings } from '@/hooks/useTableSettings';
@@ -126,6 +128,9 @@ export default function VideosPage() {
   // Prüfe ob aktueller User kosmamedia ist
   const KOSMAMEDIA_USER_ID = process.env.NEXT_PUBLIC_KOSMAMEDIA_USER_ID || '00000000-1111-2222-3333-444444444444';
   const isKosmamedia = user?.id === KOSMAMEDIA_USER_ID;
+  
+  // Lade Videocredits
+  const { data: creditsData, isLoading: creditsLoading } = useVideoCredits(user?.id);
   
   const {
     options: responsibleOptions,
@@ -1817,6 +1822,13 @@ export default function VideosPage() {
           <div className="flex items-center space-x-3">
             {/* Notifications */}
             <NotificationBell />
+
+            {/* Videocredits Badge */}
+            <VideoCreditsBadge
+              currentCredits={creditsData?.currentCredits || 0}
+              monthlyLimit={creditsData?.monthlyLimit || 12}
+              isLoading={creditsLoading}
+            />
 
             {/* User Menu */}
             <div className="relative user-dropdown">

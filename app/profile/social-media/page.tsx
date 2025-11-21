@@ -94,8 +94,9 @@ export default function SocialMediaPage() {
       addToast({
         id: Date.now().toString(),
         type: 'success',
-        message: `${config?.name || platform} erfolgreich verbunden!`,
-        duration: 5000
+        title: `${config?.name || platform} erfolgreich verbunden!`,
+        duration: 5000,
+        onClose: removeToast
       });
       // Remove query params
       router.replace('/profile/social-media');
@@ -105,8 +106,10 @@ export default function SocialMediaPage() {
       addToast({
         id: Date.now().toString(),
         type: 'error',
+        title: 'Verbindung fehlgeschlagen',
         message: `Fehler: ${error}`,
-        duration: 5000
+        duration: 5000,
+        onClose: removeToast
       });
       router.replace('/profile/social-media');
     }
@@ -144,8 +147,10 @@ export default function SocialMediaPage() {
       addToast({
         id: Date.now().toString(),
         type: 'error',
+        title: 'Fehler beim Laden',
         message: 'Fehler beim Laden der Accounts',
-        duration: 3000
+        duration: 3000,
+        onClose: removeToast
       });
     } finally {
       setIsLoading(false);
@@ -175,8 +180,10 @@ export default function SocialMediaPage() {
       addToast({
         id: Date.now().toString(),
         type: 'error',
+        title: 'Verbindung fehlgeschlagen',
         message: `Fehler beim Verbinden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
-        duration: 3000
+        duration: 3000,
+        onClose: removeToast
       });
       setConnectingPlatform(null);
     }
@@ -202,8 +209,10 @@ export default function SocialMediaPage() {
         addToast({
           id: Date.now().toString(),
           type: 'success',
+          title: 'Account getrennt',
           message: 'Account erfolgreich getrennt',
-          duration: 3000
+          duration: 3000,
+          onClose: removeToast
         });
         loadAccounts();
       } else {
@@ -214,8 +223,10 @@ export default function SocialMediaPage() {
       addToast({
         id: Date.now().toString(),
         type: 'error',
+        title: 'Fehler',
         message: 'Fehler beim Trennen des Accounts',
-        duration: 3000
+        duration: 3000,
+        onClose: removeToast
       });
     } finally {
       setDeletingAccount(null);

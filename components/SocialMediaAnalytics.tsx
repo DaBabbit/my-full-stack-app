@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { createClient } from '@/utils/supabase/client';
-import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/utils/supabase';
+import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
   Eye, 
@@ -82,7 +82,6 @@ export default function SocialMediaAnalytics() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) return;

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { createClient } from '@/utils/supabase/client';
+import { supabase } from '@/utils/supabase';
 import { motion } from 'framer-motion';
 import {
   Youtube,
@@ -137,7 +137,6 @@ export default function SocialMediaPage() {
       setIsLoading(true);
       
       // Get Supabase session for Bearer token
-      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -176,7 +175,6 @@ export default function SocialMediaPage() {
       setConnectingPlatform(platform);
       
       // Get Supabase session for Bearer token
-      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -223,7 +221,6 @@ export default function SocialMediaPage() {
       setDeletingAccount(accountId);
       
       // Get Supabase session for Bearer token
-      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {

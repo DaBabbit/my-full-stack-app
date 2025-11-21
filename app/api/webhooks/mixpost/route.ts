@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * POST /api/webhooks/mixpost
  * 
  * Empfängt Webhooks von Mixpost für Real-time Updates
+ * Note: No authentication required for webhooks (should use signature verification in production)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,8 +22,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Handle different webhook events
     switch (event) {
@@ -153,4 +154,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

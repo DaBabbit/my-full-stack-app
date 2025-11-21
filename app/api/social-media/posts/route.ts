@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * GET /api/social-media/posts
@@ -9,24 +8,24 @@ import { cookies } from 'next/headers';
  */
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
-
-    // Check authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    
-    if (authError || !session) {
+    // Authenticate user via Bearer token
+    const { user, error: authError } = await authenticateUser(request);
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Nicht autorisiert' },
         { status: 401 }
       );
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Get posts from database
     const { data: posts, error: dbError } = await supabase
       .from('social_media_posts')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (dbError) {
@@ -50,3 +49,35 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * Helper: Authentifiziert User via Bearer Token
+ */
+async function authenticateUser(request: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return { user: null, error: 'Supabase-Konfiguration fehlt' };
+  }
+
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { user: null, error: 'Kein Authorization Header' };
+  }
+
+  const token = authHeader.substring(7);
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+  if (error || !user) {
+    return { user: null, error: error?.message || 'Ungültiger Token' };
+  }
+
+  return { user, error: null };
+}

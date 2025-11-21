@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { mixpostClient } from '@/lib/mixpost-client';
 
 /**
@@ -52,18 +51,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
-
-    // Verify user is authenticated and matches state
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    
-    if (authError || !session || session.user.id !== userId) {
-      console.error('[social-media/callback] Authentication mismatch');
-      const redirectUrl = new URL('/profile/social-media', request.nextUrl.origin);
-      redirectUrl.searchParams.set('error', 'auth_mismatch');
-      return NextResponse.redirect(redirectUrl);
-    }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get account details from Mixpost
     let accountDetails;
@@ -134,4 +124,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 }
-

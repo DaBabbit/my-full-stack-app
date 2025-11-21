@@ -215,6 +215,8 @@ export default function Dashboard() {
             <VideoCreditsBadge
               currentCredits={creditsData?.currentCredits || 0}
               monthlyLimit={creditsData?.monthlyLimit || 12}
+              billingStart={creditsData?.billingStart}
+              billingEnd={creditsData?.billingEnd}
               isLoading={creditsLoading}
             />
 

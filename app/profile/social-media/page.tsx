@@ -247,7 +247,7 @@ export default function SocialMediaPage() {
 
   return (
     <div className="min-h-screen bg-black p-8">
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <ToastContainer toasts={toasts} onClose={removeToast} />
 
       <div className="max-w-4xl mx-auto">
         {/* Header */}

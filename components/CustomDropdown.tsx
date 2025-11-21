@@ -8,6 +8,7 @@ interface Option {
   label: string;
   icon?: LucideIcon;
   iconColor?: string;
+  disabled?: boolean; // Einzelne Option kann deaktiviert werden
 }
 
 interface CustomDropdownProps {
@@ -114,18 +115,23 @@ export default function CustomDropdown({
               key={option.value}
               type="button"
               onClick={() => {
-                onChange(option.value);
-                setIsOpen(false);
+                if (!option.disabled) {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }
               }}
-              className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-neutral-800/50 flex items-center ${
-                value === option.value 
-                  ? 'text-white bg-neutral-800/30' 
-                  : 'text-neutral-300 hover:text-white'
+              disabled={option.disabled}
+              className={`w-full px-3 py-2 text-left text-sm transition-colors flex items-center ${
+                option.disabled
+                  ? 'cursor-not-allowed opacity-40 text-neutral-500'
+                  : value === option.value 
+                    ? 'text-white bg-neutral-800/30 hover:bg-neutral-800/50' 
+                    : 'text-neutral-300 hover:text-white hover:bg-neutral-800/50'
               } first:rounded-t-xl last:rounded-b-xl`}
             >
               {option.icon && (
                 <div className="mr-2 flex-shrink-0">
-                  <option.icon className={`w-4 h-4 ${option.iconColor || 'text-neutral-400'}`} />
+                  <option.icon className={`w-4 h-4 ${option.disabled ? 'text-neutral-600' : (option.iconColor || 'text-neutral-400')}`} />
                 </div>
               )}
               <span className="truncate">{option.label}</span>

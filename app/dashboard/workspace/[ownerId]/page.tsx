@@ -118,6 +118,10 @@ export default function SharedWorkspacePage() {
   const ownerId = params?.ownerId as string;
   const { sharedWorkspaces } = useSharedWorkspaces();
   
+  // Prüfe ob aktueller User kosmamedia ist
+  const KOSMAMEDIA_USER_ID = process.env.NEXT_PUBLIC_KOSMAMEDIA_USER_ID || '00000000-1111-2222-3333-444444444444';
+  const isKosmamedia = user?.id === KOSMAMEDIA_USER_ID;
+  
   // React Query Hooks - isLoading nur beim ersten Load, nicht bei Background Refetch
   const { 
     data: videos = [], 
@@ -1612,7 +1616,7 @@ export default function SharedWorkspacePage() {
                   { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
                   { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
                   { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
-                  { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                  { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400', disabled: !isKosmamedia },
                   { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
                 ]}
                 value={video.status}
@@ -2340,7 +2344,7 @@ export default function SharedWorkspacePage() {
                               { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
                               { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
                               { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
-                              { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                              { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400', disabled: !isKosmamedia },
                               { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
                             ]}
                             value={video.status}
@@ -2551,7 +2555,7 @@ export default function SharedWorkspacePage() {
                       { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
                       { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
                       { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
-                      { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                      { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400', disabled: !isKosmamedia },
                       { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
                     ]}
                     value={newVideo.status}
@@ -2700,7 +2704,7 @@ export default function SharedWorkspacePage() {
                           { value: 'Idee', label: 'Idee', icon: Lightbulb, iconColor: 'text-gray-400' },
                           { value: 'Warten auf Aufnahme', label: 'Warten auf Aufnahme', icon: Clock, iconColor: 'text-red-400' },
                           { value: 'In Bearbeitung (Schnitt)', label: 'In Bearbeitung (Schnitt)', icon: Scissors, iconColor: 'text-purple-400' },
-                          { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400' },
+                          { value: 'Schnitt abgeschlossen', label: 'Schnitt abgeschlossen', icon: Check, iconColor: 'text-blue-400', disabled: !isKosmamedia },
                           { value: 'Hochgeladen', label: 'Hochgeladen', icon: Rocket, iconColor: 'text-green-400' }
                         ]}
                         value={editingVideo.status}

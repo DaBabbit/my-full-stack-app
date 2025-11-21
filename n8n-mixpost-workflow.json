@@ -1,0 +1,189 @@
+{
+  "name": "Video zu Social Media publizieren",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video-published",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "video-published"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.NEXT_PUBLIC_APP_URL}}/api/videos/{{$json.video_id}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Video Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.NEXT_PUBLIC_APP_URL}}/api/social-media/accounts?userId={{$json.user_id}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get User's Social Accounts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{$json.accounts.length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Has Connected Accounts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.storage_location}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "Download Video from Nextcloud",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.NEXT_PUBLIC_APP_URL}}/api/nextcloud/markdown?videoId={{$json.video_id}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Video Caption",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 350]
+    },
+    {
+      "parameters": {
+        "operation": "uploadMedia",
+        "file": "={{$binary}}",
+        "options": {}
+      },
+      "name": "Upload to Mixpost",
+      "type": "n8n-nodes-mixpost.mixpost",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "operation": "schedulePost",
+        "content": "={{$node['Get Video Caption'].json.content}}",
+        "accounts": "={{$node['Get User\\'s Social Accounts'].json.accounts.map(acc => acc.mixpost_account_id)}}",
+        "media": ["={{$node['Upload to Mixpost'].json.media_id}}"],
+        "options": {
+          "scheduled_at": "now"
+        }
+      },
+      "name": "Create Social Media Post",
+      "type": "n8n-nodes-mixpost.mixpost",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.NEXT_PUBLIC_APP_URL}}/api/social-media/publish",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "videoId",
+              "value": "={{$node['Webhook'].json.video_id}}"
+            },
+            {
+              "name": "mixpost_post_id",
+              "value": "={{$node['Create Social Media Post'].json.id}}"
+            },
+            {
+              "name": "status",
+              "value": "published"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Update Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1650, 200]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Get Video Details", "type": "main", "index": 0 }]]
+    },
+    "Get Video Details": {
+      "main": [[{ "node": "Get User's Social Accounts", "type": "main", "index": 0 }]]
+    },
+    "Get User's Social Accounts": {
+      "main": [[{ "node": "Has Connected Accounts?", "type": "main", "index": 0 }]]
+    },
+    "Has Connected Accounts?": {
+      "main": [
+        [
+          { "node": "Download Video from Nextcloud", "type": "main", "index": 0 },
+          { "node": "Get Video Caption", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Download Video from Nextcloud": {
+      "main": [[{ "node": "Upload to Mixpost", "type": "main", "index": 0 }]]
+    },
+    "Get Video Caption": {
+      "main": [[{ "node": "Create Social Media Post", "type": "main", "index": 0 }]]
+    },
+    "Upload to Mixpost": {
+      "main": [[{ "node": "Create Social Media Post", "type": "main", "index": 0 }]]
+    },
+    "Create Social Media Post": {
+      "main": [[{ "node": "Update Database", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

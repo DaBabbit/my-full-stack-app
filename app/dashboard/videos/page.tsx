@@ -153,12 +153,22 @@ export default function VideosPage() {
     deleteVideo,
     bulkUpdateVideosAsync
   } = useVideoMutations({
-    onAutoAssign: (personName, videoTitle) => {
-      addToast({
-        type: 'success',
-        title: 'Automatische Zuweisung',
-        message: `${personName} wurde automatisch dem Video "${videoTitle}" zugewiesen`
-      });
+    onAutoAssign: (personName, videoTitle, newStatus) => {
+      // Spezielle Nachricht für kosmamedia bei Schnitt-Status
+      if (personName.toLowerCase() === 'kosmamedia' && 
+          (newStatus === 'In Bearbeitung (Schnitt)' || newStatus === 'Schnitt abgeschlossen')) {
+        addToast({
+          type: 'success',
+          title: 'Video an kosmamedia übergeben',
+          message: `kosmamedia wird das Video "${videoTitle}" schnellstmöglich bearbeiten`
+        });
+      } else {
+        addToast({
+          type: 'success',
+          title: 'Automatische Zuweisung',
+          message: `${personName} wurde automatisch dem Video "${videoTitle}" zugewiesen`
+        });
+      }
     }
   });
   

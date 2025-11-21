@@ -185,7 +185,7 @@ export function useSharedWorkspaceVideosQuery(ownerId: string | undefined) {
  * Hook für alle Video-Mutations (Create, Update, Delete)
  */
 export function useVideoMutations(options?: {
-  onAutoAssign?: (personName: string, videoTitle: string) => void;
+  onAutoAssign?: (personName: string, videoTitle: string, newStatus?: string) => void;
 }) {
   const queryClient = useQueryClient();
 
@@ -289,7 +289,7 @@ export function useVideoMutations(options?: {
               console.log('[createVideoMutation] ✅ Auto-assigned to:', autoAssignResult.assignedTo);
               // Callback für Toast Notification
               if (options?.onAutoAssign && autoAssignResult.assignedPersonName) {
-                options.onAutoAssign(autoAssignResult.assignedPersonName, data.title || 'Video');
+                options.onAutoAssign(autoAssignResult.assignedPersonName, data.title || 'Video', autoAssignResult.newStatus);
               }
               // Refetch videos to update UI
               queryClient.invalidateQueries({ queryKey: ['videos', 'own'], exact: false });
@@ -397,7 +397,7 @@ export function useVideoMutations(options?: {
               console.log('[updateVideoMutation] ✅ Auto-assigned to:', autoAssignResult.assignedTo);
               // Callback für Toast Notification
               if (options?.onAutoAssign && autoAssignResult.assignedPersonName) {
-                options.onAutoAssign(autoAssignResult.assignedPersonName, data.title || 'Video');
+                options.onAutoAssign(autoAssignResult.assignedPersonName, data.title || 'Video', autoAssignResult.newStatus);
               }
               // Refetch videos to update UI
               queryClient.invalidateQueries({ queryKey: ['videos', 'own'], exact: false });
@@ -537,7 +537,7 @@ export function useVideoMutations(options?: {
               console.log('[updateWorkspaceVideoMutation] ✅ Auto-assigned to:', autoAssignResult.assignedTo);
               // Callback für Toast Notification
               if (options?.onAutoAssign && autoAssignResult.assignedPersonName) {
-                options.onAutoAssign(autoAssignResult.assignedPersonName, data.title || 'Video');
+                options.onAutoAssign(autoAssignResult.assignedPersonName, data.title || 'Video', autoAssignResult.newStatus);
               }
               // Refetch workspace videos to update UI
               queryClient.invalidateQueries({ queryKey: ['videos', 'workspace', variables.ownerId], exact: false });

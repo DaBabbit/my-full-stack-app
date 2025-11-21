@@ -186,6 +186,7 @@ export async function POST(
         assignedTo: newResponsiblePerson,
         assignedPersonName, // Name für Toast
         newResponsiblePerson, // Keep for backward compatibility
+        newStatus, // Status für spezielle Toast-Nachrichten
         notificationSent: shouldNotify && newResponsiblePerson !== user.id
       });
     }

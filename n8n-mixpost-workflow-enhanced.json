@@ -1,0 +1,255 @@
+{
+  "name": "Video Auto-Publishing via Mixpost",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video-published",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "video-published"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT mixpost_account_id, platform, platform_username FROM social_media_accounts WHERE user_id = '{{$json[\"body\"][\"user_id\"]}}' AND is_active = true"
+      },
+      "name": "Get User Accounts",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json[\"length\"]}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "name": "Check Accounts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Webhook\"].json[\"body\"][\"app_url\"]}}/api/videos/{{$node[\"Webhook\"].json[\"body\"][\"video_id\"]}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Video Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "App API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Webhook\"].json[\"body\"][\"mixpost_url\"]}}/api/v1/media/upload",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Webhook\"].json[\"body\"][\"mixpost_token\"]}}"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "value": "={{$node[\"Get Video Data\"].json[\"storage_location\"]}}"
+            }
+          ]
+        }
+      },
+      "name": "Upload Video to Mixpost",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Webhook\"].json[\"body\"][\"mixpost_url\"]}}/api/v1/posts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Webhook\"].json[\"body\"][\"mixpost_token\"]}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"content\": \"{{$node[\"Get Video Data\"].json[\"title\"]}}\\n\\n{{$node[\"Get Video Data\"].json[\"description\"]}}\",\n  \"accounts\": {{$node[\"Get User Accounts\"].json.map(a => a.mixpost_account_id)}},\n  \"media\": [\"{{$node[\"Upload Video to Mixpost\"].json[\"data\"][\"id\"]}}\"]\n}"
+      },
+      "name": "Create Post in Mixpost",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "social_media_posts",
+        "columns": "video_id,user_id,mixpost_post_id,platform,status,caption",
+        "values": "={{$node[\"Webhook\"].json[\"body\"][\"video_id\"]}},={{$node[\"Webhook\"].json[\"body\"][\"user_id\"]}},={{$node[\"Create Post in Mixpost\"].json[\"data\"][\"id\"]}},={{$item.platform}},publishing,={{$node[\"Get Video Data\"].json[\"title\"]}}"
+      },
+      "name": "Log Post in Database",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {},
+        "jsonOutput": "={\n  \"success\": true,\n  \"message\": \"Video successfully published to {{$node[\"Get User Accounts\"].json.length}} accounts\",\n  \"mixpost_post_id\": \"{{$node[\"Create Post in Mixpost\"].json[\"data\"][\"id\"]}}\",\n  \"platforms\": {{$node[\"Get User Accounts\"].json.map(a => a.platform)}}\n}"
+      },
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1650, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {},
+        "jsonOutput": "={\n  \"success\": false,\n  \"message\": \"No active social media accounts found for this user\"\n}"
+      },
+      "name": "No Accounts Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get User Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Accounts": {
+      "main": [
+        [
+          {
+            "node": "Check Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Accounts": {
+      "main": [
+        [
+          {
+            "node": "Get Video Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Accounts Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Video Data": {
+      "main": [
+        [
+          {
+            "node": "Upload Video to Mixpost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Video to Mixpost": {
+      "main": [
+        [
+          {
+            "node": "Create Post in Mixpost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Post in Mixpost": {
+      "main": [
+        [
+          {
+            "node": "Log Post in Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Post in Database": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}
+

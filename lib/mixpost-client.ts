@@ -241,6 +241,37 @@ export function createMixpostClient(apiToken?: string, baseUrl?: string): Mixpos
 }
 
 /**
+ * Get accounts filtered by user (via Supabase)
+ * Note: This is a helper that should query Supabase, not Mixpost directly
+ * Mixpost doesn't have user-level filtering
+ */
+export async function getAccountsByUser(userId: string): Promise<MixpostAccount[]> {
+  // This function should be called from API routes that have Supabase access
+  // It's not part of MixpostClient because Mixpost doesn't know about our users
+  throw new Error('Use Supabase to filter accounts by user_id, not Mixpost API');
+}
+
+/**
+ * Create post for specific accounts
+ */
+export async function createPostForAccounts(
+  content: string,
+  accountIds: string[],
+  mediaIds?: string[],
+  scheduledAt?: string,
+  apiToken?: string,
+  baseUrl?: string
+): Promise<MixpostPost> {
+  const client = createMixpostClient(apiToken, baseUrl);
+  return client.createPost({
+    content,
+    accounts: accountIds,
+    media: mediaIds,
+    scheduled_at: scheduledAt
+  });
+}
+
+/**
  * Default Mixpost client using environment variables
  */
 export const mixpostClient = createMixpostClient();

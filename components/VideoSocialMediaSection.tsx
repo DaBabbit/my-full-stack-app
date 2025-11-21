@@ -2,18 +2,28 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/utils/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Youtube,
   Instagram,
   Facebook,
-  Video,
+  Video as TikTokIcon,
   Linkedin,
   Twitter,
   CheckCircle,
-  ExternalLink,
+  Loader2,
+  Send,
   Calendar,
-  Loader2
+  Share2,
+  AlertCircle
 } from 'lucide-react';
+
+interface VideoSocialMediaSectionProps {
+  videoId: string;
+  videoTitle: string;
+  videoStorageLocation?: string;
+}
 
 interface SocialMediaAccount {
   id: string;
@@ -23,108 +33,58 @@ interface SocialMediaAccount {
   is_active: boolean;
 }
 
-interface VideoSocialMediaSectionProps {
-  videoId: string;
-  storageLocation?: string;
-  caption?: string;
-}
-
-const platformIcons = {
-  youtube: Youtube,
-  instagram: Instagram,
-  facebook: Facebook,
-  tiktok: Video,
-  linkedin: Linkedin,
-  twitter: Twitter
+const platformConfig = {
+  youtube: { name: 'YouTube', icon: Youtube, color: '#FF0000' },
+  instagram: { name: 'Instagram', icon: Instagram, color: '#E1306C' },
+  facebook: { name: 'Facebook', icon: Facebook, color: '#1877F2' },
+  tiktok: { name: 'TikTok', icon: TikTokIcon, color: '#00F2EA' },
+  linkedin: { name: 'LinkedIn', icon: Linkedin, color: '#0A66C2' },
+  twitter: { name: 'X', icon: Twitter, color: '#1DA1F2' }
 };
 
-const platformColors = {
-  youtube: 'text-red-500',
-  instagram: 'text-pink-500',
-  facebook: 'text-blue-500',
-  tiktok: 'text-cyan-500',
-  linkedin: 'text-blue-600',
-  twitter: 'text-gray-400'
-};
-
-export function VideoSocialMediaSection({ 
-  videoId, 
-  storageLocation, 
-  caption 
+export default function VideoSocialMediaSection({
+  videoId,
+  videoTitle,
+  videoStorageLocation
 }: VideoSocialMediaSectionProps) {
   const { user } = useAuth();
   const [accounts, setAccounts] = useState<SocialMediaAccount[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [autoPublish, setAutoPublish] = useState(false);
+  const [caption, setCaption] = useState(videoTitle || '');
   const [scheduledDate, setScheduledDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [publishStatus, setPublishStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [publishMode, setPublishMode] = useState<'now' | 'schedule'>('now');
 
   useEffect(() => {
-    loadAccounts();
+    if (user) {
+      loadAccounts();
+    }
   }, [user]);
 
   const loadAccounts = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/social-media/accounts');
-      const data = await response.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) return;
 
+      const response = await fetch('/api/social-media/accounts', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      const data = await response.json();
+      
       if (data.success) {
-        setAccounts(data.accounts.filter((acc: SocialMediaAccount) => acc.is_active));
-        // Pre-select all accounts
-        setSelectedPlatforms(data.accounts.filter((acc: SocialMediaAccount) => acc.is_active).map((acc: SocialMediaAccount) => acc.platform));
+        setAccounts(data.accounts);
+        // Auto-select all accounts
+        setSelectedPlatforms(data.accounts.map((acc: SocialMediaAccount) => acc.platform));
       }
     } catch (error) {
       console.error('Error loading accounts:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handlePublish = async () => {
-    if (selectedPlatforms.length === 0) {
-      alert('Bitte wähle mindestens eine Plattform aus');
-      return;
-    }
-
-    if (!caption) {
-      alert('Bitte füge eine Caption in den Anforderungen hinzu');
-      return;
-    }
-
-    try {
-      setIsPublishing(true);
-      setPublishStatus('idle');
-
-      const response = await fetch('/api/social-media/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoId,
-          caption,
-          platforms: selectedPlatforms,
-          scheduledAt: scheduledDate || undefined,
-          mediaUrl: storageLocation
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setPublishStatus('success');
-        setTimeout(() => setPublishStatus('idle'), 3000);
-      } else {
-        setPublishStatus('error');
-        alert(data.error || 'Fehler beim Veröffentlichen');
-      }
-    } catch (error) {
-      console.error('Error publishing:', error);
-      setPublishStatus('error');
-      alert('Fehler beim Veröffentlichen');
-    } finally {
-      setIsPublishing(false);
     }
   };
 
@@ -136,143 +96,248 @@ export function VideoSocialMediaSection({
     );
   };
 
+  const handlePublish = async () => {
+    if (selectedPlatforms.length === 0) {
+      alert('Bitte wähle mindestens eine Plattform aus');
+      return;
+    }
+
+    if (!caption.trim()) {
+      alert('Bitte gib eine Caption ein');
+      return;
+    }
+
+    if (publishMode === 'schedule' && !scheduledDate) {
+      alert('Bitte wähle ein Datum für die Veröffentlichung');
+      return;
+    }
+
+    try {
+      setIsPublishing(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        alert('Sitzung abgelaufen. Bitte melde dich erneut an.');
+        return;
+      }
+
+      const response = await fetch('/api/social-media/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          videoId,
+          caption,
+          platforms: selectedPlatforms,
+          scheduledAt: publishMode === 'schedule' ? scheduledDate : undefined,
+          mediaUrl: videoStorageLocation
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(data.message || 'Video erfolgreich veröffentlicht!');
+        // Reset form
+        setCaption(videoTitle || '');
+        setScheduledDate('');
+      } else {
+        alert(`Fehler: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error publishing:', error);
+      alert('Fehler beim Veröffentlichen des Videos');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 text-white animate-spin" />
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
       </div>
     );
   }
 
   if (accounts.length === 0) {
     return (
-      <div className="bg-neutral-800/50 rounded-xl p-6 border border-neutral-700">
-        <p className="text-neutral-300 mb-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center"
+      >
+        <AlertCircle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-white mb-2">
           Keine Social Media Accounts verbunden
+        </h3>
+        <p className="text-neutral-300 mb-4">
+          Verbinde deine Social Media Accounts, um Videos automatisch zu veröffentlichen
         </p>
         <a
           href="/profile/social-media"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
         >
-          <ExternalLink className="w-4 h-4" />
+          <Share2 className="w-4 h-4" />
           Accounts verbinden
         </a>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Auto-Publish Toggle */}
-      <div className="flex items-center justify-between bg-neutral-800/50 rounded-xl p-4 border border-neutral-700">
-        <div>
-          <h4 className="text-white font-medium">Automatisch veröffentlichen</h4>
-          <p className="text-sm text-neutral-400 mt-1">
-            Video automatisch auf ausgewählten Plattformen posten
-          </p>
-        </div>
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={autoPublish}
-            onChange={(e) => setAutoPublish(e.target.checked)}
-            className="sr-only peer"
-          />
-          <div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-        </label>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-2">
+          Auf Social Media veröffentlichen
+        </h3>
+        <p className="text-sm text-neutral-400">
+          Wähle Plattformen und schreibe eine Caption für dein Video
+        </p>
       </div>
 
       {/* Platform Selection */}
-      {autoPublish && (
-        <>
-          <div className="bg-neutral-800/50 rounded-xl p-4 border border-neutral-700">
-            <h4 className="text-white font-medium mb-3">Plattformen auswählen</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {accounts.map((account) => {
-                const Icon = platformIcons[account.platform as keyof typeof platformIcons];
-                const color = platformColors[account.platform as keyof typeof platformColors];
-                const isSelected = selectedPlatforms.includes(account.platform);
+      <div>
+        <label className="block text-sm font-medium text-neutral-300 mb-3">
+          Plattformen auswählen
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {accounts.map(account => {
+            const config = platformConfig[account.platform as keyof typeof platformConfig];
+            const Icon = config?.icon || Share2;
+            const isSelected = selectedPlatforms.includes(account.platform);
 
-                return (
-                  <button
-                    key={account.id}
-                    type="button"
-                    onClick={() => togglePlatform(account.platform)}
-                    className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
-                      isSelected
-                        ? 'bg-blue-500/20 border-blue-500'
-                        : 'bg-neutral-900/50 border-neutral-700 hover:border-neutral-600'
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 ${color}`} />
-                    <div className="flex-1 text-left">
-                      <p className="text-sm text-white font-medium">
-                        {account.platform_username}
-                      </p>
-                      <p className="text-xs text-neutral-400 capitalize">
-                        {account.platform}
-                      </p>
-                    </div>
-                    {isSelected && (
-                      <CheckCircle className="w-5 h-5 text-blue-400" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+            return (
+              <motion.button
+                key={account.id}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => togglePlatform(account.platform)}
+                className={`relative p-4 rounded-xl border-2 transition-all ${
+                  isSelected
+                    ? 'bg-blue-500/20 border-blue-500'
+                    : 'bg-neutral-800/50 border-neutral-700 hover:border-neutral-600'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-5 h-5 ${isSelected ? 'text-blue-400' : 'text-neutral-400'}`} />
+                  <div className="text-left flex-1">
+                    <p className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-neutral-300'}`}>
+                      {config?.name}
+                    </p>
+                    <p className="text-xs text-neutral-500 truncate">
+                      @{account.platform_username}
+                    </p>
+                  </div>
+                </div>
+                {isSelected && (
+                  <CheckCircle className="absolute top-2 right-2 w-5 h-5 text-blue-400" />
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
 
-          {/* Schedule Date (Optional) */}
-          <div className="bg-neutral-800/50 rounded-xl p-4 border border-neutral-700">
-            <h4 className="text-white font-medium mb-3">Zeitplan (optional)</h4>
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-neutral-400" />
-              <input
-                type="datetime-local"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-                className="flex-1 bg-neutral-900 border border-neutral-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <p className="text-xs text-neutral-400 mt-2">
-              Leer lassen um sofort zu veröffentlichen
-            </p>
-          </div>
+      {/* Caption */}
+      <div>
+        <label className="block text-sm font-medium text-neutral-300 mb-2">
+          Caption / Beschreibung
+        </label>
+        <textarea
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          placeholder="Beschreibe dein Video..."
+          rows={4}
+          className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500 resize-none"
+        />
+        <p className="text-xs text-neutral-500 mt-2">
+          {caption.length} / 2200 Zeichen
+        </p>
+      </div>
 
-          {/* Publish Button */}
+      {/* Publish Mode */}
+      <div>
+        <label className="block text-sm font-medium text-neutral-300 mb-3">
+          Veröffentlichung
+        </label>
+        <div className="flex gap-3">
           <button
-            type="button"
-            onClick={handlePublish}
-            disabled={isPublishing || selectedPlatforms.length === 0 || !storageLocation}
-            className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setPublishMode('now')}
+            className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
+              publishMode === 'now'
+                ? 'bg-green-500/20 border-green-500 text-white'
+                : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
+            }`}
           >
-            {isPublishing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Veröffentliche...
-              </>
-            ) : publishStatus === 'success' ? (
-              <>
-                <CheckCircle className="w-5 h-5" />
-                Erfolgreich veröffentlicht!
-              </>
-            ) : (
-              <>
-                Jetzt veröffentlichen ({selectedPlatforms.length} Plattformen)
-              </>
-            )}
+            <Send className="w-5 h-5 mx-auto mb-1" />
+            <span className="text-sm font-medium">Sofort veröffentlichen</span>
           </button>
+          <button
+            onClick={() => setPublishMode('schedule')}
+            className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
+              publishMode === 'schedule'
+                ? 'bg-purple-500/20 border-purple-500 text-white'
+                : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
+            }`}
+          >
+            <Calendar className="w-5 h-5 mx-auto mb-1" />
+            <span className="text-sm font-medium">Für später planen</span>
+          </button>
+        </div>
+      </div>
 
-          {!storageLocation && (
-            <p className="text-sm text-yellow-400 text-center">
-              Bitte setze erst einen Speicherort für das Video
-            </p>
-          )}
-        </>
-      )}
+      {/* Schedule Date */}
+      <AnimatePresence>
+        {publishMode === 'schedule' && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              Datum und Uhrzeit
+            </label>
+            <input
+              type="datetime-local"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+              className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:outline-none focus:border-purple-500"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Publish Button */}
+      <button
+        onClick={handlePublish}
+        disabled={isPublishing || selectedPlatforms.length === 0 || !caption.trim()}
+        className={`w-full py-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+          isPublishing || selectedPlatforms.length === 0 || !caption.trim()
+            ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
+            : publishMode === 'now'
+            ? 'bg-green-600 hover:bg-green-700 text-white'
+            : 'bg-purple-600 hover:bg-purple-700 text-white'
+        }`}
+      >
+        {isPublishing ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Wird veröffentlicht...</span>
+          </>
+        ) : (
+          <>
+            {publishMode === 'now' ? <Send className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
+            <span>
+              {publishMode === 'now' ? 'Jetzt veröffentlichen' : 'Für später planen'}
+            </span>
+          </>
+        )}
+      </button>
     </div>
   );
 }
-

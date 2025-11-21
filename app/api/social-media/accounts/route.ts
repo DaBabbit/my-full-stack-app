@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get accounts from database
+    // Get accounts from database (only active ones)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
       .from('social_media_accounts')
       .select('*')
       .eq('user_id', user.id)
-      .order('connected_at', { ascending: false });
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
 
     if (dbError) {
       console.error('[social-media/accounts] Database error:', dbError);

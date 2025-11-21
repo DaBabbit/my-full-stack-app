@@ -406,6 +406,39 @@ export function useVideoMutations(options?: {
         } catch (autoAssignError) {
           console.error('[updateVideoMutation] ⚠️ Auto-assign failed (non-critical):', autoAssignError);
         }
+
+        // Trigger n8n Webhook for automatic social media publishing when status is "Schnitt abgeschlossen"
+        if (variables.updates.status === 'Schnitt abgeschlossen' && process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL) {
+          try {
+            console.log('[updateVideoMutation] 📢 Triggering n8n workflow for social media publishing');
+            
+            const n8nResponse = await fetch(process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                video_id: data.id,
+                user_id: data.user_id,
+                video_title: data.title,
+                trigger: 'status_change',
+                new_status: 'Schnitt abgeschlossen',
+                app_url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+                mixpost_url: process.env.NEXT_PUBLIC_MIXPOST_URL || 'http://188.245.34.21:8082',
+                mixpost_token: process.env.NEXT_PUBLIC_MIXPOST_API_TOKEN
+              })
+            });
+
+            if (n8nResponse.ok) {
+              const n8nResult = await n8nResponse.json();
+              console.log('[updateVideoMutation] ✅ n8n workflow triggered:', n8nResult);
+            } else {
+              console.error('[updateVideoMutation] ⚠️ n8n workflow trigger failed:', await n8nResponse.text());
+            }
+          } catch (n8nError) {
+            console.error('[updateVideoMutation] ⚠️ n8n trigger failed (non-critical):', n8nError);
+          }
+        }
       }
       
       // Cache mit echten Server-Daten updaten - mit korrektem Query Key!

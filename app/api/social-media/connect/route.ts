@@ -50,11 +50,15 @@ export async function POST(request: NextRequest) {
     console.log('[social-media/connect] Mixpost URL:', mixpostUrl);
     console.log('[social-media/connect] Callback URL:', callbackUrl);
     
-    // Build OAuth URL - This assumes Mixpost has an OAuth endpoint
-    // Note: Actual endpoint may vary based on Mixpost version
-    const oauthUrl = `${mixpostUrl}/connect/${platform}?` +
+    // Build OAuth URL for Mixpost
+    // Mixpost Pro uses /mixpost as MIXPOST_CORE_PATH (default)
+    // OAuth endpoints: /mixpost/oauth/{platform}
+    const mixpostCorePath = process.env.MIXPOST_CORE_PATH || 'mixpost';
+    const oauthUrl = `${mixpostUrl}/${mixpostCorePath}/oauth/${platform}?` +
       `state=${encodeURIComponent(state)}&` +
       `redirect_uri=${encodeURIComponent(callbackUrl)}`;
+
+    console.log('[social-media/connect] Generated OAuth URL:', oauthUrl);
 
     return NextResponse.json({
       success: true,

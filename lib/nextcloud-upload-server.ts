@@ -69,6 +69,8 @@ export async function createNextcloudDirectory(
   const dirUrl = `${baseUrl}${webdavPath}/${dirPath}`;
   const authString = Buffer.from(`${username}:${password}`).toString('base64');
 
+  console.log('[Nextcloud MKCOL] Creating directory:', dirUrl);
+
   try {
     const response = await fetch(dirUrl, {
       method: 'MKCOL',
@@ -89,5 +91,22 @@ export async function createNextcloudDirectory(
     console.error('[Nextcloud MKCOL] Error:', error);
     throw error;
   }
+}
+
+/**
+ * Generate a proper Nextcloud share download URL
+ * Converts share link to download link format
+ */
+export function generateNextcloudDownloadUrl(
+  shareUrl: string,
+  subFolder: string,
+  fileName: string
+): string {
+  // Share URL format: https://storage.davidkosma.de/index.php/s/fAZZPqmAcmymJoF
+  // Download URL format: https://storage.davidkosma.de/index.php/s/fAZZPqmAcmymJoF/download?path=/Bilder&files=filename.jpg
+  
+  const downloadUrl = `${shareUrl}/download?path=/${encodeURIComponent(subFolder)}&files=${encodeURIComponent(fileName)}`;
+  console.log('[Nextcloud] Generated download URL:', downloadUrl);
+  return downloadUrl;
 }
 

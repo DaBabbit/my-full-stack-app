@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { uploadFileToNextcloud } from '@/lib/nextcloud-upload-server';
+import { uploadFileToNextcloud, createNextcloudDirectory, generateNextcloudDownloadUrl } from '@/lib/nextcloud-upload-server';
 
 /**
  * Authenticate user from Authorization header
@@ -133,23 +133,36 @@ export async function POST(request: NextRequest) {
 
     console.log('[API] Uploading to Nextcloud path:', video.nextcloud_path);
 
-    // Convert File to Buffer for server-side upload
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Upload to Nextcloud using server-side function
-    await uploadFileToNextcloud(buffer, safeFileName, {
-      targetPath: video.nextcloud_path,
+    // 1. Create "Bilder" subfolder in video's Nextcloud path
+    const imagesFolderPath = `${video.nextcloud_path}/Bilder`;
+    await createNextcloudDirectory(imagesFolderPath, {
       username,
       password,
       baseUrl,
       webdavPath,
     });
 
-    console.log('[API] Image uploaded successfully');
+    console.log('[API] "Bilder" folder ensured');
 
-    // Generate image URL (storage_location + filename)
-    const imageUrl = `${video.storage_location}/${safeFileName}`;
+    // 2. Convert File to Buffer for server-side upload
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // 3. Upload to Nextcloud "Bilder" subfolder
+    await uploadFileToNextcloud(buffer, safeFileName, {
+      targetPath: imagesFolderPath,
+      username,
+      password,
+      baseUrl,
+      webdavPath,
+    });
+
+    console.log('[API] Image uploaded successfully to Bilder folder');
+
+    // 4. Generate proper Nextcloud download URL
+    // storage_location is a share link like: https://storage.davidkosma.de/index.php/s/fAZZPqmAcmymJoF
+    // We need to generate: https://storage.davidkosma.de/index.php/s/fAZZPqmAcmymJoF/download?path=/Bilder&files=filename.jpg
+    const imageUrl = generateNextcloudDownloadUrl(video.storage_location, 'Bilder', safeFileName);
 
     return NextResponse.json({
       success: true,

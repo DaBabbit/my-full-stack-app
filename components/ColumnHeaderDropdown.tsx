@@ -37,30 +37,71 @@ export function ColumnHeaderDropdown({
   const [sortSubmenuPosition, setSortSubmenuPosition] = useState<{ top: number; left: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const sortButtonRef = useRef<HTMLButtonElement>(null);
+  const submenuCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Berechne Position basierend auf Trigger-Element
+  // Berechne Position basierend auf Trigger-Element mit Viewport-Check
   useEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      setPosition({
-        top: rect.bottom + 4,
-        left: rect.left
-      });
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const dropdownWidth = 200;
+      const dropdownHeight = 200; // Geschätzte Höhe
+      
+      let left = rect.left;
+      let top = rect.bottom + 4;
+      
+      // Prüfe ob genug Platz rechts ist
+      if (left + dropdownWidth > viewportWidth) {
+        left = Math.max(16, viewportWidth - dropdownWidth - 16);
+      }
+      
+      // Prüfe ob genug Platz unten ist
+      if (top + dropdownHeight > viewportHeight) {
+        top = rect.top - dropdownHeight - 4;
+        // Falls auch oben nicht genug Platz
+        if (top < 0) {
+          top = Math.max(16, (viewportHeight - dropdownHeight) / 2);
+        }
+      }
+      
+      setPosition({ top, left });
     }
   }, [isOpen, triggerRef]);
 
-  // Berechne Position für Sort-Submenu
+  // Berechne Position für Sort-Submenu mit Viewport-Check
   useEffect(() => {
     if (showSortSubmenu && sortButtonRef.current) {
       const rect = sortButtonRef.current.getBoundingClientRect();
-      setSortSubmenuPosition({
-        top: rect.top,
-        left: rect.right + 4
-      });
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const submenuWidth = 180;
+      const submenuHeight = 100; // 2 Optionen
+      
+      let left = rect.right + 4;
+      let top = rect.top;
+      
+      // Prüfe ob genug Platz rechts ist
+      if (left + submenuWidth > viewportWidth) {
+        // Zeige links vom Hauptmenü
+        left = rect.left - submenuWidth - 4;
+      }
+      
+      // Prüfe ob genug Platz unten ist
+      if (top + submenuHeight > viewportHeight) {
+        top = viewportHeight - submenuHeight - 16;
+      }
+      
+      // Prüfe ob zu weit oben
+      if (top < 16) {
+        top = 16;
+      }
+      
+      setSortSubmenuPosition({ top, left });
     } else {
       setSortSubmenuPosition(null);
     }
@@ -98,6 +139,15 @@ export function ColumnHeaderDropdown({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (submenuCloseTimeoutRef.current) {
+        clearTimeout(submenuCloseTimeoutRef.current);
+      }
+    };
+  }, []);
+
   if (!isOpen || !mounted || !position) return null;
 
   return createPortal(
@@ -120,8 +170,20 @@ export function ColumnHeaderDropdown({
         {canSort && (
         <div 
           className="relative"
-          onMouseEnter={() => setShowSortSubmenu(true)}
-          onMouseLeave={() => setShowSortSubmenu(false)}
+          onMouseEnter={() => {
+            // Lösche pending timeout
+            if (submenuCloseTimeoutRef.current) {
+              clearTimeout(submenuCloseTimeoutRef.current);
+              submenuCloseTimeoutRef.current = null;
+            }
+            setShowSortSubmenu(true);
+          }}
+          onMouseLeave={() => {
+            // Verzögere das Schließen um 300ms
+            submenuCloseTimeoutRef.current = setTimeout(() => {
+              setShowSortSubmenu(false);
+            }, 300);
+          }}
         >
           <button
             ref={sortButtonRef}
@@ -145,8 +207,20 @@ export function ColumnHeaderDropdown({
                 pointerEvents: 'auto'
               }}
               className="bg-neutral-800/95 backdrop-blur-md border border-neutral-700 rounded-lg shadow-2xl overflow-hidden w-[180px]"
-              onMouseEnter={() => setShowSortSubmenu(true)}
-              onMouseLeave={() => setShowSortSubmenu(false)}
+              onMouseEnter={() => {
+                // Lösche pending timeout wenn Maus ins Submenu geht
+                if (submenuCloseTimeoutRef.current) {
+                  clearTimeout(submenuCloseTimeoutRef.current);
+                  submenuCloseTimeoutRef.current = null;
+                }
+                setShowSortSubmenu(true);
+              }}
+              onMouseLeave={() => {
+                // Verzögere das Schließen um 300ms
+                submenuCloseTimeoutRef.current = setTimeout(() => {
+                  setShowSortSubmenu(false);
+                }, 300);
+              }}
             >
               <button
                 onMouseDown={(e) => {

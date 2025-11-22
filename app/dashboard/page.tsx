@@ -395,7 +395,7 @@ export default function Dashboard() {
         ) : (
           <>
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Content Planner</h1>
+              <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
               <p className="text-neutral-400">
                 Willkommen zurück{profile?.firstname || user?.user_metadata?.firstname ? `, ${profile?.firstname || user?.user_metadata?.firstname}` : ''}!
               </p>

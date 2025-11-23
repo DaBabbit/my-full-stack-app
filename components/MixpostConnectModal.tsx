@@ -13,7 +13,6 @@ interface Props {
 }
 
 export default function MixpostConnectModal({ 
-  platform, 
   platformName,
   isOpen, 
   onClose,
@@ -229,8 +228,8 @@ export default function MixpostConnectModal({
                       <div className="bg-neutral-800/50 rounded-lg p-4 text-left space-y-2">
                         <p className="text-sm text-neutral-300 font-medium">Schritte:</p>
                         <ol className="text-sm text-neutral-400 space-y-1 list-decimal list-inside">
-                          <li>Wähle "{platformName}" aus der Liste</li>
-                          <li>Klicke auf "Verbinden"</li>
+                          <li>Wähle &quot;{platformName}&quot; aus der Liste</li>
+                          <li>Klicke auf &quot;Verbinden&quot;</li>
                           <li>Erlaube die Berechtigung</li>
                           <li>Schließe das Fenster</li>
                         </ol>

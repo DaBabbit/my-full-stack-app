@@ -81,7 +81,6 @@ export default function SocialMediaPage() {
   const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<SocialMediaAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastProps[]>([]);
   const [showConnectModal, setShowConnectModal] = useState(false);
@@ -290,7 +289,6 @@ export default function SocialMediaPage() {
             {Object.entries(platformConfig).map(([platform, config]) => {
               const Icon = config.icon;
               const connectedAccount = getConnectedAccount(platform);
-              const isConnecting = connectingPlatform === platform;
               const isDeleting = deletingAccount === connectedAccount?.id;
 
               return (
@@ -341,20 +339,10 @@ export default function SocialMediaPage() {
                       ) : (
                         <button
                           onClick={() => handleConnect(platform)}
-                          disabled={isConnecting}
-                          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                         >
-                          {isConnecting ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Verbinde...
-                            </>
-                          ) : (
-                            <>
-                              <ExternalLink className="w-4 h-4" />
-                              Verbinden
-                            </>
-                          )}
+                          <ExternalLink className="w-4 h-4" />
+                          Verbinden
                         </button>
                       )}
                     </div>

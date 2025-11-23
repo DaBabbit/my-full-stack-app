@@ -18,6 +18,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { ToastContainer, ToastProps } from '@/components/Toast';
+import MixpostConnectModal from '@/components/MixpostConnectModal';
 
 interface SocialMediaAccount {
   id: string;
@@ -83,6 +84,8 @@ export default function SocialMediaPage() {
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastProps[]>([]);
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
 
   // Check for success/error params
   useEffect(() => {
@@ -170,46 +173,25 @@ export default function SocialMediaPage() {
     }
   };
 
-  const handleConnect = async (platform: string) => {
-    try {
-      setConnectingPlatform(platform);
-      
-      // Get Supabase session for Bearer token
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('Keine Session gefunden');
-      }
-      
-      const response = await fetch('/api/social-media/connect', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ platform })
-      });
+  const handleConnect = (platform: string) => {
+    // Öffne Mixpost Connect Modal
+    setSelectedPlatform(platform);
+    setShowConnectModal(true);
+  };
 
-      const data = await response.json();
-
-      if (data.success && data.authUrl) {
-        // Redirect to OAuth URL
-        window.location.href = data.authUrl;
-      } else {
-        throw new Error(data.error || 'Fehler beim Starten der Verbindung');
-      }
-    } catch (error) {
-      console.error('Error connecting platform:', error);
-      addToast({
-        id: Date.now().toString(),
-        type: 'error',
-        title: 'Verbindung fehlgeschlagen',
-        message: `Fehler beim Verbinden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
-        duration: 3000,
-        onClose: removeToast
-      });
-      setConnectingPlatform(null);
-    }
+  const handleConnectSuccess = () => {
+    // Nach erfolgreicher Verbindung: Accounts neu laden
+    loadAccounts();
+    
+    const config = platformConfig[selectedPlatform as keyof typeof platformConfig];
+    addToast({
+      id: Date.now().toString(),
+      type: 'success',
+      title: `${config?.name || selectedPlatform} verbunden!`,
+      message: 'Dein Account wurde erfolgreich verbunden.',
+      duration: 5000,
+      onClose: removeToast
+    });
   };
 
   const handleDisconnect = async (accountId: string, platform: string) => {
@@ -399,6 +381,20 @@ export default function SocialMediaPage() {
           </ul>
         </motion.div>
       </div>
+
+      {/* Mixpost Connect Modal */}
+      {selectedPlatform && (
+        <MixpostConnectModal
+          platform={selectedPlatform}
+          platformName={platformConfig[selectedPlatform as keyof typeof platformConfig]?.name || selectedPlatform}
+          isOpen={showConnectModal}
+          onClose={() => {
+            setShowConnectModal(false);
+            setSelectedPlatform(null);
+          }}
+          onSuccess={handleConnectSuccess}
+        />
+      )}
     </div>
   );
 }

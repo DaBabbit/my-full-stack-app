@@ -30,10 +30,26 @@ export async function POST(request: NextRequest) {
     try {
       mixpostAccounts = await mixpostClient.getAccounts();
       console.log('[social-media/sync] Fetched Mixpost accounts:', mixpostAccounts.length);
+      
+      // Wenn keine Accounts gefunden wurden, ist das OK (nicht ein Fehler)
+      if (!mixpostAccounts || mixpostAccounts.length === 0) {
+        console.log('[social-media/sync] No accounts found in Mixpost (user may not have connected any yet)');
+        return NextResponse.json({
+          success: true,
+          synced: 0,
+          total: 0,
+          accounts: [],
+          message: 'Noch keine Accounts in Mixpost verbunden'
+        });
+      }
     } catch (error) {
       console.error('[social-media/sync] Error fetching from Mixpost:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
       return NextResponse.json(
-        { error: 'Fehler beim Abrufen der Mixpost Accounts' },
+        { 
+          error: 'Fehler beim Abrufen der Mixpost Accounts',
+          details: errorMessage
+        },
         { status: 500 }
       );
     }

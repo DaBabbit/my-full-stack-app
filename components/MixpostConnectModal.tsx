@@ -41,8 +41,10 @@ export default function MixpostConnectModal({
     setStatus('opening');
     setErrorMessage(null);
 
-    // Mixpost URL - direkt zur "Add Account" Seite
-    const mixpostUrl = `https://mixpost.davidkosma.de/mixpost/accounts/create`;
+    // Öffne Mixpost - zuerst zur Hauptseite (Auto-Login via Session)
+    // Wenn nicht eingeloggt, sieht User Login-Screen
+    // Nach Login bleibt Session und User kann zu Accounts gehen
+    const mixpostUrl = `https://mixpost.davidkosma.de/mixpost/accounts`;
     
     // Öffne Mixpost in Popup
     const popup = window.open(
@@ -69,18 +71,25 @@ export default function MixpostConnectModal({
 
         // Synchronisiere Accounts von Mixpost
         try {
-          await syncAccounts();
-          setStatus('success');
+          const result = await syncAccounts();
           
-          // Auto-close nach 2 Sekunden
-          setTimeout(() => {
-            onSuccess();
-            onClose();
-          }, 2000);
+          // Auch wenn keine neuen Accounts gefunden wurden, ist das OK
+          if (result.synced === 0 && result.total === 0) {
+            setStatus('error');
+            setErrorMessage('Keine neuen Accounts gefunden. Stelle sicher, dass du einen Account in Mixpost verbunden hast.');
+          } else {
+            setStatus('success');
+            
+            // Auto-close nach 2 Sekunden
+            setTimeout(() => {
+              onSuccess();
+              onClose();
+            }, 2000);
+          }
         } catch (error) {
           console.error('Sync error:', error);
           setStatus('error');
-          setErrorMessage('Fehler beim Synchronisieren der Accounts. Bitte lade die Seite neu.');
+          setErrorMessage('Fehler beim Synchronisieren. Stelle sicher, dass du einen Account in Mixpost verbunden hast, dann versuche es erneut.');
         }
       }
     }, 500);
@@ -226,12 +235,13 @@ export default function MixpostConnectModal({
                         Bitte verbinde deinen {platformName}-Account im geöffneten Fenster.
                       </p>
                       <div className="bg-neutral-800/50 rounded-lg p-4 text-left space-y-2">
-                        <p className="text-sm text-neutral-300 font-medium">Schritte:</p>
+                        <p className="text-sm text-neutral-300 font-medium">Im geöffneten Fenster:</p>
                         <ol className="text-sm text-neutral-400 space-y-1 list-decimal list-inside">
-                          <li>Wähle &quot;{platformName}&quot; aus der Liste</li>
-                          <li>Klicke auf &quot;Verbinden&quot;</li>
-                          <li>Erlaube die Berechtigung</li>
-                          <li>Schließe das Fenster</li>
+                          <li>Falls nicht eingeloggt: Anmelden</li>
+                          <li>Klicke auf &quot;Add Account&quot;</li>
+                          <li>Wähle &quot;{platformName}&quot;</li>
+                          <li>Klicke &quot;Connect&quot; und autorisiere</li>
+                          <li>Fenster schließt sich automatisch</li>
                         </ol>
                       </div>
                     </div>

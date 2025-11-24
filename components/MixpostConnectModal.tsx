@@ -41,16 +41,16 @@ export default function MixpostConnectModal({
     setStatus('opening');
     setErrorMessage(null);
 
-    // Öffne Mixpost - zuerst zur Hauptseite (Auto-Login via Session)
+    // Öffne Mixpost Dashboard - dort kann User Accounts verwalten
     // Wenn nicht eingeloggt, sieht User Login-Screen
-    // Nach Login bleibt Session und User kann zu Accounts gehen
-    const mixpostUrl = `https://mixpost.davidkosma.de/mixpost/accounts`;
+    // Nach Login bleibt Session und User kann Accounts hinzufügen
+    const mixpostUrl = `https://mixpost.davidkosma.de/mixpost`;
     
     // Öffne Mixpost in Popup
     const popup = window.open(
       mixpostUrl,
       'MixpostConnect',
-      'width=1000,height=800,left=200,top=50,toolbar=no,menubar=no,location=no,status=no'
+      'width=1200,height=900,left=100,top=50,toolbar=no,menubar=no,location=no,status=no'
     );
 
     if (!popup) {
@@ -235,13 +235,13 @@ export default function MixpostConnectModal({
                         Bitte verbinde deinen {platformName}-Account im geöffneten Fenster.
                       </p>
                       <div className="bg-neutral-800/50 rounded-lg p-4 text-left space-y-2">
-                        <p className="text-sm text-neutral-300 font-medium">Im geöffneten Fenster:</p>
+                        <p className="text-sm text-neutral-300 font-medium">Im Mixpost Dashboard:</p>
                         <ol className="text-sm text-neutral-400 space-y-1 list-decimal list-inside">
-                          <li>Falls nicht eingeloggt: Anmelden</li>
-                          <li>Klicke auf &quot;Add Account&quot;</li>
-                          <li>Wähle &quot;{platformName}&quot;</li>
-                          <li>Klicke &quot;Connect&quot; und autorisiere</li>
-                          <li>Fenster schließt sich automatisch</li>
+                          <li>Klicke links auf &quot;Accounts&quot;</li>
+                          <li>Klicke oben rechts &quot;Add Account&quot;</li>
+                          <li>Wähle &quot;{platformName}&quot; aus der Liste</li>
+                          <li>Klicke &quot;Connect&quot; → Autorisiere bei {platformName}</li>
+                          <li>Nach Success: Schließe das Fenster</li>
                         </ol>
                       </div>
                     </div>

@@ -2,20 +2,26 @@
 
 ## 📋 Überblick
 
-Dieses Projekt nutzt einen **zweigleisigen Branch-Workflow** für saubere Trennung zwischen Development und Production.
+Dieses Projekt nutzt einen **zweigleisigen Branch-Workflow** mit **Vercel Environments** für saubere Trennung zwischen Development und Production.
+
+- **Ein Vercel Project** mit 3 Environments (Production, Preview, Development)
+- **Production:** `main` Branch → `www.kosmamedia.de`
+- **Preview:** `develop` Branch → Automatische Preview-Deployments
+
+---
 
 ## 🌿 Branches
 
 ### `main` Branch
 - **Zweck:** Production/Live-Version
-- **Domain:** `https://www.kosmamedia.de` (nach Domain-Mapping)
-- **Vercel:** Production Project
+- **Vercel Environment:** Production
+- **Domain:** `https://www.kosmamedia.de`
 - **Regel:** NUR mergen wenn Features fertig und getestet sind
 
 ### `develop` Branch
 - **Zweck:** Development/Staging-Version
-- **Domain:** `https://kosmamedia-staging.vercel.app` (nach Vercel-Setup)
-- **Vercel:** Staging Project
+- **Vercel Environment:** Preview
+- **Domain:** Auto-generiert (z.B. `my-full-stack-app-git-develop-[team].vercel.app`)
 - **Regel:** Hier wird entwickelt und getestet
 
 ---
@@ -33,9 +39,14 @@ git add .
 git commit -m "Feature: XYZ"
 git push origin develop
 
-# → Automatisches Vercel Deployment auf Staging
-# → Testen auf: kosmamedia-staging.vercel.app
+# → Automatisches Vercel Preview-Deployment
+# → Testen auf Preview-URL (siehe Vercel Dashboard)
 ```
+
+**Preview-Deployment:**
+- Automatisch nach jedem Push auf `develop`
+- URL im Vercel Dashboard unter "Deployments"
+- Nutzt Preview-Environment Variables
 
 ### Production Release (von `develop` nach `main`)
 
@@ -54,9 +65,14 @@ git merge develop
 # 4. Auf Production pushen
 git push origin main
 
-# → Automatisches Vercel Deployment auf Production
+# → Automatisches Vercel Production-Deployment
 # → Live auf: www.kosmamedia.de
 ```
+
+**Production-Deployment:**
+- Automatisch nach jedem Push auf `main`
+- Nutzt Production-Environment Variables
+- Live auf `www.kosmamedia.de`
 
 ### Hotfix (wenn direkt auf Production gefixt werden muss)
 
@@ -68,6 +84,8 @@ git checkout -b hotfix/bug-description
 # 2. Fix implementieren
 git add . && git commit -m "Hotfix: ..."
 git push origin hotfix/bug-description
+
+# → Preview-Deployment für Testing
 
 # 3. Merge in main UND develop
 git checkout main
@@ -81,26 +99,26 @@ git push origin develop
 
 ---
 
-## ⚙️ Vercel Setup
+## ⚙️ Vercel Environments
 
-### Production Project
-- **Repository:** `DaBabbit/my-full-stack-app`
+### Production Environment
 - **Branch:** `main`
-- **Domains:** 
-  - `www.kosmamedia.de`
-  - `kosmamedia.de`
+- **Domain:** `www.kosmamedia.de`
+- **Environment Variables:** Production-Werte
+- **Auto-Deploy:** Bei Push auf `main`
 
-### Staging Project
-- **Repository:** `DaBabbit/my-full-stack-app`
-- **Branch:** `develop`
-- **Domain:** `kosmamedia-staging.vercel.app`
+### Preview Environment
+- **Branch:** `develop` & alle Feature Branches
+- **Domain:** Auto-generiert
+- **Environment Variables:** Preview-Werte (können anders sein)
+- **Auto-Deploy:** Bei Push auf alle Branches außer `main`
 
-**Setup in Vercel:**
-1. Dashboard → "Add New..." → "Project"
-2. Import GitHub Repository: `DaBabbit/my-full-stack-app`
-3. Branch: `develop`
-4. Project Name: `kosmamedia-staging`
-5. Deploy
+### Development Environment
+- **Lokal:** `vercel dev`
+- **Domain:** `localhost:3000`
+- **Environment Variables:** Development-Werte
+
+**Setup:** Siehe `VERCEL_SETUP.md`
 
 ---
 
@@ -108,14 +126,16 @@ git push origin develop
 
 ### ✅ DO's
 - **Entwickle IMMER auf `develop`**
-- **Teste gründlich auf Staging vor Production Release**
+- **Teste gründlich auf Preview-Deployment vor Production Release**
 - **Nutze aussagekräftige Commit-Messages**
 - **Merge nur wenn Features vollständig getestet sind**
+- **Prüfe Preview-Deployment im Vercel Dashboard**
 
 ### ❌ DON'Ts
 - **NIEMALS direkt auf `main` committen** (außer Hotfixes)
-- **Nicht mergen ohne vorheriges Testing**
+- **Nicht mergen ohne vorheriges Testing auf Preview**
 - **Keine halbfertigen Features auf Production**
+- **Nicht vergessen Environment Variables zu prüfen**
 
 ---
 
@@ -128,6 +148,23 @@ git branch
 git status
 # Zeigt aktuellen Branch und Status
 ```
+
+---
+
+## 📊 Vercel Dashboard
+
+**Deployments anzeigen:**
+- Vercel Dashboard → Deployments
+- Jedes Deployment zeigt:
+  - Branch
+  - Environment (Production/Preview)
+  - Status
+  - URL
+
+**Preview-URL finden:**
+1. Vercel Dashboard → Deployments
+2. Suche Deployment von `develop` Branch
+3. Klicke auf Deployment → Kopiere URL
 
 ---
 
@@ -151,10 +188,21 @@ git merge main  # Aktuelle Production-Änderungen holen
 git push origin develop
 ```
 
+### "Preview-Deployment wurde nicht erstellt"
+- Prüfe Vercel Dashboard → Settings → Git → Preview Deployments: **Enabled**
+- Branch muss anders sein als `main`
+- Prüfe Deployment-Logs im Vercel Dashboard
+
+### "Environment Variables werden nicht verwendet"
+- Prüfe Settings → Environment Variables
+- Stelle sicher, dass Variables für **Preview** Environment gesetzt sind
+- **NEXT_PUBLIC_*** Variables benötigen neuen Deploy
+
 ---
 
 ## 📚 Weitere Ressourcen
 
-- **Vercel Docs:** https://vercel.com/docs
+- **Vercel Environments:** https://vercel.com/docs/concepts/projects/environments
+- **Preview Deployments:** https://vercel.com/docs/concepts/deployments/preview-deployments
 - **Git Branching:** https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging
-
+- **Setup Guide:** Siehe `VERCEL_SETUP.md`

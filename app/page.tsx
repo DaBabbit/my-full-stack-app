@@ -4,16 +4,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PricingSection } from '@/components/PricingSection';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { VideoModal } from '@/components/VideoModal';
+import LandingHeader from '@/components/LandingHeader';
+import QuickTestimonial from '@/components/QuickTestimonial';
+import HowItWorksSimple from '@/components/HowItWorksSimple';
+import MinimalFAQ from '@/components/MinimalFAQ';
+import LandingFooter from '@/components/LandingFooter';
+
+const TIDYCAL_URL = 'https://tidycal.com/davidkosma/20-minute-meeting-m4ee56v';
 
 // Redirect logic for logged-in users
 function LandingPageContent() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { isLoading: isTrialLoading } = useTrialStatus();
   const router = useRouter();
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // Redirect logged-in users to dashboard
   useEffect(() => {
@@ -25,10 +30,10 @@ function LandingPageContent() {
   // Show loading while checking auth status
   if (isAuthLoading || isTrialLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mb-4 mx-auto"></div>
-          <p className="text-foreground">Lade...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-4 mx-auto"></div>
+          <p className="text-white">Lade...</p>
         </div>
       </div>
     );
@@ -40,24 +45,30 @@ function LandingPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black pt-20">
-      {/* Hero Section - Resend inspired */}
-      <section className="relative py-32 overflow-hidden">
-        {/* Subtle gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-neutral-900 to-black" />
+    <div className="min-h-screen bg-black">
+      {/* Header */}
+      <LandingHeader />
+
+      {/* Hero Section - Above the Fold */}
+      <section className="relative pt-32 pb-20 overflow-hidden">
+        {/* Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950 via-black to-black" />
         
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Subtle glow effect */}
+        <div className="absolute top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-3xl" />
+        
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <motion.h1 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-5xl md:text-7xl font-bold text-white mb-8 tracking-tight"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight leading-tight"
             >
-              Video Management
+              12 professionelle Kurzvideos.
               <br />
-              <span className="bg-gradient-to-r from-white to-neutral-400 bg-clip-text text-transparent">
-                für Profis
+              <span className="bg-gradient-to-r from-white via-neutral-200 to-neutral-400 bg-clip-text text-transparent">
+                Jeden Monat. Automatisch.
               </span>
             </motion.h1>
             
@@ -65,10 +76,11 @@ function LandingPageContent() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.6 }}
-              className="text-xl text-neutral-400 mb-12 max-w-2xl mx-auto leading-relaxed"
+              className="text-xl md:text-2xl text-neutral-400 mb-12 max-w-3xl mx-auto leading-relaxed"
             >
-              Die beste Lösung für Content Creator und Agenturen. 
-              Verwalten Sie Videos, planen Sie Content und automatisieren Sie Workflows.
+              Wir übernehmen Schnitt, Posting und Strategie.
+              <br className="hidden sm:block" />
+              Du filmst. Wir machen den Rest.
             </motion.p>
             
             <motion.div 
@@ -77,63 +89,100 @@ function LandingPageContent() {
               transition={{ delay: 0.4, duration: 0.6 }}
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
-              {/* Primary CTA with Resend-style glow */}
-              <motion.button
+              {/* Primary CTA */}
+              <motion.a
+                href={TIDYCAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => router.push('/login')}
-                className="group relative px-8 py-4 bg-neutral-800 text-white rounded-3xl font-medium text-lg
-                         border border-neutral-700
-                         hover:bg-white hover:text-black hover:border-white
-                         hover:shadow-[0_0_30px_rgba(255,255,255,0.3)]
+                className="group relative px-10 py-5 bg-white text-black rounded-full font-semibold text-lg
+                         hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]
                          transition-all duration-300 ease-out
                          focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
               >
                 <span className="flex items-center gap-2">
-                  Get Started
+                  Jetzt kostenlos beraten lassen
                   <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </span>
-              </motion.button>
+              </motion.a>
               
               {/* Secondary CTA */}
               <motion.button
+                onClick={() => router.push('/login')}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setIsVideoModalOpen(true)}
-                className="px-8 py-4 bg-transparent text-white rounded-3xl font-medium text-lg
-                         border border-neutral-600 hover:border-neutral-400
-                         hover:bg-neutral-800
-                         transition-all duration-300 ease-out"
+                className="px-6 py-3 text-neutral-400 hover:text-white text-sm font-medium
+                         transition-colors duration-300"
               >
-                Demo ansehen
+                Zum Login →
               </motion.button>
+            </motion.div>
+
+            {/* Trust Signals */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+              className="mt-12 text-sm text-neutral-500"
+            >
+              ✓ Keine Mindestlaufzeit ✓ 12 Videos/Monat ✓ Monatlich kündbar
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="py-20 bg-neutral-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Einfache Preisgestaltung
+      {/* Social Proof - Direkt nach Hero */}
+      <QuickTestimonial />
+
+      {/* How it Works */}
+      <HowItWorksSimple />
+
+      {/* Pricing */}
+      <PricingSection />
+
+      {/* FAQ */}
+      <MinimalFAQ />
+
+      {/* Final CTA */}
+      <section className="py-20 bg-black">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+              Bereit für professionellen Content?
             </h2>
-            <p className="text-lg text-neutral-400">
-              Wählen Sie den Plan, der zu Ihnen passt
+            <p className="text-neutral-400 text-lg mb-8">
+              Lass uns in einem kostenlosen Gespräch deine Content-Strategie besprechen.
             </p>
-          </div>
-          <PricingSection />
+            
+            <motion.a
+              href={TIDYCAL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-block px-10 py-5 bg-white text-black rounded-full font-semibold text-lg
+                       hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]
+                       transition-all duration-300"
+            >
+              Jetzt Termin buchen
+            </motion.a>
+
+            <p className="mt-6 text-sm text-neutral-500">
+              Kostenlos • 20 Minuten • Unverbindlich
+            </p>
+          </motion.div>
         </div>
       </section>
 
-      <VideoModal
-        isOpen={isVideoModalOpen}
-        onClose={() => setIsVideoModalOpen(false)}
-        videoId="S1cnQG0-LP4"
-      />
+      {/* Footer */}
+      <LandingFooter />
     </div>
   );
 }
@@ -141,4 +190,3 @@ function LandingPageContent() {
 export default function LandingPage() {
   return <LandingPageContent />;
 }
-

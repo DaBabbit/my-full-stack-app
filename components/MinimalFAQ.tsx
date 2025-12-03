@@ -14,12 +14,12 @@ const faqs = [
     answer: 'Die ersten Videos sind innerhalb von 2 Wochen online. Sichtbare Reichweiten-Steigerungen siehst du meist nach 4-6 Wochen konsequenter Veröffentlichung.'
   },
   {
-    question: 'Kann ich jederzeit kündigen?',
-    answer: 'Ja, das Monatsabo ist monatlich kündbar. Keine Mindestlaufzeit, keine versteckten Kosten.'
+    question: 'Welche Mindestlaufzeit gibt es?',
+    answer: 'Die Mindestlaufzeit beträgt 3 Monate. Danach ist das Abo monatlich kündbar - keine langfristige Bindung, volle Flexibilität.'
   },
   {
     question: 'Was kostet es wirklich?',
-    answer: '450€ pro Monat für 12 professionelle Kurzvideos inklusive Schnitt, Posting und Strategie. Komplett transparent, keine Zusatzkosten.'
+    answer: '450€ pro Monat für 12 professionelle Kurzvideos inklusive Schnitt, Posting und Strategie. Optional: +100€/Monat für Skripting & Ideenentwicklung. Komplett transparent, keine versteckten Kosten.'
   }
 ];
 

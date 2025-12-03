@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 
 export default function LandingHeader() {
   const router = useRouter();
@@ -40,15 +39,9 @@ export default function LandingHeader() {
           {/* Logo */}
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center"
+            className="text-white font-semibold text-xl tracking-tight hover:text-neutral-200 transition-colors"
           >
-            <Image
-              src="/kosmamedia-logo.svg"
-              alt="KosmaMedia"
-              width={180}
-              height={40}
-              className="h-8 w-auto"
-            />
+            kosmamedia
           </button>
 
           {/* Desktop Navigation */}

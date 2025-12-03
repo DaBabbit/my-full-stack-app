@@ -1,114 +1,81 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { LoginForm } from '@/components/LoginForm';
+import { motion } from 'framer-motion';
+import { Hourglass, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, supabase } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasReferralCode, setHasReferralCode] = useState(false);
-
-  // Handle referral code from URL
-  useEffect(() => {
-    const refCode = searchParams.get('ref');
-    if (refCode) {
-      // Store referral code in localStorage for later use during signup
-      localStorage.setItem('referral_code', refCode);
-      setHasReferralCode(true);
-      console.log('[Login] Referral code stored:', refCode);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    const checkUserProfile = async () => {
-      if (user) {
-        try {
-          // Check if user has completed onboarding
-          const { data, error } = await supabase
-            .from('users')
-            .select('firstname, lastname, onboarding_completed_at')
-            .eq('id', user.id)
-            .single();
-
-          if (error) {
-            console.error('Error checking profile:', error);
-            router.replace('/welcome');
-            return;
-          }
-
-          // If user has no name, redirect to welcome
-          if (!data?.firstname || !data?.lastname) {
-            router.replace('/welcome');
-          } else {
-            router.replace('/dashboard');
-          }
-        } catch (err) {
-          console.error('Error:', err);
-          router.replace('/welcome');
-        }
-      } else {
-        setIsLoading(false);
-      }
-    };
-
-    checkUserProfile();
-  }, [user, router, supabase]);
-
-  const handleSubmit = async (email: string, password: string, isSignUp: boolean) => {
-    setError('');
-    setIsLoading(true);
-
-    try {
-      if (isSignUp) {
-        const { data, error } = await signUpWithEmail(email, password);
-        if (error) throw error;
-        
-        // Check if the user needs to verify their email
-        if (data?.user && !data.user.email_confirmed_at) {
-          router.replace(`/verify-email?email=${encodeURIComponent(email)}`);
-          return;
-        }
-        
-        // New users always go to welcome screen
-        router.replace('/welcome');
-      } else {
-        await signInWithEmail(email, password);
-        // Existing users: check will be done in useEffect
-      }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Authentication failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-foreground">Loading...</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4 pt-20">
-      <div className="w-full max-w-md">
-        {/* <h1 className="text-4xl font-bold text-center mb-8 text-primary dark:text-white">
-          NextTemp
-        </h1> */}
-        <LoginForm
-          onSubmit={handleSubmit}
-          onGoogleSignIn={signInWithGoogle}
-          isLoading={isLoading}
-          error={error}
-          defaultToSignUp={hasReferralCode}
-        />
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full">
+        {/* Back Button */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-8"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Zurück zur Startseite
+        </Link>
+
+        {/* Main Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-12 border border-neutral-800 text-center"
+        >
+          {/* Animated Hourglass */}
+          <motion.div
+            animate={{
+              rotateZ: [0, 180, 180, 0],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              times: [0, 0.4, 0.6, 1],
+              ease: "easeInOut"
+            }}
+            className="inline-flex items-center justify-center w-24 h-24 mb-8 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full"
+          >
+            <Hourglass className="w-12 h-12 text-white" />
+          </motion.div>
+
+          {/* Heading */}
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Noch in Arbeit
+          </h1>
+          
+          {/* Subtext */}
+          <p className="text-xl text-neutral-300 mb-6">
+            Das neue Kundenportal erscheint bald!
+          </p>
+
+          {/* Info Box */}
+          <div className="bg-neutral-800/50 rounded-2xl p-6 border border-neutral-700 mb-8">
+            <p className="text-neutral-300 leading-relaxed">
+              Die Zusammenarbeit erfolgt aktuell noch über das alte Kundenportal.
+              <br />
+              Mehr dazu erfährst du in deinem Kennenlerngespräch.
+            </p>
+          </div>
+
+          {/* CTA Button */}
+          <motion.a
+            href="https://tidycal.com/davidkosma/20-minute-meeting-m4ee56v"
+            target="_blank"
+            rel="noopener noreferrer"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="inline-block px-8 py-4 bg-white text-black rounded-full font-semibold text-lg hover:bg-neutral-100 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+          >
+            Jetzt Kennenlerngespräch buchen
+          </motion.a>
+
+          {/* Small Trust Text */}
+          <p className="mt-6 text-sm text-neutral-500">
+            Kostenlos • 20 Minuten • Unverbindlich
+          </p>
+        </motion.div>
       </div>
     </div>
   );
-} 
+}

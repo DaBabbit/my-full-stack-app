@@ -7,7 +7,6 @@ import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import LandingHeader from '@/components/LandingHeader';
-import QuickTestimonial from '@/components/QuickTestimonial';
 import HowItWorksSimple from '@/components/HowItWorksSimple';
 import MinimalFAQ from '@/components/MinimalFAQ';
 import LandingFooter from '@/components/LandingFooter';
@@ -133,9 +132,6 @@ function LandingPageContent() {
           </div>
         </div>
       </section>
-
-      {/* Social Proof - Direkt nach Hero */}
-      <QuickTestimonial />
 
       {/* How it Works */}
       <HowItWorksSimple />

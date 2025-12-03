@@ -2,15 +2,20 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { NotificationCenter } from '@/components/NotificationCenter';
 // Removed unused imports: useSubscription, useTrialStatus, BuyMeCoffee, useRouter
 // import { supabase } from '@/utils/supabase';
 
+// Public routes where TopBar should not be displayed
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/verify-email', '/reset-password', '/update-password', '/impressum', '/datenschutz'];
+
 // TopBar component handles user profile display and navigation
 export default function TopBar() {
   const { user, signOut } = useAuth();
+  const pathname = usePathname();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   // Removed subscription-related state
@@ -58,6 +63,11 @@ export default function TopBar() {
       setIsLoggingOut(false);
     }
   };
+
+  // Don't render TopBar on public routes (Landing Page, Login, etc.)
+  if (PUBLIC_ROUTES.includes(pathname)) {
+    return null;
+  }
 
   return (
     <div className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${

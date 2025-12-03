@@ -31,7 +31,7 @@ export default function HowItWorksSimple() {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            So funktioniert's
+            So funktioniert&apos;s
           </h2>
           <p className="text-neutral-400 text-lg">
             Einfach. Schnell. Effektiv.

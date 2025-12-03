@@ -1,10 +1,17 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { LoginForm } from '@/components/LoginForm';
 import { motion } from 'framer-motion';
 import { Hourglass, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function LoginPage() {
+// Check if we're in production (not preview or development)
+const isProduction = process.env.NEXT_PUBLIC_APP_URL === 'https://www.kosmamedia.de';
+
+function ComingSoonScreen() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
@@ -75,6 +82,134 @@ export default function LoginPage() {
             Kostenlos • 20 Minuten • Unverbindlich
           </p>
         </motion.div>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, supabase } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasReferralCode, setHasReferralCode] = useState(false);
+
+  // Show "Coming Soon" in Production
+  if (isProduction) {
+    return <ComingSoonScreen />;
+  }
+
+  // Handle referral code from URL
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      localStorage.setItem('referral_code', refCode);
+      setHasReferralCode(true);
+      console.log('[Login] Referral code stored:', refCode);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const checkUserProfile = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('firstname, lastname, onboarding_completed_at')
+            .eq('id', user.id)
+            .single();
+
+          if (error) {
+            console.error('Error checking profile:', error);
+            router.replace('/welcome');
+            return;
+          }
+
+          if (!data?.firstname || !data?.lastname) {
+            router.replace('/welcome');
+          } else {
+            router.replace('/dashboard');
+          }
+        } catch (err) {
+          console.error('Profile check failed:', err);
+          router.replace('/welcome');
+        }
+      }
+    };
+
+    checkUserProfile();
+  }, [user, router, supabase]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      await signInWithGoogle();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      console.error('Google sign in failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEmailSignIn = async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      setError('');
+      await signInWithEmail(email, password);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid email or password';
+      setError(errorMessage);
+      console.error('Email sign in failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEmailSignUp = async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      setError('');
+      await signUpWithEmail(email, password);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Sign up failed';
+      setError(errorMessage);
+      console.error('Email sign up failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mb-4 mx-auto"></div>
+          <p className="text-foreground">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {hasReferralCode && (
+          <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-600 text-sm">
+            🎉 Referral code applied! You&apos;ll get special benefits after signing up.
+          </div>
+        )}
+        
+        <LoginForm
+          onGoogleSignIn={handleGoogleSignIn}
+          onEmailSignIn={handleEmailSignIn}
+          onEmailSignUp={handleEmailSignUp}
+          error={error}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

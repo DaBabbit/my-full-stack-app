@@ -2,19 +2,52 @@
 
 import { motion } from 'framer-motion';
 import { CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
 
 const TIDYCAL_URL = 'https://tidycal.com/davidkosma/20-minute-meeting-m4ee56v';
 
-const features = [
+const baseFeatures = [
   '12 professionelle Kurzvideos pro Monat',
   'Automatisches Posting auf TikTok, Instagram & YouTube',
-  'Fertige Skripte & Content-Ideen inklusive',
   '2 monatliche Strategie-Calls',
   'Zugang zum Kundenportal',
-  'Monatlich kündbar'
+  'Mindestlaufzeit: 3 Monate, danach monatlich kündbar'
+];
+
+const scriptingFeatures = [
+  'Fertige Skripte & Content-Ideen',
+  'Strategische Ideenentwicklung',
+  'Content-Planung & Konzeption'
 ];
 
 export function PricingSection() {
+  const [isYearly, setIsYearly] = useState(false);
+  const [includeScripting, setIncludeScripting] = useState(false);
+
+  // Preise berechnen
+  const getPrice = () => {
+    if (isYearly) {
+      return includeScripting ? '5.999€' : '4.950€';
+    }
+    return includeScripting ? '550€' : '450€';
+  };
+
+  const getInterval = () => {
+    return isYearly ? '/Jahr' : '/Monat';
+  };
+
+  const getSavings = () => {
+    if (!isYearly) return null;
+    const monthlyCost = includeScripting ? 550 * 12 : 450 * 12;
+    const yearlyCost = includeScripting ? 5999 : 4950;
+    const savings = monthlyCost - yearlyCost;
+    return `${savings}€ sparen`;
+  };
+
+  const allFeatures = includeScripting 
+    ? [...baseFeatures.slice(0, 2), ...scriptingFeatures, ...baseFeatures.slice(2)]
+    : baseFeatures;
+
   return (
     <section className="py-20 bg-black" id="preise">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -22,7 +55,7 @@ export function PricingSection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Einfache, transparente Preise
@@ -30,6 +63,42 @@ export function PricingSection() {
           <p className="text-neutral-400 text-lg">
             Alles inklusive. Keine versteckten Kosten.
           </p>
+        </motion.div>
+
+        {/* Billing Toggle */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="flex justify-center mb-8"
+        >
+          <div className="inline-flex items-center gap-3 bg-neutral-900/50 backdrop-blur-md rounded-full p-1.5 border border-neutral-800">
+            <button
+              onClick={() => setIsYearly(false)}
+              className={`px-6 py-2.5 rounded-full font-medium text-sm transition-all ${
+                !isYearly
+                  ? 'bg-white text-black'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              Monatlich
+            </button>
+            <button
+              onClick={() => setIsYearly(true)}
+              className={`px-6 py-2.5 rounded-full font-medium text-sm transition-all ${
+                isYearly
+                  ? 'bg-white text-black'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              Jährlich
+              {isYearly && (
+                <span className="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+                  Spare bis zu 1.389€
+                </span>
+              )}
+            </button>
+          </div>
         </motion.div>
 
         <motion.div
@@ -54,18 +123,47 @@ export function PricingSection() {
               </h3>
               <div className="flex items-baseline justify-center mb-2">
                 <span className="text-5xl md:text-6xl font-bold text-white">
-                  450€
+                  {getPrice()}
                 </span>
-                <span className="ml-2 text-neutral-400 text-xl">/Monat</span>
+                <span className="ml-2 text-neutral-400 text-xl">{getInterval()}</span>
               </div>
-              <p className="text-sm text-neutral-500 mt-2">
-                Jahresabo verfügbar (1 Monat gratis)
-              </p>
+              {isYearly && (
+                <p className="text-sm text-green-400 font-medium mt-2">
+                  {getSavings()} gegenüber monatlicher Zahlung
+                </p>
+              )}
+            </div>
+
+            {/* Scripting Add-on Toggle */}
+            <div className="mb-8 p-4 bg-neutral-800/50 rounded-2xl border border-neutral-700">
+              <label className="flex items-center justify-between cursor-pointer group">
+                <div className="flex-1">
+                  <div className="font-semibold text-white group-hover:text-neutral-200 transition-colors">
+                    Skripting & Ideenentwicklung
+                  </div>
+                  <div className="text-sm text-neutral-400 mt-1">
+                    +100€/Monat (+1.200€/Jahr) - Fertige Skripte & Content-Konzepte
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIncludeScripting(!includeScripting)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ml-4 ${
+                    includeScripting ? 'bg-blue-500' : 'bg-neutral-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      includeScripting ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </label>
             </div>
 
             {/* Features List */}
             <ul className="space-y-4 mb-10">
-              {features.map((feature, index) => (
+              {allFeatures.map((feature, index) => (
                 <motion.li
                   key={index}
                   initial={{ opacity: 0, x: -20 }}

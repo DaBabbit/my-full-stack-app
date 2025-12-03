@@ -95,11 +95,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasReferralCode, setHasReferralCode] = useState(false);
 
-  // Show "Coming Soon" in Production
-  if (isProduction) {
-    return <ComingSoonScreen />;
-  }
-
   // Handle referral code from URL
   useEffect(() => {
     const refCode = searchParams.get('ref');
@@ -183,6 +178,11 @@ export default function LoginPage() {
     }
   };
 
+  // Show "Coming Soon" in Production
+  if (isProduction) {
+    return <ComingSoonScreen />;
+  }
+
   if (user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -194,6 +194,14 @@ export default function LoginPage() {
     );
   }
 
+  const handleSubmit = async (email: string, password: string, isSignUp: boolean) => {
+    if (isSignUp) {
+      await handleEmailSignUp(email, password);
+    } else {
+      await handleEmailSignIn(email, password);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -204,9 +212,8 @@ export default function LoginPage() {
         )}
         
         <LoginForm
+          onSubmit={handleSubmit}
           onGoogleSignIn={handleGoogleSignIn}
-          onEmailSignIn={handleEmailSignIn}
-          onEmailSignUp={handleEmailSignUp}
           error={error}
           isLoading={isLoading}
         />

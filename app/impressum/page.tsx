@@ -21,13 +21,14 @@ export default function ImpressumPage() {
           </h1>
 
           <div className="prose prose-invert max-w-none space-y-8">
-            {/* Angaben gemäß § 5 DDG */}
+            {/* Angaben gemäß § 5 TMG */}
             <section>
               <h2 className="text-2xl font-semibold text-white mb-4">
-                Angaben gemäß § 5 DDG
+                Angaben gemäß § 5 TMG
               </h2>
               <div className="text-neutral-300 leading-relaxed space-y-2">
                 <p className="font-medium text-white">David Kosma</p>
+                <p className="font-medium text-white">KosmaMedia</p>
                 <p>Wennfelder Garten 5</p>
                 <p>72072 Tübingen</p>
               </div>
@@ -63,9 +64,20 @@ export default function ImpressumPage() {
                 Umsatzsteuer-ID
               </h2>
               <p className="text-neutral-300 leading-relaxed">
-                Als Kleinunternehmer im Sinne von § 19 Abs. 1 Umsatzsteuergesetz (UStG)
-                wird keine Umsatzsteuer berechnet.
+                Keine Umsatzsteuer-Identifikationsnummer vorhanden gemäß § 19 UStG (Kleinunternehmerregelung).
               </p>
+            </section>
+
+            {/* Verantwortlich für den Inhalt */}
+            <section>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV
+              </h2>
+              <div className="text-neutral-300 leading-relaxed space-y-2">
+                <p className="font-medium text-white">David Kosma</p>
+                <p>Wennfelder Garten 5</p>
+                <p>72072 Tübingen</p>
+              </div>
             </section>
 
             {/* EU-Streitschlichtung */}

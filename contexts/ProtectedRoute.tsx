@@ -14,7 +14,8 @@ const PUBLIC_ROUTES = [
   '/reset-password', 
   '/update-password',
   '/impressum',
-  '/datenschutz'
+  '/datenschutz',
+  '/success'
 ];
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {

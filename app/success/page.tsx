@@ -1,16 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import { CheckCircle2, Sparkles } from 'lucide-react';
 
 export default function SuccessPage() {
-  // Confetti-ähnlicher Effekt mit Sparkles
-  useEffect(() => {
-    // Optional: Hier könnte man Confetti oder andere Effekte hinzufügen
-  }, []);
-
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated Background Elements */}
@@ -70,36 +63,31 @@ export default function SuccessPage() {
 
           {/* Success Icon with Animation */}
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
             transition={{
               type: "spring",
               stiffness: 200,
-              damping: 15,
+              damping: 20,
               delay: 0.2
             }}
             className="inline-flex items-center justify-center w-24 h-24 mb-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-full relative"
           >
             {/* Outer Ring Animation */}
             <motion.div
-              initial={{ scale: 1, opacity: 0.5 }}
-              animate={{ scale: 1.5, opacity: 0 }}
+              initial={{ scale: 1, opacity: 0 }}
+              animate={{ scale: [1, 1.5, 1.5], opacity: [0.5, 0.3, 0] }}
               transition={{
-                duration: 1.5,
+                duration: 2,
                 repeat: Infinity,
-                ease: "easeOut"
+                ease: "easeOut",
+                times: [0, 0.5, 1]
               }}
               className="absolute inset-0 border-4 border-green-400 rounded-full"
             />
             
             {/* Check Icon */}
-            <motion.div
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-            >
-              <CheckCircle2 className="w-12 h-12 text-green-400" strokeWidth={2.5} />
-            </motion.div>
+            <CheckCircle2 className="w-12 h-12 text-green-400" strokeWidth={2.5} />
           </motion.div>
 
           {/* Heading */}
@@ -127,7 +115,7 @@ export default function SuccessPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7, duration: 0.5 }}
-            className="bg-neutral-800/50 rounded-2xl p-6 border border-neutral-700 mb-8"
+            className="bg-neutral-800/50 rounded-2xl p-6 border border-neutral-700"
           >
             <p className="text-neutral-300 leading-relaxed">
               Alle weiteren Informationen findest du in deinem <span className="text-white font-semibold">Kundenportal</span>.
@@ -138,46 +126,15 @@ export default function SuccessPage() {
             </p>
           </motion.div>
 
-          {/* CTA Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.5 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center"
-          >
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-black rounded-full font-semibold text-lg hover:bg-neutral-100 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] group"
-            >
-              Zum Kundenportal
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </motion.div>
-
           {/* Additional Info */}
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.5 }}
-            className="mt-8 text-sm text-neutral-500"
+            transition={{ delay: 0.9, duration: 0.5 }}
+            className="mt-6 text-sm text-neutral-500"
           >
             Du erhältst in Kürze eine Bestätigung per E-Mail
           </motion.p>
-        </motion.div>
-
-        {/* Bottom Link */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2, duration: 0.5 }}
-          className="text-center mt-8"
-        >
-          <Link
-            href="/"
-            className="text-neutral-400 hover:text-white transition-colors text-sm"
-          >
-            ← Zurück zur Startseite
-          </Link>
         </motion.div>
       </div>
     </div>

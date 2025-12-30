@@ -12,12 +12,10 @@ import {
   CheckCircle, 
   Clock,
   ArrowLeft,
-  ExternalLink,
   AlertCircle,
   XCircle,
   Info
 } from 'lucide-react';
-import { supabase } from '@/utils/supabase';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface Invoice {

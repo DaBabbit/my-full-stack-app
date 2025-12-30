@@ -18,7 +18,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ManageSubscriptionPage() {
   const { user, supabase } = useAuth();
-  const { subscription, currentSubscription, fetchSubscription } = useSubscription();
+  const { currentSubscription, fetchSubscription } = useSubscription();
   const router = useRouter();
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);

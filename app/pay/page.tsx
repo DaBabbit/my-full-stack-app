@@ -1,14 +1,19 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSubscription } from '@/hooks/useSubscription';
-import { InvoiceNinjaCheckout } from '@/components/InvoiceNinjaCheckout';
 import { SubscriptionStatus } from '@/components/SubscriptionStatus';
+import PlanSelectionModal from '@/components/PlanSelectionModal';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function PaymentPage() {
   const { subscription, isLoading, error } = useSubscription();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
 
   // Redirect if already subscribed
   useEffect(() => {
@@ -60,15 +65,46 @@ export default function PaymentPage() {
     );
   }
 
+  const handlePlanSuccess = async () => {
+    console.log('[PaymentPage] Payment success, refreshing subscription...');
+    
+    // Refresh subscription data
+    if (user?.id) {
+      await queryClient.invalidateQueries({ queryKey: ['subscription', user.id] });
+    }
+    
+    // Show success message
+    setTimeout(() => {
+      router.push('/profile');
+    }, 2000);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] p-4">
-      <h1 className="text-xl md:text-2xl font-bold mb-6 text-center text-white">Complete Your Purchase</h1>
+      <h1 className="text-xl md:text-2xl font-bold mb-6 text-center text-white">
+        Wähle deinen Plan
+      </h1>
       
       <SubscriptionStatus />
 
       <div className="w-full max-w-md px-4 mt-6">
-        <InvoiceNinjaCheckout />
+        <button
+          onClick={() => setIsPlanModalOpen(true)}
+          className="w-full py-4 px-6 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg transition-all duration-300 hover:scale-105"
+        >
+          Plan wählen
+        </button>
+        
+        <p className="text-neutral-400 text-sm text-center mt-4">
+          Sichere Zahlung über Invoice Ninja mit GoCardless SEPA Lastschrift
+        </p>
       </div>
+
+      <PlanSelectionModal
+        isOpen={isPlanModalOpen}
+        onClose={() => setIsPlanModalOpen(false)}
+        onSuccess={handlePlanSuccess}
+      />
     </div>
   );
 }

@@ -15,15 +15,19 @@ import {
 } from 'lucide-react';
 import { ToastContainer, ToastProps } from '@/components/Toast';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import PlanSelectionModal from '@/components/PlanSelectionModal';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function ManageSubscriptionPage() {
   const { user, supabase } = useAuth();
   const { currentSubscription, fetchSubscription } = useSubscription();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [isReactivating, setIsReactivating] = useState(false);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [hasActiveReferralReward, setHasActiveReferralReward] = useState(false);
   const [toasts, setToasts] = useState<ToastProps[]>([]);
 
@@ -169,6 +173,24 @@ export default function ManageSubscriptionPage() {
     }
   };
 
+  const handlePlanSuccess = async () => {
+    console.log('[ManageSubscription] Payment success, refreshing subscription...');
+    
+    addToast({
+      type: 'success',
+      title: 'Zahlung erfolgreich!',
+      message: 'Dein neuer Plan wird in Kürze aktiviert.'
+    });
+    
+    // Refresh subscription data
+    if (user?.id) {
+      await queryClient.invalidateQueries({ queryKey: ['subscription', user.id] });
+      await fetchSubscription(true);
+    }
+    
+    setIsPlanModalOpen(false);
+  };
+
   if (!user) {
     router.push('/login');
     return <LoadingSpinner />;
@@ -244,17 +266,43 @@ export default function ManageSubscriptionPage() {
             transition={{ delay: 0.2 }}
             whileHover={{ scale: 1.02 }}
             className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-blue-500/50 transition-all duration-300 cursor-pointer"
-            onClick={handleOpenCustomerPortal}
+            onClick={() => setIsPlanModalOpen(true)}
           >
             <div className="p-3 bg-blue-500/20 rounded-2xl w-fit mb-4">
               <CreditCard className="w-6 h-6 text-blue-400" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Plan ändern</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              {currentSubscription?.status === 'active' ? 'Plan ändern' : 'Plan wählen'}
+            </h3>
             <p className="text-neutral-400 mb-4">
-              Wechsle zu einem anderen Plan oder aktualisiere deine Zahlungsmethode
+              {currentSubscription?.status === 'active' 
+                ? 'Wechsle zu einem anderen Plan' 
+                : 'Wähle einen Plan und starte dein Abo'}
             </p>
             <div className="flex items-center text-blue-400 text-sm font-medium">
-              <span>Zum Kundenportal</span>
+              <span>Plan auswählen</span>
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </div>
+          </motion.div>
+
+          {/* Kundenportal */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            whileHover={{ scale: 1.02 }}
+            className="bg-neutral-900/50 backdrop-blur-md rounded-3xl p-6 border border-neutral-700 hover:border-purple-500/50 transition-all duration-300 cursor-pointer"
+            onClick={handleOpenCustomerPortal}
+          >
+            <div className="p-3 bg-purple-500/20 rounded-2xl w-fit mb-4">
+              <ExternalLink className="w-6 h-6 text-purple-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Kundenportal</h3>
+            <p className="text-neutral-400 mb-4">
+              Verwalte Rechnungen und Zahlungsmethoden im Invoice Ninja Portal
+            </p>
+            <div className="flex items-center text-purple-400 text-sm font-medium">
+              <span>Zum Portal</span>
               <ExternalLink className="w-4 h-4 ml-2" />
             </div>
           </motion.div>
@@ -434,6 +482,13 @@ export default function ManageSubscriptionPage() {
           </motion.div>
         </div>
       )}
+
+      {/* Plan Selection Modal */}
+      <PlanSelectionModal
+        isOpen={isPlanModalOpen}
+        onClose={() => setIsPlanModalOpen(false)}
+        onSuccess={handlePlanSuccess}
+      />
     </div>
   );
 }

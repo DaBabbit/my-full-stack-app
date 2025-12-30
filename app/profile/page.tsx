@@ -338,11 +338,7 @@ function ProfileContent() {
                 <h2 className="text-xl font-semibold text-white">Abonnement Status</h2>
               </div>
 
-              {error ? (
-                <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20">
-                  <p className="text-red-400">{error}</p>
-                </div>
-              ) : isLoadingSubscription ? (
+              {isLoadingSubscription ? (
                 <div className="flex items-center justify-center py-8">
                   <span className="loading loading-ring loading-md text-white"></span>
                   <span className="ml-3 text-neutral-400">Loading...</span>
@@ -682,16 +678,14 @@ function ProfileContent() {
               <button
                 onClick={() => setIsReactivateModalOpen(false)}
                 className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
-                disabled={isReactivating}
               >
                 Abbrechen
               </button>
               <button
                 onClick={handleReactivateSubscription}
-                disabled={isReactivating}
                 className="px-6 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-all duration-300 border border-green-500/20 hover:border-green-500/40 disabled:opacity-50"
               >
-                {isReactivating ? 'Wird wiederhergestellt...' : 'Wiederherstellen'}
+                Wiederherstellen
               </button>
             </div>
           </motion.div>
@@ -715,16 +709,14 @@ function ProfileContent() {
               <button
                 onClick={() => setIsReactivateModalOpen(false)}
                 className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
-                disabled={isReactivating}
               >
                 Abbrechen
               </button>
               <button
                 onClick={handleReactivateSubscription}
-                disabled={isReactivating}
                 className="px-6 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-all duration-300 border border-green-500/20 hover:border-green-500/40 disabled:opacity-50"
               >
-                {isReactivating ? 'Wird wiederhergestellt...' : 'Wiederherstellen'}
+                Wiederherstellen
               </button>
             </div>
           </motion.div>
@@ -747,16 +739,14 @@ function ProfileContent() {
               <button
                 onClick={() => setIsCancelModalOpen(false)}
                 className="px-4 py-2 text-neutral-400 hover:bg-neutral-800 rounded-lg transition-colors"
-                disabled={isCancelling}
               >
                 Abbrechen
               </button>
               <button
                 onClick={handleCancelSubscription}
-                disabled={isCancelling}
                 className="px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all duration-300 border border-red-500/20 hover:border-red-500/40 disabled:opacity-50"
               >
-                {isCancelling ? 'Wird gekündigt...' : 'Kündigen'}
+                Kündigen
               </button>
             </div>
           </motion.div>

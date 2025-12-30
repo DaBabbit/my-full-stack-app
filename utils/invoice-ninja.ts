@@ -8,7 +8,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 const client: AxiosInstance = axios.create({
   baseURL: process.env.INVOICE_NINJA_URL,
   headers: {
-    'X-Api-Token': process.env.INVOICE_NINJA_API_TOKEN!,
+    'X-API-TOKEN': process.env.INVOICE_NINJA_API_TOKEN!,
     'X-Requested-With': 'XMLHttpRequest',
     'Content-Type': 'application/json',
   },

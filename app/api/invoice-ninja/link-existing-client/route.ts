@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     
     // Finde aktive Subscription (status_id = 2 = Active)
     const activeSubscription = recurringInvoices.find(
-      (inv) => inv.status_id === '2' || inv.status_id === 2
+      (inv: { status_id: string | number; id?: string }) => inv.status_id === '2' || inv.status_id === 2
     );
 
     console.log('[Link Existing Client] Recurring Invoices:', recurringInvoices.length);

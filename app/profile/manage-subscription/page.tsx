@@ -46,7 +46,7 @@ export default function ManageSubscriptionPage() {
         .from('referrals')
         .select('*')
         .eq('referred_user_id', user!.id)
-        .eq('status', 'rewarded')
+        .eq('status', 'completed')
         .single();
       
       setHasActiveReferralReward(!!data);

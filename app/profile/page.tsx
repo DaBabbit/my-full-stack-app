@@ -98,36 +98,8 @@ function ProfileContent() {
     }
   }, [paymentStatus]);
 
-  // Sync with Stripe on mount to get latest subscription data
-  useEffect(() => {
-    const syncSubscription = async () => {
-      // Get subscription ID from either currentSubscription or subscription
-      const subId = currentSubscription?.stripe_subscription_id || subscription?.stripe_subscription_id;
-      
-      if (subId) {
-        try {
-          console.log('[Profile] Syncing subscription with Stripe:', subId);
-          const response = await fetch('/api/stripe/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subscriptionId: subId }),
-          });
-
-          if (response.ok) {
-            console.log('[Profile] Subscription synced successfully');
-            // Refresh subscription data after sync
-            await fetchSubscription(true);
-          } else {
-            console.error('[Profile] Sync failed:', await response.text());
-          }
-        } catch (err: unknown) {
-          console.error('[Profile] Error syncing with Stripe:', err);
-        }
-      }
-    };
-
-    syncSubscription();
-  }, [currentSubscription?.stripe_subscription_id, subscription?.stripe_subscription_id, fetchSubscription]);
+  // Invoice Ninja: Status-Sync läuft bereits automatisch in useSubscription Hook
+  // Kein manueller Sync mehr nötig!
 
   // Add loading timeout with auto-refresh
   useEffect(() => {
@@ -141,156 +113,37 @@ function ProfileContent() {
     return () => clearTimeout(timeout);
   }, [isLoadingSubscription, fetchSubscription]);
 
-  // Auto-Sync alle 30 Sekunden
-  useEffect(() => {
-    if (!user || !subscription) return;
-    
-    const autoSync = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-        
-        const response = await fetch('/api/stripe/auto-sync', {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[Profile] Auto-sync successful:', data);
-          // Trigger re-fetch of subscription
-          fetchSubscription();
-        }
-      } catch (error) {
-        console.error('[Profile] Auto-sync error:', error);
-      }
-    };
-    
-    // Initial sync after 5 seconds
-    const initialTimeout = setTimeout(autoSync, 5000);
-    
-    // Then every 30 seconds
-    const interval = setInterval(autoSync, 30000);
-    
-    return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(interval);
-    };
-  }, [user, subscription, supabase, fetchSubscription]);
+  // Invoice Ninja: Auto-Sync läuft bereits in useSubscription Hook (alle 5 Min)
+  // Kein zusätzlicher Sync mehr nötig!
 
-  // Check if user has rewarded referrals as referrer
+  // Check if user has completed referrals as referrer
   useEffect(() => {
-    const checkRewardedReferrals = async () => {
+    const checkCompletedReferrals = async () => {
       if (!user?.id) return;
       
       const { data } = await supabase
         .from('referrals')
         .select('*')
         .eq('referrer_user_id', user.id)
-        .eq('status', 'rewarded')
+        .eq('status', 'completed')
         .limit(1);
       
       setHasRewardedReferralAsReferrer((data && data.length > 0) || false);
     };
     
-    checkRewardedReferrals();
+    checkCompletedReferrals();
   }, [user, supabase]);
 
   const handleCancelSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return;
-
-    setIsCancelling(true);
-    try {
-      const response = await fetch('/api/stripe/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscriptionId: subscription.stripe_subscription_id }),
-      });
-
-      if (response.ok) {
-        addToast({
-          type: 'success',
-          title: 'Erfolgreich',
-          message: 'Abonnement erfolgreich gekündigt!'
-        });
-        await fetchSubscription();
-        setIsCancelModalOpen(false);
-        // Elegant reload after a short delay to show the toast
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to cancel subscription');
-      }
-    } catch (err) {
-      console.error('Cancel subscription error:', err);
-      setError('Failed to cancel subscription');
-    } finally {
-      setIsCancelling(false);
-    }
+    // Für Invoice Ninja: Weiterleitung zur Manage-Subscription-Seite
+    // Dort ist die vollständige Kündigung implementiert
+    window.location.href = '/profile/manage-subscription';
   };
 
   const handleReactivateSubscription = async () => {
-    // Use currentSubscription which is ALWAYS set (regardless of status)
-    if (!currentSubscription?.stripe_subscription_id) {
-      console.error('[Reactivate] No subscription ID found');
-      addToast({
-        type: 'error',
-        title: 'Fehler',
-        message: 'Keine Abonnement-ID gefunden'
-      });
-      return;
-    }
-    
-    console.log('[Reactivate] Using subscription ID:', currentSubscription.stripe_subscription_id);
-    
-    setIsReactivating(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/stripe/reactivate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscriptionId: currentSubscription.stripe_subscription_id }),
-      });
-
-      if (response.ok) {
-        addToast({
-          type: 'success',
-          title: 'Erfolgreich',
-          message: 'Abonnement erfolgreich wiederhergestellt!'
-        });
-        await fetchSubscription();
-        setIsReactivateModalOpen(false);
-        // Elegant reload after a short delay to show the toast
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to reactivate subscription');
-        setIsReactivateModalOpen(false);
-        addToast({
-          type: 'error',
-          title: 'Fehler',
-          message: data.error || 'Fehler beim Wiederherstellen des Abonnements'
-        });
-      }
-    } catch (err) {
-      console.error('Reactivate subscription error:', err);
-      setError('Failed to reactivate subscription');
-      addToast({
-        type: 'error',
-        title: 'Fehler',
-        message: 'Fehler beim Wiederherstellen des Abonnements'
-      });
-    } finally {
-      setIsReactivating(false);
-    }
+    // Für Invoice Ninja: Weiterleitung zur Manage-Subscription-Seite
+    // Dort ist die vollständige Reaktivierung implementiert
+    window.location.href = '/profile/manage-subscription';
   };
 
   const generateReferralLink = async () => {

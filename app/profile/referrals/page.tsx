@@ -24,7 +24,7 @@ interface ReferredUser {
 interface Referral {
   id: string;
   referralCode: string;
-  status: 'pending' | 'completed' | 'rewarded' | 'expired';
+  status: 'pending' | 'completed' | 'expired';
   firstPaymentReceived: boolean;
   rewardAmount: number;
   createdAt: string;
@@ -169,9 +169,9 @@ export default function ReferralsPage() {
     }).format(amount / 100);
   };
 
-  const successfulReferrals = referrals.filter(r => r.status === 'rewarded').length;
+  const successfulReferrals = referrals.filter(r => r.status === 'completed').length;
   const totalRewards = referrals
-    .filter(r => r.status === 'rewarded')
+    .filter(r => r.status === 'completed')
     .reduce((sum, r) => sum + r.rewardAmount, 0);
 
   if (isLoading) {
@@ -289,7 +289,7 @@ export default function ReferralsPage() {
                             <span>Abo des Freundes gekündigt - Bonus verfällt</span>
                           </div>
                         </div>
-                      ) : referral.status === 'rewarded' ? (
+                      ) : referral.status === 'completed' ? (
                         /* Warnung: Eigenes Abo gekündigt - Bonus verfällt */
                         currentSubscription?.cancel_at_period_end || currentSubscription?.status === 'canceled' ? (
                           <div className="bg-red-500/10 border-2 border-red-500/50 rounded-xl px-4 py-3">

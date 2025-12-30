@@ -59,9 +59,9 @@ export function useSubscription() {
 
       if (error) throw error;
 
-      // 1.5. Auto-Linking: Wenn keine Subscription → Prüfe Invoice Ninja by Email
-      if (!data && user.email) {
-        console.log('[useSubscription] Keine Subscription → Prüfe Auto-Linking...');
+      // 1.5. Auto-Linking: Wenn keine invoice_ninja_client_id → Prüfe Invoice Ninja by Email
+      if ((!data || !data.invoice_ninja_client_id) && user.email) {
+        console.log('[useSubscription] Keine Invoice Ninja Client ID → Prüfe Auto-Linking...');
         
         try {
           const linkResponse = await fetch('/api/invoice-ninja/link-existing-client', {

@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/utils/supabase-admin';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-});
 
 export async function POST(request: Request) {
   try {
@@ -75,40 +70,15 @@ export async function POST(request: Request) {
     const referralCode = `REF-${user.id.slice(0, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
     console.log('[Referrals Generate] Generating new referral code:', referralCode);
 
-    // Create Stripe Coupon (250€ off)
-    const coupon = await stripe.coupons.create({
-      amount_off: 25000, // 250€ in cents
-      currency: 'eur',
-      duration: 'once',
-      name: `Referral Bonus - ${referralCode}`,
-      metadata: {
-        referrer_user_id: user.id,
-        referral_code: referralCode,
-      },
-    });
-
-    console.log('[Referrals Generate] Stripe coupon created:', coupon.id);
-
-    // Create Promotion Code in Stripe
-    const promotionCode = await stripe.promotionCodes.create({
-      coupon: coupon.id,
-      code: referralCode,
-      max_redemptions: 1,
-      metadata: {
-        referrer_user_id: user.id,
-      },
-    });
-
-    console.log('[Referrals Generate] Stripe promotion code created:', promotionCode.id);
-
-    // Store referral in database
+    // Store referral in database (Invoice Ninja doesn't need upfront coupon creation)
+    // Discount wird automatisch angewendet bei erster Rechnung via apply-credit API
     const { error: insertError } = await supabaseAdmin
       .from('referrals')
       .insert({
         referrer_user_id: user.id,
         referral_code: referralCode,
-        stripe_coupon_id: coupon.id,
-        stripe_promotion_code: promotionCode.id,
+        discount_amount: 25000, // 250€ in cents (für Invoice Ninja)
+        discount_applied: false,
         status: 'pending',
       });
 

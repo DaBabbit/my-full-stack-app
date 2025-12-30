@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import Stripe from 'stripe';
 import { supabaseAdmin } from '@/utils/supabase-admin';
 import { withCors } from '@/utils/cors';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import InvoiceNinja from '@/utils/invoice-ninja';
 
 export const DELETE = withCors(async function DELETE(request: NextRequest) {
   try {
@@ -17,23 +15,31 @@ export const DELETE = withCors(async function DELETE(request: NextRequest) {
 
     console.log('Starting account soft-deletion for user:', userId);
 
-    // 1. Cancel Stripe subscriptions if they exist
+    // 1. Cancel Invoice Ninja subscriptions if they exist
     const { data: subscriptionsData, error: subError } = await supabaseAdmin
       .from('subscriptions')
-      .select('stripe_subscription_id, status')
+      .select('invoice_ninja_subscription_id, stripe_subscription_id, status')
       .eq('user_id', userId);
 
     if (subError) {
       console.error('Subscription fetch error:', subError);
     } else if (subscriptionsData) {
       for (const sub of subscriptionsData) {
-        if (sub.stripe_subscription_id && (sub.status === 'active' || sub.status === 'trialing')) {
+        // Cancel Invoice Ninja recurring invoice
+        if (sub.invoice_ninja_subscription_id && (sub.status === 'active' || sub.status === 'trialing')) {
           try {
-            await stripe.subscriptions.cancel(sub.stripe_subscription_id);
-            console.log('Stripe subscription cancelled:', sub.stripe_subscription_id);
-          } catch (stripeError) {
-            console.error('Stripe cancellation error:', stripeError);
+            await InvoiceNinja.updateRecurringInvoice(sub.invoice_ninja_subscription_id, {
+              is_deleted: true,
+            });
+            console.log('Invoice Ninja subscription cancelled:', sub.invoice_ninja_subscription_id);
+          } catch (invoiceNinjaError) {
+            console.error('Invoice Ninja cancellation error:', invoiceNinjaError);
           }
+        }
+        // Legacy: Cancel old Stripe subscriptions if they still exist
+        else if (sub.stripe_subscription_id && (sub.status === 'active' || sub.status === 'trialing')) {
+          console.log('Legacy Stripe subscription found, marking as canceled:', sub.stripe_subscription_id);
+          // Don't call Stripe API (not installed anymore), just mark as canceled in DB
         }
       }
     }

@@ -414,6 +414,68 @@ export async function checkSubscriptionStatus(
 }
 
 // =====================================================
+// Migration & Linking Helpers
+// =====================================================
+
+/**
+ * Suche Clients nach Email-Adresse
+ * Für automatische Migration existierender Kunden
+ */
+export async function searchClientsByEmail(email: string) {
+  try {
+    const response = await client.get('/api/v1/clients', {
+      params: {
+        email: email,
+        per_page: 100, // Mehr Ergebnisse für sichere Suche
+      },
+    });
+
+    if (!response.data || !response.data.data) {
+      return [];
+    }
+
+    // Filtere exakte Email-Matches (API gibt manchmal partielle Matches)
+    const exactMatches = response.data.data.filter((c: any) => {
+      const contactEmails = c.contacts?.map((contact: any) => 
+        contact.email?.toLowerCase()
+      ) || [];
+      return contactEmails.includes(email.toLowerCase());
+    });
+
+    console.log('[Invoice Ninja] Email-Suche:', email, '→', exactMatches.length, 'Matches');
+    return exactMatches;
+  } catch (error) {
+    console.error('[Invoice Ninja] Email-Suche fehlgeschlagen:', error);
+    return [];
+  }
+}
+
+/**
+ * Hole alle Recurring Invoices für einen Client
+ * Für Auto-Linking: Prüfe ob Client aktives Abo hat
+ */
+export async function getClientRecurringInvoices(clientId: string) {
+  try {
+    const response = await client.get('/api/v1/recurring_invoices', {
+      params: {
+        client_id: clientId,
+        per_page: 100,
+      },
+    });
+
+    if (!response.data || !response.data.data) {
+      return [];
+    }
+
+    console.log('[Invoice Ninja] Recurring Invoices für Client:', clientId, '→', response.data.data.length);
+    return response.data.data;
+  } catch (error) {
+    console.error('[Invoice Ninja] Recurring Invoices laden fehlgeschlagen:', error);
+    return [];
+  }
+}
+
+// =====================================================
 // Product Helper
 // =====================================================
 
@@ -455,6 +517,10 @@ export const InvoiceNinja = {
   // Status & Portal
   checkSubscriptionStatus,
   getClientPortalUrl,
+  
+  // Migration & Linking
+  searchClientsByEmail,
+  getClientRecurringInvoices,
   
   // Helpers
   getMonthlySubscriptionProduct,

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[Create Subscription] Start für User:', userId);
 
-    // 1. Prüfe ob User bereits eine Subscription hat
+    // 1. Prüfe ob User bereits eine Subscription in Supabase hat
     const { data: existingSub } = await supabaseAdmin
       .from('subscriptions')
       .select('*')
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (existingSub?.invoice_ninja_client_id) {
-      console.log('[Create Subscription] User hat bereits Subscription');
+      console.log('[Create Subscription] User hat bereits Subscription in Supabase');
       
       // Gebe existierenden Client Portal URL zurück
       const client = await InvoiceNinja.getClient(existingSub.invoice_ninja_client_id);
@@ -47,7 +47,58 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. Erstelle Client in Invoice Ninja
+    // 2. Prüfe ob Client bereits in Invoice Ninja existiert (Email-Duplikat-Check)
+    console.log('[Create Subscription] Prüfe auf existierenden Client in Invoice Ninja...');
+    const existingClients = await InvoiceNinja.searchClientsByEmail(userEmail);
+    
+    if (existingClients.length > 0) {
+      console.log('[Create Subscription] ⚠️  Client existiert bereits in Invoice Ninja!');
+      const existingClient = existingClients[0];
+      
+      // Hole Recurring Invoices für diesen Client
+      const recurringInvoices = await InvoiceNinja.getClientRecurringInvoices(existingClient.id);
+      const activeSubscription = recurringInvoices.find(
+        (inv: any) => inv.status_id === '2' || inv.status_id === 2
+      );
+      
+      // Verknüpfe mit Supabase (Upsert)
+      const statusResult = await InvoiceNinja.checkSubscriptionStatus(existingClient.id);
+      
+      const subscriptionData = {
+        user_id: userId,
+        invoice_ninja_client_id: existingClient.id,
+        invoice_ninja_subscription_id: activeSubscription?.id || null,
+        payment_method: 'gocardless_sepa',
+        status: statusResult.status,
+        current_period_end: statusResult.currentPeriodEnd?.toISOString() || null,
+        invoice_ninja_invoice_id: statusResult.lastInvoice?.id || null,
+        last_api_sync: new Date().toISOString(),
+        created_at: existingSub?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        cancel_at_period_end: false,
+      };
+      
+      await supabaseAdmin
+        .from('subscriptions')
+        .upsert(subscriptionData, { onConflict: 'user_id' });
+      
+      console.log('[Create Subscription] ✅ Existierenden Client verknüpft');
+      
+      // Gebe Portal URL zurück
+      const contactKey = existingClient.contacts[0]?.contact_key;
+      return NextResponse.json({
+        success: true,
+        existing: true,
+        linked: true,
+        clientId: existingClient.id,
+        subscriptionId: activeSubscription?.id,
+        clientPortalUrl: InvoiceNinja.getClientPortalUrl(contactKey),
+        message: 'Existing client linked successfully',
+      });
+    }
+
+    // 3. Kein existierender Client → Erstelle neuen Client in Invoice Ninja
+    console.log('[Create Subscription] Erstelle neuen Client...');
     const invoiceNinjaClient = await InvoiceNinja.createClient({
       name: userName || userEmail.split('@')[0],
       email: userEmail,
@@ -56,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[Create Subscription] Client erstellt:', invoiceNinjaClient.id);
 
-    // 3. Erstelle Recurring Invoice (= Abo)
+    // 4. Erstelle Recurring Invoice (= Abo)
     const product = InvoiceNinja.getMonthlySubscriptionProduct();
     const recurringInvoice = await InvoiceNinja.createRecurringInvoice({
       client_id: invoiceNinjaClient.id,
@@ -67,7 +118,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[Create Subscription] Recurring Invoice erstellt:', recurringInvoice.id);
 
-    // 4. Speichere in Supabase subscriptions Tabelle
+    // 5. Speichere in Supabase subscriptions Tabelle
     if (existingSub) {
       // Update existing row
       const { error: updateError } = await supabaseAdmin
@@ -109,7 +160,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[Create Subscription] Subscription in Supabase gespeichert');
 
-    // 5. Generiere Client Portal URL
+    // 6. Generiere Client Portal URL
     const contactKey = invoiceNinjaClient.contacts[0]?.contact_key;
     const clientPortalUrl = InvoiceNinja.getClientPortalUrl(contactKey);
 

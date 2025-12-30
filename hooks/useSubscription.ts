@@ -59,6 +59,39 @@ export function useSubscription() {
 
       if (error) throw error;
 
+      // 1.5. Auto-Linking: Wenn keine Subscription → Prüfe Invoice Ninja by Email
+      if (!data && user.email) {
+        console.log('[useSubscription] Keine Subscription → Prüfe Auto-Linking...');
+        
+        try {
+          const linkResponse = await fetch('/api/invoice-ninja/link-existing-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              userId: user.id, 
+              userEmail: user.email 
+            }),
+          });
+          
+          const linkResult = await linkResponse.json();
+          
+          if (linkResult.found && linkResult.linked) {
+            console.log('[useSubscription] ✅ Auto-Linking erfolgreich! Refetching...');
+            // Refetch nach Linking
+            await queryClient.invalidateQueries({ queryKey: ['subscription', user.id] });
+            // Return early, nächster Query-Lauf hat dann die Daten
+            return { subscription: null, currentSubscription: null };
+          } else if (linkResult.found && !linkResult.linked) {
+            console.log('[useSubscription] ⚠️  Client gefunden, aber Linking fehlgeschlagen');
+          } else {
+            console.log('[useSubscription] ℹ️  Kein existierender Client gefunden');
+          }
+        } catch (linkError) {
+          console.error('[useSubscription] Auto-Linking Error:', linkError);
+          // Fehler nicht werfen, einfach weitermachen ohne Linking
+        }
+      }
+
       // 2. Sync with Invoice Ninja API if needed (alle 5 Minuten)
       if (data?.invoice_ninja_client_id && data?.last_api_sync) {
         const lastSync = new Date(data.last_api_sync);

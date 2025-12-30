@@ -10,7 +10,7 @@ import IncomingInvitations from '@/components/IncomingInvitations';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Suspense } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { StripeBuyButton } from '@/components/StripeBuyButton';
+import { InvoiceNinjaCheckout } from '@/components/InvoiceNinjaCheckout';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { motion } from 'framer-motion';
 import { 
@@ -614,12 +614,9 @@ function ProfileContent() {
                     </div>
                   )}
 
-                  {/* Stripe Buy Button */}
+                  {/* Invoice Ninja Checkout */}
                   <div className="text-center">
-                    <StripeBuyButton
-                      buyButtonId={process.env.NEXT_PUBLIC_STRIPE_BUTTON_ID || ''}
-                      publishableKey={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''}
-                    />
+                    <InvoiceNinjaCheckout />
                   </div>
                 </div>
               )}

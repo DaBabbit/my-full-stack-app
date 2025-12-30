@@ -2,19 +2,17 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
-import { StripeBuyButton } from '@/components/StripeBuyButton';
+import { InvoiceNinjaCheckout } from '@/components/InvoiceNinjaCheckout';
 import { SubscriptionStatus } from '@/components/SubscriptionStatus';
 
 export default function PaymentPage() {
-  // const { user } = useAuth();
   const { subscription, isLoading, error } = useSubscription();
   const router = useRouter();
 
   // Redirect if already subscribed
   useEffect(() => {
-    if ( (subscription?.status === 'active' || subscription?.status === 'trialing') && !subscription.cancel_at_period_end) {
+    if ((subscription?.status === 'active' || subscription?.status === 'trialing') && !subscription.cancel_at_period_end) {
       const timer = setTimeout(() => {
         router.push('/profile');
       }, 3000);
@@ -31,13 +29,13 @@ export default function PaymentPage() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] p-4">
-        <h1 className="text-xl md:text-2xl font-bold mb-4 text-center">Error Loading Subscription</h1>
-        <p className="text-gray-600 mb-4 text-center">
+        <h1 className="text-xl md:text-2xl font-bold mb-4 text-center text-white">Error Loading Subscription</h1>
+        <p className="text-neutral-400 mb-4 text-center">
           Unable to load subscription information. Please try again later.
         </p>
         <button
           onClick={() => router.push('/pay')}
-          className="bg-primary hover:bg-primary-darker text-white px-6 py-2 rounded-lg"
+          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors"
         >
           Retry
         </button>
@@ -48,13 +46,13 @@ export default function PaymentPage() {
   if (!canSubscribe) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] p-4">
-        <h1 className="text-xl md:text-2xl font-bold mb-4 text-center">Subscription Not Available</h1>
-        <p className="text-gray-600 mb-4 text-center">
+        <h1 className="text-xl md:text-2xl font-bold mb-4 text-center text-white">Subscription Not Available</h1>
+        <p className="text-neutral-400 mb-4 text-center">
           You already have an active or pending subscription.
         </p>
         <button
           onClick={() => router.push('/profile')}
-          className="bg-primary hover:bg-primary-darker text-white px-6 py-2 rounded-lg"
+          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors"
         >
           View Subscription
         </button>
@@ -64,16 +62,12 @@ export default function PaymentPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] p-4">
-      <h1 className="text-xl md:text-2xl font-bold mb-6 text-center">Complete Your Purchase</h1>
+      <h1 className="text-xl md:text-2xl font-bold mb-6 text-center text-white">Complete Your Purchase</h1>
       
       <SubscriptionStatus />
 
-      <div className="w-full max-w-md px-4">
-        <StripeBuyButton
-          className="flex justify-center text-neutral"
-          buyButtonId={process.env.NEXT_PUBLIC_STRIPE_BUTTON_ID || ''}
-          publishableKey={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''}
-        />
+      <div className="w-full max-w-md px-4 mt-6">
+        <InvoiceNinjaCheckout />
       </div>
     </div>
   );

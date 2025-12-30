@@ -57,9 +57,10 @@ export default function ManageSubscriptionPage() {
 
   const handleOpenCustomerPortal = async () => {
     try {
-      const response = await fetch('/api/stripe/customer-portal', {
+      const response = await fetch('/api/invoice-ninja/client-portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
       });
 
       if (response.ok) {
@@ -83,14 +84,14 @@ export default function ManageSubscriptionPage() {
   };
 
   const handleReactivateSubscription = async () => {
-    if (!currentSubscription?.stripe_subscription_id) return;
+    if (!user?.id) return;
 
     setIsReactivating(true);
     try {
-      const response = await fetch('/api/stripe/reactivate', {
+      const response = await fetch('/api/invoice-ninja/reactivate-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscriptionId: currentSubscription.stripe_subscription_id }),
+        body: JSON.stringify({ userId: user.id }),
       });
 
       if (response.ok) {
@@ -125,14 +126,14 @@ export default function ManageSubscriptionPage() {
   };
 
   const handleCancelSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return;
+    if (!user?.id) return;
 
     setIsCancelling(true);
     try {
-      const response = await fetch('/api/stripe/cancel', {
+      const response = await fetch('/api/invoice-ninja/cancel-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscriptionId: subscription.stripe_subscription_id }),
+        body: JSON.stringify({ userId: user.id }),
       });
 
       if (response.ok) {

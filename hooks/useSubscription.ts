@@ -8,8 +8,17 @@ export interface Subscription {
   id: string;
   user_id: string;
   status: string;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
+  // Stripe fields (legacy - optional)
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  // Invoice Ninja fields
+  invoice_ninja_client_id?: string;
+  invoice_ninja_subscription_id?: string;
+  invoice_ninja_invoice_id?: string;
+  payment_method?: string;
+  gocardless_mandate_id?: string;
+  last_api_sync?: string;
+  // Common fields
   cancel_at_period_end: boolean;
   current_period_end: string;
   created_at: string;
@@ -21,17 +30,17 @@ const checkValidSubscription = (data: Subscription | null): boolean => {
   
   // Akzeptiere diese Statuses als "aktiv"
   // 'past_due' = Zahlung steht aus, aber Abo ist noch aktiv (Grace Period)
+  // 'paused' = Pausiert, aber nicht gelöscht
   const activeStatuses = ['active', 'trialing', 'past_due'];
   
   return activeStatuses.includes(data.status);
-  // Kein current_period_end Check - Stripe managed den Status
 };
 
 export function useSubscription() {
   const { user, supabase } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch subscription with React Query
+  // Fetch subscription with React Query + API Polling
   const { data: subscriptionData, isLoading: loading, error } = useQuery({
     queryKey: ['subscription', user?.id],
     queryFn: async () => {
@@ -39,7 +48,7 @@ export function useSubscription() {
         return { subscription: null, currentSubscription: null };
       }
 
-      // Get the most recent subscription for this user (regardless of status)
+      // 1. Get the most recent subscription for this user
       const { data, error } = await supabase
         .from('subscriptions')
         .select('*')
@@ -50,10 +59,35 @@ export function useSubscription() {
 
       if (error) throw error;
 
-      // Store the current subscription (regardless of status) for display purposes
+      // 2. Sync with Invoice Ninja API if needed (alle 5 Minuten)
+      if (data?.invoice_ninja_client_id && data?.last_api_sync) {
+        const lastSync = new Date(data.last_api_sync);
+        const now = new Date();
+        const diffMinutes = (now.getTime() - lastSync.getTime()) / 1000 / 60;
+
+        if (diffMinutes > 5) {
+          console.log('[useSubscription] Sync mit Invoice Ninja API (>5 Min)...');
+          
+          // API Call zum Sync (Fire-and-forget, kein await)
+          fetch('/api/invoice-ninja/sync-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id }),
+          }).catch((err) => {
+            console.error('[useSubscription] Sync Error:', err);
+          });
+
+          // Refetch nach kurzer Verzögerung (500ms)
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['subscription', user.id] });
+          }, 500);
+        }
+      }
+
+      // 3. Store the current subscription (regardless of status) for display purposes
       const currentSubscription = data;
 
-      // Check if subscription is truly active (not canceled and period hasn't ended)
+      // 4. Check if subscription is truly active
       const isValid = checkValidSubscription(data);
 
       return {
@@ -62,9 +96,9 @@ export function useSubscription() {
       };
     },
     enabled: !!user?.id, // Nur fetchen wenn User vorhanden
-    staleTime: 1000 * 30, // 30 Sekunden Cache - Subscription-Status sollte relativ aktuell sein
-    gcTime: 1000 * 60 * 5, // 5 Minuten im Cache halten
-    refetchOnWindowFocus: true, // Bei Tab-Fokus refetchen für aktuellen Status
+    staleTime: 1000 * 60 * 5, // 5 Minuten Cache (API-Sync erfolgt alle 5 Min)
+    gcTime: 1000 * 60 * 10, // 10 Minuten im Cache halten
+    refetchOnWindowFocus: true, // Bei Tab-Fokus refetchen
     refetchOnMount: true, // Beim Mount fetchen
     refetchInterval: 60000, // Alle 60 Sekunden im Hintergrund refetchen
   });
@@ -77,12 +111,6 @@ export function useSubscription() {
       await queryClient.invalidateQueries({ queryKey: ['subscription', user?.id] });
     }
   }, [queryClient, user?.id]);
-
-
-  // Stripe Sync komplett deaktiviert - verursacht 500 Errors
-  // const MAX_SYNC_RETRIES = 3;
-  // const [syncRetries, setSyncRetries] = useState(0);
-  // ... (Code entfernt)
 
   // Realtime Subscription Setup - optimiert mit React Query
   useEffect(() => {
@@ -98,7 +126,7 @@ export function useSubscription() {
           table: 'subscriptions',
           filter: `user_id=eq.${user.id}`
         },
-        async (payload) => {
+        async () => {
           console.log('[useSubscription] Realtime update received, invalidating query...');
           // Invalidate query to trigger refetch
           queryClient.invalidateQueries({ queryKey: ['subscription', user.id] });
@@ -111,16 +139,13 @@ export function useSubscription() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]); // queryClient & supabase NICHT in Dependencies - sie sind stabil
+  }, [user?.id, supabase, queryClient]);
 
   return {
     subscription,
     currentSubscription,
     isLoading: loading,
     error: error?.message || null,
-    syncWithStripe: (_subscriptionId?: string) => {
-      console.log('[useSubscription] syncWithStripe is disabled');
-    }, // Deaktiviert - verursacht 500 Errors
     fetchSubscription // Expose fetch function for manual refresh
   };
 } 

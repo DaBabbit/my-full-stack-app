@@ -18,6 +18,7 @@ export function useVideoCredits(userId?: string) {
       }
 
       // Hole User-Subscription für Abrechnungszeitraum (aus subscriptions-Tabelle)
+      // Funktioniert mit Invoice Ninja genauso wie mit Stripe
       const { data: subscription, error: subError } = await supabase
         .from('subscriptions')
         .select('current_period_end, status')
@@ -36,7 +37,7 @@ export function useVideoCredits(userId?: string) {
       let billingEnd: Date;
 
       if (subscription?.current_period_end) {
-        // Verwende echten Stripe-Abrechnungszeitraum
+        // Verwende Abrechnungszeitraum (von Invoice Ninja oder Stripe)
         billingEnd = new Date(subscription.current_period_end);
         // Berechne Start als 30 Tage vor Ende (monatliches Abo)
         billingStart = new Date(billingEnd);

@@ -24,14 +24,12 @@ interface Invoice {
   id: string;
   number: string;
   amount: number;
-  currency: string;
-  status: 'paid' | 'open' | 'void' | 'draft' | 'uncollectible' | 'past_due';
-  created: number;
-  period_start: number;
-  period_end: number;
-  invoice_pdf: string;
-  hosted_invoice_url: string;
-  description: string;
+  balance: number;
+  paid_to_date: number;
+  status: string;
+  status_id: string;
+  date: string;
+  due_date: string;
 }
 
 export default function InvoicesPage() {
@@ -69,16 +67,11 @@ export default function InvoicesPage() {
       setIsLoading(true);
       setError(null);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No session found');
+      if (!user?.id) {
+        throw new Error('No user ID found');
       }
 
-      const response = await fetch('/api/stripe/invoices', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
+      const response = await fetch(`/api/invoice-ninja/invoices?userId=${user.id}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch invoices');
@@ -94,68 +87,55 @@ export default function InvoicesPage() {
     }
   };
 
-  const formatAmount = (amount: number, currency: string) => {
+  const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
-      currency: currency.toUpperCase(),
-    }).format(amount / 100);
+      currency: 'EUR',
+    }).format(amount);
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString('de-DE');
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('de-DE');
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'paid':
+      case 'Bezahlt':
         return <CheckCircle className="w-4 h-4 text-green-400" />;
-      case 'open':
+      case 'Gesendet':
+      case 'Angesehen':
         return <Clock className="w-4 h-4 text-blue-400" />;
-      case 'past_due':
+      case 'Überfällig':
         return <AlertCircle className="w-4 h-4 text-yellow-400" />;
-      case 'draft':
+      case 'Entwurf':
         return <FileText className="w-4 h-4 text-gray-400" />;
-      case 'uncollectible':
-        return <XCircle className="w-4 h-4 text-red-400" />;
-      case 'void':
+      case 'Storniert':
         return <XCircle className="w-4 h-4 text-gray-400" />;
+      case 'Teilweise bezahlt':
+        return <Clock className="w-4 h-4 text-green-400" />;
       default:
         return <Info className="w-4 h-4 text-gray-400" />;
     }
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'Bezahlt';
-      case 'open':
-        return 'In Bearbeitung';
-      case 'past_due':
-        return 'Ausstehend';
-      case 'draft':
-        return 'Entwurf';
-      case 'uncollectible':
-        return 'Nicht einziehbar';
-      case 'void':
-        return 'Storniert';
-      default:
-        return status;
-    }
+    return status; // Invoice Ninja gibt bereits deutsche Labels zurück
   };
 
   const getStatusTooltip = (status: string) => {
     switch (status) {
-      case 'paid':
+      case 'Bezahlt':
         return 'Die Rechnung wurde erfolgreich bezahlt.';
-      case 'open':
-        return 'Die Zahlung wird von deiner Bank bearbeitet. Dies kann bis zu 14 Tage dauern. Dein Abonnement ist aktiv und kann ohne Einschränkung genutzt werden.';
-      case 'past_due':
-        return 'Die Zahlung wird von deiner Bank bearbeitet. Dies kann bis zu 14 Tage dauern. Dein Abonnement ist aktiv und kann ohne Einschränkung genutzt werden.';
-      case 'draft':
+      case 'Gesendet':
+      case 'Angesehen':
+        return 'Die Zahlung wird von deiner Bank bearbeitet. Dies kann bis zu 7 Tage dauern. Dein Abonnement ist aktiv und kann ohne Einschränkung genutzt werden.';
+      case 'Überfällig':
+        return 'Die Rechnung ist überfällig. Bitte prüfe deine Zahlungsmethode.';
+      case 'Entwurf':
         return 'Diese Rechnung ist noch ein Entwurf und wurde noch nicht finalisiert.';
-      case 'uncollectible':
-        return 'Die Zahlung konnte nicht eingezogen werden. Bitte aktualisiere deine Zahlungsmethode.';
-      case 'void':
+      case 'Teilweise bezahlt':
+        return 'Die Rechnung wurde teilweise bezahlt.';
+      case 'Storniert':
         return 'Diese Rechnung wurde storniert.';
       default:
         return '';
@@ -164,15 +144,9 @@ export default function InvoicesPage() {
 
   const handleDownload = async (invoice: Invoice) => {
     try {
-      if (invoice.invoice_pdf) {
-        // Direct download from Stripe
-        window.open(invoice.invoice_pdf, '_blank');
-      } else if (invoice.hosted_invoice_url) {
-        // Open hosted invoice page
-        window.open(invoice.hosted_invoice_url, '_blank');
-      } else {
-        setError('Download nicht verfügbar für diese Rechnung');
-      }
+      // Invoice Ninja PDF Download URL
+      const pdfUrl = `${process.env.NEXT_PUBLIC_INVOICE_NINJA_URL}/client/invoice/${invoice.id}.pdf`;
+      window.open(pdfUrl, '_blank');
     } catch (err) {
       console.error('Download error:', err);
       setError('Fehler beim Download der Rechnung');
@@ -257,7 +231,7 @@ export default function InvoicesPage() {
                                 {invoice.number || invoice.id.slice(-8)}
                               </div>
                               <div className="text-sm text-neutral-400">
-                                {formatDate(invoice.created)}
+                                {formatDate(invoice.date)}
                               </div>
                             </div>
                           </div>
@@ -265,13 +239,13 @@ export default function InvoicesPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center text-sm text-neutral-300">
                             <Calendar className="w-4 h-4 mr-2" />
-                            {formatDate(invoice.period_start)} - {formatDate(invoice.period_end)}
+                            Fällig: {formatDate(invoice.due_date)}
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center text-white font-medium">
                             <Euro className="w-4 h-4 mr-1" />
-                            {formatAmount(invoice.amount, invoice.currency)}
+                            {formatAmount(invoice.amount)}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -298,16 +272,8 @@ export default function InvoicesPage() {
                               className="flex items-center px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all duration-300 border border-blue-500/20 hover:border-blue-500/40"
                             >
                               <Download className="w-4 h-4 mr-2" />
-                              Download
+                              PDF
                             </button>
-                            {invoice.hosted_invoice_url && (
-                              <button
-                                onClick={() => window.open(invoice.hosted_invoice_url, '_blank')}
-                                className="flex items-center px-3 py-2 bg-neutral-500/10 hover:bg-neutral-500/20 text-neutral-400 rounded-lg transition-all duration-300 border border-neutral-500/20 hover:border-neutral-500/40"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </button>
-                            )}
                           </div>
                         </td>
                       </motion.tr>

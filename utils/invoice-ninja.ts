@@ -341,6 +341,8 @@ export function getClientPortalUrl(clientContactKey: string): string {
 /**
  * Prüft den Subscription-Status eines Clients via API
  * Wird beim Login/Seitenaufruf aufgerufen (alle 5 Minuten)
+ * 
+ * VERBESSERTE LOGIK: Prüft ZUERST Recurring Invoices, dann Zahlungen
  */
 export async function checkSubscriptionStatus(
   clientId: string
@@ -349,19 +351,123 @@ export async function checkSubscriptionStatus(
     const today = new Date();
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Prüfe auf bezahlte Rechnungen im aktuellen Zeitraum (letzte 30 Tage)
+    // SCHRITT 1: Prüfe ZUERST Recurring Invoices (= Abo-Status)
+    console.log('[Invoice Ninja] Prüfe Recurring Invoices für Client:', clientId);
+    const recurringInvoices = await getClientRecurringInvoices(clientId);
+    
+    // Finde aktive Recurring Invoice (status_id = '2' = Active)
+    const activeRecurring = recurringInvoices.find(
+      (inv: any) => inv.status_id === '2' || inv.status_id === 2
+    );
+
+    if (activeRecurring) {
+      console.log('[Invoice Ninja] ✅ Aktive Recurring Invoice gefunden:', activeRecurring.id);
+      
+      // SCHRITT 2: Prüfe bezahlte Rechnungen
+      const paidInvoices = await getClientInvoices(clientId, {
+        status: 'paid',
+        date_from: thirtyDaysAgo.toISOString().split('T')[0],
+      });
+
+      if (paidInvoices.data && paidInvoices.data.length > 0) {
+        // Aktives Abo + Bezahlte Rechnung = ACTIVE
+        const latestInvoice = paidInvoices.data[0];
+        const nextBillingDate = new Date(activeRecurring.next_send_date || today);
+        
+        console.log('[Invoice Ninja] Status: ACTIVE (bezahlte Rechnung vorhanden)');
+
+        return {
+          isActive: true,
+          status: 'active',
+          currentPeriodEnd: nextBillingDate,
+          lastInvoice: latestInvoice,
+        };
+      }
+
+      // SCHRITT 3: Prüfe unbezahlte Rechnungen
+      const unpaidInvoices = await getClientInvoices(clientId, { status: 'unpaid' });
+      
+      if (unpaidInvoices.data && unpaidInvoices.data.length > 0) {
+        const oldestUnpaid = unpaidInvoices.data[unpaidInvoices.data.length - 1];
+        const dueDate = new Date(oldestUnpaid.due_date);
+        const daysPastDue = Math.floor(
+          (today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        console.log('[Invoice Ninja] Unbezahlte Rechnung gefunden, Tage überfällig:', daysPastDue);
+
+        // Grace Period: 7 Tage
+        if (daysPastDue <= 7) {
+          return {
+            isActive: true, // Noch in Grace Period
+            status: 'past_due',
+            currentPeriodEnd: new Date(activeRecurring.next_send_date || today),
+            lastInvoice: oldestUnpaid,
+          };
+        } else {
+          // Nach 7 Tagen: Abo als canceled markieren
+          return {
+            isActive: false,
+            status: 'canceled',
+            lastInvoice: oldestUnpaid,
+          };
+        }
+      }
+
+      // SCHRITT 4: Aktives Abo, aber noch keine Rechnungen generiert
+      // Kann passieren wenn:
+      // a) Recurring Invoice gerade erst erstellt wurde
+      // b) next_send_date liegt in der Zukunft (Trial/Prepaid)
+      const nextSendDate = new Date(activeRecurring.next_send_date || today);
+      
+      if (nextSendDate > today) {
+        // Erste Rechnung kommt erst in der Zukunft → Status = ACTIVE (Trial/Prepaid)
+        console.log('[Invoice Ninja] Status: ACTIVE (Trial - erste Rechnung kommt:', nextSendDate);
+        return {
+          isActive: true,
+          status: 'active',
+          currentPeriodEnd: nextSendDate,
+        };
+      } else {
+        // Rechnung sollte schon da sein, aber ist nicht da → Status = PENDING
+        // Manuell erstellte Recurring Invoice ohne Auto-Bill
+        console.log('[Invoice Ninja] Status: PENDING (Abo existiert, aber keine Rechnungen)');
+        return {
+          isActive: false,
+          status: 'pending',
+        };
+      }
+    }
+
+    // SCHRITT 5: Keine aktive Recurring Invoice gefunden
+    // Prüfe ob pausierte/gestoppte Recurring Invoice existiert
+    const pausedRecurring = recurringInvoices.find(
+      (inv: any) => inv.status_id === '3' || inv.status_id === 3 // '3' = Paused
+    );
+
+    if (pausedRecurring) {
+      console.log('[Invoice Ninja] Status: CANCELED (Recurring Invoice pausiert)');
+      return {
+        isActive: false,
+        status: 'canceled',
+      };
+    }
+
+    // SCHRITT 6: Keine Recurring Invoice gefunden
+    // Fallback: Prüfe ob es bezahlte Rechnungen gibt (Legacy/Manuell)
     const paidInvoices = await getClientInvoices(clientId, {
       status: 'paid',
       date_from: thirtyDaysAgo.toISOString().split('T')[0],
     });
 
     if (paidInvoices.data && paidInvoices.data.length > 0) {
-      // Hat bezahlte Rechnung im aktuellen Zeitraum → Abo ist aktiv
+      // Hat bezahlte Rechnung aber keine Recurring Invoice
+      // Wahrscheinlich manuelle Zahlung → ACTIVE (aber kein Auto-Renewal)
       const latestInvoice = paidInvoices.data[0];
-      
-      // Berechne nächstes Abrechnungsdatum (30 Tage nach letzter Rechnung)
       const invoiceDate = new Date(latestInvoice.date);
       const nextBillingDate = new Date(invoiceDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      console.log('[Invoice Ninja] Status: ACTIVE (manuelle Zahlung, kein Recurring)');
 
       return {
         isActive: true,
@@ -371,38 +477,13 @@ export async function checkSubscriptionStatus(
       };
     }
 
-    // Prüfe auf unbezahlte Rechnungen
-    const unpaidInvoices = await getClientInvoices(clientId, { status: 'unpaid' });
-    
-    if (unpaidInvoices.data && unpaidInvoices.data.length > 0) {
-      const oldestUnpaid = unpaidInvoices.data[unpaidInvoices.data.length - 1];
-      const dueDate = new Date(oldestUnpaid.due_date);
-      const daysPastDue = Math.floor(
-        (today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      // Grace Period: 7 Tage
-      if (daysPastDue <= 7) {
-        return {
-          isActive: true, // Noch in Grace Period
-          status: 'past_due',
-          lastInvoice: oldestUnpaid,
-        };
-      } else {
-        // Nach 7 Tagen: Abo als canceled markieren
-        return {
-          isActive: false,
-          status: 'canceled',
-          lastInvoice: oldestUnpaid,
-        };
-      }
-    }
-
-    // Keine Rechnungen gefunden → Abo ist pending (noch nicht aktiviert)
+    // Keine Recurring Invoice, keine Zahlungen → Status = PENDING
+    console.log('[Invoice Ninja] Status: PENDING (kein Abo, keine Zahlungen)');
     return {
       isActive: false,
       status: 'pending',
     };
+
   } catch (error) {
     console.error('[Invoice Ninja] Status-Check fehlgeschlagen:', error);
     // Im Fehlerfall: Als pending zurückgeben

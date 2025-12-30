@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       // Hole Recurring Invoices für diesen Client
       const recurringInvoices = await InvoiceNinja.getClientRecurringInvoices(existingClient.id);
       const activeSubscription = recurringInvoices.find(
-        (inv: any) => inv.status_id === '2' || inv.status_id === 2
+        (inv) => inv.status_id === '2' || inv.status_id === 2
       );
       
       // Verknüpfe mit Supabase (Upsert)

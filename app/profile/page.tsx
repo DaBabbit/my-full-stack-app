@@ -36,10 +36,7 @@ function ProfileContent() {
   const searchParams = useSearchParams();
   const paymentStatus = searchParams.get('payment');
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const [isCancelling, setIsCancelling] = useState(false);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
-  const [isReactivating, setIsReactivating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { isInTrial, trialEndTime } = useTrialStatus();
   const [referralLink, setReferralLink] = useState<string>('');
   const [isGeneratingReferral, setIsGeneratingReferral] = useState(false);

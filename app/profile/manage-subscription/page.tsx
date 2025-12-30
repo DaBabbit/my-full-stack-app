@@ -45,7 +45,7 @@ export default function ManageSubscriptionPage() {
       const { data } = await supabase
         .from('referrals')
         .select('*')
-        .eq('referred_user_id', user.id)
+        .eq('referred_user_id', user!.id)
         .eq('status', 'rewarded')
         .single();
       
@@ -56,11 +56,13 @@ export default function ManageSubscriptionPage() {
   }, [user, supabase]);
 
   const handleOpenCustomerPortal = async () => {
+    if (!user?.id) return;
+    
     try {
       const response = await fetch('/api/invoice-ninja/client-portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({ userId: user!.id }),
       });
 
       if (response.ok) {
@@ -91,7 +93,7 @@ export default function ManageSubscriptionPage() {
       const response = await fetch('/api/invoice-ninja/reactivate-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({ userId: user!.id }),
       });
 
       if (response.ok) {
@@ -133,7 +135,7 @@ export default function ManageSubscriptionPage() {
       const response = await fetch('/api/invoice-ninja/cancel-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({ userId: user!.id }),
       });
 
       if (response.ok) {

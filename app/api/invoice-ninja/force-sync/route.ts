@@ -45,8 +45,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Check status in Invoice Ninja
     const status = await InvoiceNinja.checkSubscriptionStatus(
-      subscription.invoice_ninja_client_id,
-      subscription.invoice_ninja_subscription_id
+      subscription.invoice_ninja_client_id
     );
 
     console.log('[Force Sync] Invoice Ninja status:', status);
@@ -56,7 +55,7 @@ export async function POST(request: NextRequest) {
       .from('subscriptions')
       .update({
         status: status.status,
-        current_period_end: status.next_payment_date,
+        current_period_end: status.currentPeriodEnd?.toISOString(),
         last_api_sync: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -73,7 +72,7 @@ export async function POST(request: NextRequest) {
       success: true,
       previousStatus: subscription.status,
       newStatus: status.status,
-      nextPaymentDate: status.next_payment_date,
+      nextPaymentDate: status.currentPeriodEnd?.toISOString(),
     });
 
   } catch (error) {
